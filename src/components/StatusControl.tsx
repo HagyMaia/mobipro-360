@@ -25,14 +25,14 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
             disabled={disabled || !canChange}
             onClick={() => dispatch({ type: 'SET_STATUS', status })}
             className={cn(
-              'flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 text-xs font-semibold transition-all',
+              'flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-xs font-semibold transition-all',
               active
                 ? status === 'available'
-                  ? 'border-success bg-success/15 text-success'
+                  ? 'border-green-500 bg-green-500 text-white shadow-md'
                   : status === 'break'
-                    ? 'border-warn bg-warn/15 text-warn'
-                    : 'border-danger bg-danger/15 text-danger'
-                : 'border-dark-700 bg-dark-800/60 text-slate-400 hover:border-dark-600',
+                    ? 'border-yellow-500 bg-yellow-500 text-white shadow-md'
+                    : 'border-gray-500 bg-gray-500 text-white shadow-md'
+                : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 shadow-sm',
               (!canChange || disabled) && 'pointer-events-none opacity-50'
             )}
           >

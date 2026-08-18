@@ -61,20 +61,20 @@ export default function HomePage() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-dark-700 bg-dark/80 px-4 pb-3 pt-4 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/90 px-4 pb-3 pt-4 backdrop-blur-md shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-extrabold text-slate-50">
-              MobiPro <span className="text-brand-400">360</span>
+            <h1 className="text-xl font-extrabold text-gray-900">
+              MobiPro <span className="text-brand-500">360</span>
             </h1>
-            <p className="text-[11px] capitalize text-slate-400">{dateLabel}</p>
+            <p className="text-[11px] capitalize text-gray-500">{dateLabel}</p>
           </div>
           <div className="flex items-center gap-2">
             <StatusPill />
-            <button className="relative rounded-full bg-dark-700 p-2 text-slate-300 transition hover:text-white">
+            <button className="relative rounded-full bg-gray-100 p-2 text-gray-600 transition hover:text-brand-500">
               <Bell size={16} />
               {state.status === 'available' && state.incomingRide && (
-                <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-ping rounded-full bg-brand-400" />
+                <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-ping rounded-full bg-brand-500" />
               )}
             </button>
           </div>
@@ -89,24 +89,24 @@ export default function HomePage() {
         ) : state.activeRide ? (
           <ActiveRideCard />
         ) : state.status === 'available' ? (
-          <Card className="flex flex-col items-center gap-3 border-brand-500/30 py-8 text-center">
+          <Card className="flex flex-col items-center gap-3 border border-brand-200 py-8 text-center">
             <div className="relative">
               <span className="absolute inset-0 animate-ping rounded-full bg-brand-500/20" />
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-brand-600/20">
-                <Navigation size={26} className="text-brand-400" />
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-brand-100">
+                <Navigation size={26} className="text-brand-500" />
               </div>
             </div>
             <div>
-              <div className="font-semibold text-slate-100">Procurando corridas...</div>
-              <div className="text-xs text-slate-400">
+              <div className="font-semibold text-gray-900">Procurando corridas...</div>
+              <div className="text-xs text-gray-500">
                 Fique atento às novas chamadas e ao filtro de rentabilidade.
               </div>
             </div>
           </Card>
         ) : (
-          <Card className="py-8 text-center text-slate-400">
+          <Card className="py-8 text-center text-gray-500">
             <EmptyState
-              icon={<MapPin size={28} />}
+              icon={<MapPin size={28} className="text-gray-400" />}
               title={
                 state.status === 'break' ? 'Você está em pausa' : 'Você está offline'
               }
@@ -116,41 +116,39 @@ export default function HomePage() {
         )}
 
         <div>
-          <SectionTitle className="mb-2">Resumo do dia</SectionTitle>
-          <Card>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <div className="text-[11px] uppercase text-slate-500">Rendimento</div>
-                <div className="text-lg font-bold tabular-nums text-slate-50">
-                  {`R$ ${state.earnings
+          <SectionTitle className="mb-2 text-gray-600">Resumo do dia</SectionTitle>
+          <div className="grid grid-cols-3 gap-3">
+            <Card className="flex flex-col items-center justify-center p-3 text-center">
+              <div className="text-[11px] uppercase text-gray-500">Rendimento</div>
+              <div className="text-lg font-bold tabular-nums text-gray-900">
+                {`R$ ${state.earnings
+                  .filter((e) => isToday(e.date))
+                  .reduce((s, e) => s + e.amount, 0)
+                  .toFixed(0)}`}
+              </div>
+            </Card>
+            <Card className="flex flex-col items-center justify-center p-3 text-center">
+              <div className="text-[11px] uppercase text-gray-500">Corridas</div>
+              <div className="text-lg font-bold tabular-nums text-gray-900">
+                {state.rideHistory.filter(
+                  (r) => r.completedAt && isToday(r.completedAt)
+                ).length}
+              </div>
+            </Card>
+            <Card className="flex flex-col items-center justify-center p-3 text-center">
+              <div className="text-[11px] uppercase text-gray-500">Meta</div>
+              <div className="text-lg font-bold tabular-nums text-gray-900">
+                {Math.round(
+                  (state.earnings
                     .filter((e) => isToday(e.date))
-                    .reduce((s, e) => s + e.amount, 0)
-                    .toFixed(0)}`}
-                </div>
+                    .reduce((s, e) => s + e.amount, 0) /
+                    state.goalTarget) *
+                    100
+                )}
+                %
               </div>
-              <div>
-                <div className="text-[11px] uppercase text-slate-500">Corridas</div>
-                <div className="text-lg font-bold tabular-nums text-slate-50">
-                  {state.rideHistory.filter(
-                    (r) => r.completedAt && isToday(r.completedAt)
-                  ).length}
-                </div>
-              </div>
-              <div>
-                <div className="text-[11px] uppercase text-slate-500">Meta</div>
-                <div className="text-lg font-bold tabular-nums text-slate-50">
-                  {Math.round(
-                    (state.earnings
-                      .filter((e) => isToday(e.date))
-                      .reduce((s, e) => s + e.amount, 0) /
-                      state.goalTarget) *
-                      100
-                  )}
-                  %
-                </div>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
         </div>
       </div>
 

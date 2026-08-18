@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import 'leaflet/dist/leaflet.css';
 import type { HeatZone } from '@/lib/types';
 
-const SPA_CENTER: [number, number] = [-23.5489, -46.6388];
+const SPA_CENTER: [number, number] = [-3.1190, -60.0217];
 
 export default function HeatmapMap({ zones }: { zones: HeatZone[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -21,7 +22,7 @@ export default function HeatmapMap({ zones }: { zones: HeatZone[] }) {
 
       const map = L.map(containerRef.current, {
         center: SPA_CENTER,
-        zoom: 11,
+        zoom: 13,
         zoomControl: false,
         attributionControl: true
       });
@@ -69,7 +70,7 @@ export default function HeatmapMap({ zones }: { zones: HeatZone[] }) {
   return (
     <div
       ref={containerRef}
-      className="h-[340px] w-full overflow-hidden rounded-2xl border border-dark-700"
+      className="w-full h-96 rounded-lg shadow-md z-0"
     />
   );
 }

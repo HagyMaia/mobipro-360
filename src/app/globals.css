@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
 body {
-  background: #0b1220;
-  color: #e2e8f0;
+  background: #f9fafb;
+  color: #111827;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -19,12 +19,12 @@ body {
 
 /* Leaflet no tema escuro */
 .leaflet-container {
-  background: #111a2e;
+  background: #e5e7eb;
   font-family: inherit;
 }
 
 .leaflet-control-attribution {
-  background: rgba(11, 18, 32, 0.7) !important;
+  background: rgba(255, 255, 255, 0.7) !important;
   color: #64748b !important;
   font-size: 9px !important;
 }
@@ -33,9 +33,11 @@ body {
   color: #94a3b8 !important;
 }
 
+/* 
 .leaflet-tile {
   filter: brightness(0.55) contrast(1.1) saturate(0.6) hue-rotate(190deg);
-}
+} 
+*/
 
 @layer utilities {
   .scrollbar-none {
