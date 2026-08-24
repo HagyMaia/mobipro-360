@@ -8,15 +8,15 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'MobiPro 360 - Super App do Motorista',
+  title: 'SR Logística - App do Motorista',
   description:
     'Corridas, rentabilidade em tempo real, radar de demanda e segurança para motoristas profissionais.',
   manifest: '/manifest.webmanifest',
-  applicationName: 'MobiPro 360',
+  applicationName: 'SR Logística',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'MobiPro 360'
+    title: 'SR Logística'
   }
 };
 
