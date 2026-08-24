@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, MapPin, Navigation } from 'lucide-react';
+import { Bell, LogOut, MapPin, Navigation } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import RentabilityOverlay from '@/components/RentabilityOverlay';
 import RideRequestCard from '@/components/RideRequestCard';
@@ -10,23 +10,23 @@ import StatusControl, { StatusPill } from '@/components/StatusControl';
 import { Card, EmptyState, SectionTitle } from '@/components/ui';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useApp, useSimulateRide } from '@/lib/store';
-import { supabase } from '@/lib/supabase'; // <-- MUDANÇA: Usando o Supabase real
+import { useAuth } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 import { buildMockRequest } from '@/lib/mock-data';
 import { isToday } from '@/lib/utils';
 
 export default function HomePage() {
   const { state, dispatch } = useApp();
+  const { signOut } = useAuth();
   const simulate = useSimulateRide();
   const [tick, setTick] = useState(0);
   const [driverName, setDriverName] = useState('Motorista');
   const counter = useRef(0);
 
-  // Busca os dados do motorista autenticado no Supabase
   useEffect(() => {
     async function loadDriverProfile() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Tenta buscar o nome cadastrado na tabela motoristas
         const { data: motorista } = await supabase
           .from('motoristas')
           .select('nome')
@@ -103,6 +103,15 @@ export default function HomePage() {
               {state.status === 'available' && state.incomingRide && (
                 <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-ping rounded-full bg-red-500" />
               )}
+            </button>
+
+            {/* BOTÃO DE LOGOUT */}
+            <button
+              onClick={signOut}
+              title="Sair do aplicativo"
+              className="rounded-full bg-red-500/20 text-red-400 p-2 hover:bg-red-600 hover:text-white transition"
+            >
+              <LogOut size={16} />
             </button>
           </div>
         </div>
