@@ -8,7 +8,7 @@ export function Card({
   return (
     <div
       className={cn(
-        'rounded-lg bg-white p-4 shadow-md',
+        'rounded-lg bg-white dark:bg-dark-800 p-4 shadow-md dark:border dark:border-dark-700',
         className
       )}
       {...props}
@@ -22,8 +22,11 @@ const VARIANTS: Record<Variant, string> = {
   primary: 'bg-brand-600 text-white hover:bg-brand-500 active:bg-brand-700',
   success: 'bg-success text-white hover:bg-emerald-600 active:bg-emerald-700',
   danger: 'bg-danger text-white hover:bg-red-500 active:bg-red-700',
-  ghost: 'bg-transparent text-slate-300 hover:bg-white/10',
-  outline: 'border border-dark-700 text-slate-200 hover:bg-white/5',
+
+  // CORRIGIDOS ABAIXO:
+  ghost: 'bg-transparent text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10',
+  outline: 'border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-dark-700 dark:text-slate-200 dark:hover:bg-white/5',
+
   warn: 'bg-warn text-slate-900 hover:bg-amber-400'
 };
 
@@ -140,9 +143,9 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-      <div className="text-slate-600">{icon}</div>
-      <div className="text-sm font-medium text-slate-300">{title}</div>
-      {description && <div className="max-w-[260px] text-xs text-slate-500">{description}</div>}
+      <div className="text-gray-500 dark:text-slate-600">{icon}</div>
+      <div className="text-sm font-medium text-gray-900 dark:text-slate-300">{title}</div>
+      {description && <div className="max-w-[260px] text-xs text-gray-500 dark:text-slate-500">{description}</div>}
     </div>
   );
 }

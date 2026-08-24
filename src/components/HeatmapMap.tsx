@@ -3,6 +3,8 @@
 import { useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 import type { HeatZone } from '@/lib/types';
+import L from 'leaflet';
+import 'leaflet.heat';
 
 const SPA_CENTER: [number, number] = [-3.1190, -60.0217];
 
@@ -36,7 +38,9 @@ export default function HeatmapMap({ zones }: { zones: HeatZone[] }) {
         (z) => [z.lat, z.lng, z.intensity / 100] as L.LatLngTuple
       );
 
-      const heatLayer = heat(points, {
+      // Mude de: const heatLayer = heat(points, {
+      // Para:
+      const heatLayer = L.heatLayer(points, {
         radius: 42,
         blur: 26,
         maxZoom: 13,

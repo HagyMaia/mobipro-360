@@ -32,7 +32,7 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
                   : status === 'break'
                     ? 'border-yellow-500 bg-yellow-500 text-white shadow-md'
                     : 'border-gray-500 bg-gray-500 text-white shadow-md'
-                : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 shadow-sm',
+                : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 shadow-sm dark:border-dark-700 dark:bg-dark-800/60 dark:text-slate-400 dark:hover:bg-dark-700/50',
               (!canChange || disabled) && 'pointer-events-none opacity-50'
             )}
           >
