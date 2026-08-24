@@ -10,16 +10,39 @@ import StatusControl, { StatusPill } from '@/components/StatusControl';
 import { Card, EmptyState, SectionTitle } from '@/components/ui';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useApp, useSimulateRide } from '@/lib/store';
-import { useAuth } from '@/lib/auth';
+import { supabase } from '@/lib/supabase'; // <-- MUDANÇA: Usando o Supabase real
 import { buildMockRequest } from '@/lib/mock-data';
-import { isToday, todayKey } from '@/lib/utils';
+import { isToday } from '@/lib/utils';
 
 export default function HomePage() {
   const { state, dispatch } = useApp();
-  const { user } = useAuth();
   const simulate = useSimulateRide();
   const [tick, setTick] = useState(0);
+  const [driverName, setDriverName] = useState('Motorista');
   const counter = useRef(0);
+
+  // Busca os dados do motorista autenticado no Supabase
+  useEffect(() => {
+    async function loadDriverProfile() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Tenta buscar o nome cadastrado na tabela motoristas
+        const { data: motorista } = await supabase
+          .from('motoristas')
+          .select('nome')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (motorista?.nome) {
+          setDriverName(motorista.nome.split(' ')[0]);
+        } else if (user.email) {
+          setDriverName(user.email.split('@')[0]);
+        }
+      }
+    }
+
+    loadDriverProfile();
+  }, []);
 
   const triggerRequest = useCallback(() => {
     counter.current += 1;
@@ -68,7 +91,7 @@ export default function HomePage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-extrabold text-white">
-              Olá, {user?.name.split(' ')[0] || 'Motorista'}
+              Olá, {driverName}
             </h1>
             <p className="text-[11px] capitalize text-brand-200 dark:text-slate-400">{dateLabel}</p>
           </div>
@@ -147,7 +170,7 @@ export default function HomePage() {
                     .filter((e) => isToday(e.date))
                     .reduce((s, e) => s + e.amount, 0) /
                     state.goalTarget) *
-                    100
+                  100
                 )}
                 %
               </div>

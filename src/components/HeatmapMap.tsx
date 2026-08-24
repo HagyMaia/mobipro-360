@@ -1,80 +1,81 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { HeatZone } from '@/lib/types';
 import L from 'leaflet';
-import 'leaflet.heat';
 
-const SPA_CENTER: [number, number] = [-3.1190, -60.0217];
+interface HeatZone {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  intensity: number;
+  avgFare: number;
+  events?: string[];
+}
 
-export default function HeatmapMap({ zones }: { zones: HeatZone[] }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<{ map: unknown; layer: unknown } | null>(null);
+function HeatmapLayer({ zones }: { zones: HeatZone[] }) {
+  const map = useMap();
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
+    if (typeof window !== 'undefined') {
+      // 1. Define L na janela do navegador
+      (window as any).L = L;
 
-    async function init() {
-      const L = (await import('leaflet')).default;
-      const heat = (await import('leaflet.heat')).default;
-
-      if (cancelled || !containerRef.current) return;
-      if (mapRef.current) return;
-
-      const map = L.map(containerRef.current, {
-        center: SPA_CENTER,
-        zoom: 13,
-        zoomControl: false,
-        attributionControl: true
+      // 2. Importa o plugin de calor apenas após L estar disponível
+      import('leaflet.heat').then(() => {
+        setIsLoaded(true);
       });
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18,
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(map);
-
-      const points = zones.map(
-        (z) => [z.lat, z.lng, z.intensity / 100] as L.LatLngTuple
-      );
-
-      // Mude de: const heatLayer = heat(points, {
-      // Para:
-      const heatLayer = L.heatLayer(points, {
-        radius: 42,
-        blur: 26,
-        maxZoom: 13,
-        minOpacity: 0.45,
-        gradient: {
-          0.2: '#1e3a8a',
-          0.4: '#0ea5e9',
-          0.6: '#f59e0b',
-          0.8: '#ef4444',
-          1.0: '#991b1b'
-        }
-      }).addTo(map);
-
-      mapRef.current = { map, layer: heatLayer };
-
-      const zoomIn = L.control.zoom({ position: 'bottomleft' });
-      zoomIn.addTo(map);
     }
+  }, []);
 
-    init();
+  useEffect(() => {
+    if (!map || !isLoaded || !zones || zones.length === 0) return;
+
+    // Converte as zonas para o formato do heatmap: [lat, lng, intensidade]
+    const points: [number, number, number][] = zones.map((z) => [
+      z.lat,
+      z.lng,
+      z.intensity / 100,
+    ]);
+
+    // Cria a camada de calor
+    const heatLayer = (L as any).heatLayer(points, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 17,
+    }).addTo(map);
 
     return () => {
-      cancelled = true;
-      if (mapRef.current) {
-        (mapRef.current.map as { remove: () => void }).remove();
-        mapRef.current = null;
-      }
+      map.removeLayer(heatLayer);
     };
-  }, [zones]);
+  }, [map, isLoaded, zones]);
+
+  return null;
+}
+
+export default function HeatmapMap({ zones }: { zones: HeatZone[] }) {
+  // Ponto central padrão baseado nas zonas enviadas
+  const center: [number, number] = zones && zones.length > 0
+    ? [zones[0].lat, zones[0].lng]
+    : [-23.5505, -46.6333];
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-96 rounded-lg shadow-md z-0"
-    />
+    <div className="h-64 w-full rounded-xl overflow-hidden relative z-0">
+      <MapContainer
+        center={center}
+        zoom={12}
+        scrollWheelZoom={false}
+        className="h-full w-full"
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <HeatmapLayer zones={zones} />
+      </MapContainer>
+    </div>
   );
 }

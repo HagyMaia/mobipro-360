@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/lib/store';
 import { AuthProvider } from '@/lib/auth';
-import ProtectedRoute from '@/components/ProtectedRoute';
 import { ThemeProvider } from '@/components/ThemeProvider';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -26,7 +25,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0B1220' // Note: This could be dynamically handled, but for now we leave it or rely on next-themes
+  themeColor: '#0B1220'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -39,9 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
             <AppProvider>
-              <ProtectedRoute>
-                <main className="mx-auto min-h-dvh max-w-md pb-24">{children}</main>
-              </ProtectedRoute>
+              <main className="mx-auto min-h-dvh max-w-md pb-24">{children}</main>
             </AppProvider>
           </AuthProvider>
         </ThemeProvider>

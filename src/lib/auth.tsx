@@ -1,82 +1,58 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { User } from '@supabase/supabase-js';
 
-type Role = 'admin' | 'driver';
-
-export interface User {
-  email: string;
-  role: Role;
-  name: string;
-}
-
-interface AuthContextValue {
+interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  loading: boolean;
+  signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+  signOut: async () => { },
+});
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check localStorage on mount
-    try {
-      const saved = localStorage.getItem('mobipro_user');
-      if (saved) {
-        setUser(JSON.parse(saved));
-      }
-    } catch {
-      // Ignore
-    } finally {
-      setIsLoading(false);
-    }
+    // Busca a sessão atual do Supabase ao carregar
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    // Escuta mudanças de estado (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    // Admin login
-    if (email === 'hagy.maia19@gmail.com' && password === 'admin123') {
-      const adminUser: User = { email, role: 'admin', name: 'Admin Hagy' };
-      setUser(adminUser);
-      localStorage.setItem('mobipro_user', JSON.stringify(adminUser));
-      return true;
-    }
-
-    // Generic driver login
-    if (email.includes('@') && password.length >= 6) {
-      const driverUser: User = { email, role: 'driver', name: 'Motorista Parceiro' };
-      setUser(driverUser);
-      localStorage.setItem('mobipro_user', JSON.stringify(driverUser));
-      return true;
-    }
-
-    return false;
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('mobipro_user');
-    router.push('/login');
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth deve ser usado dentro de AuthProvider');
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) {
+    // Retorna valores padrão caso algum componente chame fora do provider, evitando o crash
+    return { user: null, loading: false, signOut: async () => { } };
+  }
+  return context;
 }

@@ -1,11 +1,21 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { CalendarClock, Flame, MapPin, TrendingUp } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
-import HeatmapMap from '@/components/HeatmapMap';
 import { Badge, Card, ProgressBar, SectionTitle } from '@/components/ui';
 import { HEAT_ZONES } from '@/lib/mock-data';
 import { formatBRLShort } from '@/lib/utils';
+
+// Importação dinâmica com ssr: false para evitar o erro 'L is not defined'
+const HeatmapMap = dynamic(() => import('@/components/HeatmapMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-64 w-full bg-slate-800 animate-pulse rounded-xl flex items-center justify-center text-slate-400 text-sm">
+      Carregando mapa de demanda...
+    </div>
+  ),
+});
 
 const EVENT_NEWS = [
   { label: 'Show no Tom Brasil (23h)', zone: 'Paulista', time: 'Hoje' },
@@ -40,13 +50,12 @@ export default function RadarPage() {
             {ranked.map((zone, i) => (
               <div key={zone.id} className="flex items-center gap-3">
                 <div
-                  className={`w-6 shrink-0 text-center text-sm font-bold ${
-                    i === 0
+                  className={`w-6 shrink-0 text-center text-sm font-bold ${i === 0
                       ? 'text-warn'
                       : i < 3
                         ? 'text-brand-400'
                         : 'text-slate-500'
-                  }`}
+                    }`}
                 >
                   {i + 1}°
                 </div>
