@@ -8,15 +8,15 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'SR Logística - App do Motorista',
+  title: 'MobiPro 360 - App do Motorista',
   description:
-    'Corridas, rentabilidade em tempo real, radar de demanda e segurança para motoristas profissionais.',
+    'Super app para motoristas profissionais e taxistas: corridas, rentabilidade em tempo real, radar de demanda e segurança.',
   manifest: '/manifest.webmanifest',
-  applicationName: 'SR Logística',
+  applicationName: 'MobiPro 360',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'SR Logística'
+    title: 'MobiPro 360'
   }
 };
 
@@ -34,11 +34,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className={`${inter.variable} font-sans antialiased bg-gray-50 dark:bg-dark text-gray-900 dark:text-slate-50 transition-colors`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <body className={`${inter.variable} font-sans antialiased bg-[#070D18] dark:bg-dark text-gray-900 dark:text-slate-50 transition-colors min-h-dvh select-none`}>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <AuthProvider>
             <AppProvider>
-              <main className="mx-auto min-h-dvh max-w-md pb-24">{children}</main>
+              <div className="mx-auto min-h-dvh max-w-md w-full flex flex-col relative bg-[#0B141A] dark:bg-[#0B1220] shadow-2xl overflow-x-hidden">
+                {children}
+              </div>
             </AppProvider>
           </AuthProvider>
         </ThemeProvider>

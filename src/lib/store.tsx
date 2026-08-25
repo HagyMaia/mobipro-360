@@ -1,5 +1,6 @@
 'use client';
 
+import type { NavApp } from './navigation';
 import {
   createContext,
   useCallback,
@@ -40,6 +41,7 @@ export interface AppState {
   contacts: EmergencyContact[];
   filters: PassengerFilters;
   profile: DriverProfile;
+  navApp: NavApp;
 }
 
 type Action =
@@ -58,6 +60,7 @@ type Action =
   | { type: 'REMOVE_CONTACT'; id: string }
   | { type: 'UPDATE_FILTERS'; filters: PassengerFilters }
   | { type: 'UPDATE_PROFILE'; profile: DriverProfile }
+  | { type: 'SET_NAV_APP'; navApp: NavApp }
   | { type: 'HYDRATE'; state: AppState };
 
 const DEFAULT_STATE: AppState = {
@@ -70,7 +73,8 @@ const DEFAULT_STATE: AppState = {
   goalTarget: 300,
   contacts: DEFAULT_CONTACTS,
   filters: DEFAULT_FILTERS,
-  profile: DEFAULT_PROFILE
+  profile: DEFAULT_PROFILE,
+  navApp: 'waze'
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -163,6 +167,9 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'UPDATE_PROFILE':
       return { ...state, profile: action.profile };
+
+    case 'SET_NAV_APP':
+      return { ...state, navApp: action.navApp };
 
     case 'HYDRATE':
       return { ...action.state, incomingRide: null, activeRide: null };

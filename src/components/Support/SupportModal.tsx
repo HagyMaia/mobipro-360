@@ -1,54 +1,93 @@
 import React from 'react';
+import { MessageCircle, Phone, MessageSquare, X, ChevronRight, Headphones, ShieldQuestion } from 'lucide-react';
 
 interface SupportModalProps {
-    isOpen: boolean;
-    onClose: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) => {
-    if (!isOpen) return null;
+  if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50 p-4">
-            <div className="bg-[#1F2C34] rounded-3xl w-full max-w-sm p-6 shadow-xl text-center">
-                <h3 className="text-2xl font-bold text-white mb-2">Precisa de ajuda?</h3>
-                <p className="text-slate-400 text-sm mb-6">
-                    Entre em contato com nossa equipe de suporte.
-                </p>
+  return (
+    <div 
+      className="fixed inset-0 bg-black/80 backdrop-blur-md flex justify-center items-end sm:items-center z-50 p-4 transition-opacity animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-[#16202B] dark:bg-[#111A2E] border border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl text-center relative animate-in slide-in-from-bottom-6 duration-300"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button 
+          onClick={onClose}
+          aria-label="Fechar"
+          className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition"
+        >
+          <X size={20} />
+        </button>
 
-                <div className="flex flex-col gap-3 mb-6">
-                    {/* Botão Chat */}
-                    <button className="flex items-center gap-4 bg-[#121B22] border border-slate-700 p-4 rounded-2xl hover:bg-slate-800 transition">
-                        <div className="bg-[#1F2C34] p-2 rounded-lg text-blue-400">
-                            💬
-                        </div>
-                        <div className="text-left flex-1">
-                            <h4 className="text-white font-bold text-base">Chat online</h4>
-                            <p className="text-slate-500 text-xs">Fale com nossa equipe agora</p>
-                        </div>
-                        <span className="text-slate-500">›</span>
-                    </button>
-
-                    {/* Botão Ligar */}
-                    <button className="flex items-center gap-4 bg-[#121B22] border border-slate-700 p-4 rounded-2xl hover:bg-slate-800 transition">
-                        <div className="bg-[#1F2C34] p-2 rounded-lg text-green-400">
-                            📞
-                        </div>
-                        <div className="text-left flex-1">
-                            <h4 className="text-white font-bold text-base">Ligar para o suporte</h4>
-                            <p className="text-slate-500 text-xs">Abrir o discador com nosso número</p>
-                        </div>
-                        <span className="text-slate-500">›</span>
-                    </button>
-                </div>
-
-                <button
-                    onClick={onClose}
-                    className="w-full bg-[#E55B5B] text-white py-4 rounded-2xl font-bold text-lg hover:bg-red-600 transition"
-                >
-                    Voltar
-                </button>
-            </div>
+        <div className="mx-auto w-14 h-14 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-3">
+          <Headphones size={28} />
         </div>
-    );
+
+        <h3 className="text-xl font-extrabold text-white mb-1">Central de Ajuda</h3>
+        <p className="text-slate-400 text-xs mb-5">
+          Suporte 24h para motoristas e taxistas MobiPro.
+        </p>
+
+        <div className="flex flex-col gap-2.5 mb-5 text-left">
+          {/* Botão Chat WhatsApp */}
+          <a
+            href="https://wa.me/5511999999999?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20o%20MobiPro%20360"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3.5 bg-[#0F1722] hover:bg-[#1D2939] border border-white/10 p-3.5 rounded-2xl transition group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+              <MessageCircle size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-white font-bold text-sm">WhatsApp de Plantão</h4>
+              <p className="text-slate-400 text-xs truncate">Atendimento imediato via chat</p>
+            </div>
+            <ChevronRight size={18} className="text-slate-500 group-hover:text-white transition" />
+          </a>
+
+          {/* Botão Ligar 0800 */}
+          <a
+            href="tel:0800000360"
+            className="flex items-center gap-3.5 bg-[#0F1722] hover:bg-[#1D2939] border border-white/10 p-3.5 rounded-2xl transition group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+              <Phone size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-white font-bold text-sm">Ligar para a Central</h4>
+              <p className="text-slate-400 text-xs truncate">0800 000 360 (Ligação Gratuita)</p>
+            </div>
+            <ChevronRight size={18} className="text-slate-500 group-hover:text-white transition" />
+          </a>
+
+          {/* Dúvidas Frequentes */}
+          <div className="flex items-center gap-3.5 bg-[#0F1722] hover:bg-[#1D2939] border border-white/10 p-3.5 rounded-2xl transition group cursor-pointer">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+              <ShieldQuestion size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-white font-bold text-sm">Dúvidas Frequentes</h4>
+              <p className="text-slate-400 text-xs truncate">Tarifas, repasse e cadastro</p>
+            </div>
+            <ChevronRight size={18} className="text-slate-500 group-hover:text-white transition" />
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-3.5 rounded-xl font-bold text-sm transition border border-white/10"
+        >
+          Fechar
+        </button>
+      </div>
+    </div>
+  );
 };

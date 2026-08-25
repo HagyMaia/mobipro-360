@@ -1,16 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { Award, CarFront, MapPin, Phone, ShieldCheck, Star } from 'lucide-react';
+import Link from 'next/link';
+import { Award, CarFront, MapPin, Phone, ShieldCheck, Star, Settings, Headphones, LogOut, ChevronRight, Edit3 } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import { Badge, Button, Card, Field, SectionTitle, Stat, inputClass } from '@/components/ui';
+import { SupportModal } from '@/components/Support/SupportModal';
 import { useApp } from '@/lib/store';
+import { useAuth } from '@/lib/auth';
 import { formatBRL, todayKey } from '@/lib/utils';
 
 export default function PerfilPage() {
   const { state, dispatch, todayEarnings, todayNet } = useApp();
+  const { signOut } = useAuth();
   const { profile } = state;
   const [editing, setEditing] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [name, setName] = useState(profile.name);
   const [phone, setPhone] = useState(profile.phone);
   const [model, setModel] = useState(profile.vehicle.model);
@@ -36,25 +41,38 @@ export default function PerfilPage() {
   }
 
   return (
-    <>
-      <header className="sticky top-0 z-30 border-b border-dark-700 bg-dark/80 px-4 pb-3 pt-4 backdrop-blur-md">
-        <h1 className="text-xl font-extrabold text-slate-50">
-          Perfil do <span className="text-brand-400">motorista</span>
-        </h1>
-        <p className="text-xs text-slate-400">Informacoes da conta e do veiculo</p>
+    <div className="min-h-screen flex flex-col justify-between pb-24 font-sans select-none">
+      {/* HEADER */}
+      <header className="sticky top-0 z-30 border-b border-gray-200 dark:border-dark-700 bg-white/90 dark:bg-dark-800/95 px-4 pb-3 pt-4 backdrop-blur-md">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-extrabold text-gray-900 dark:text-slate-50">
+              Perfil do <span className="text-blue-500">Motorista</span>
+            </h1>
+            <p className="text-xs text-gray-500 dark:text-slate-400">Informações da conta e do veículo</p>
+          </div>
+          <Link
+            href="/ajustes"
+            className="w-9 h-9 rounded-2xl bg-gray-100 dark:bg-dark-700 flex items-center justify-center text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-dark-600 transition"
+            title="Ajustes"
+          >
+            <Settings size={18} />
+          </Link>
+        </div>
       </header>
 
-      <div className="space-y-4 p-4">
-        <Card className="flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-600/25 text-2xl font-extrabold text-brand-300">
+      <div className="space-y-4 p-4 flex-1">
+        {/* CARD PRINCIPAL DO MOTORISTA */}
+        <Card className="flex items-center gap-4 p-4 border">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-blue-600/20 text-2xl font-black text-blue-400 border border-blue-500/30 shadow-inner">
             {profile.name.charAt(0)}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-lg font-bold text-slate-50">{profile.name}</div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
-              <span className="flex items-center gap-1">
-                <Star size={12} className="text-warn" fill="currentColor" />
-                <span className="font-semibold text-slate-200">{profile.rating.toFixed(2)}</span>
+            <div className="truncate text-lg font-extrabold text-gray-900 dark:text-slate-50">{profile.name}</div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+              <span className="flex items-center gap-1 font-bold text-amber-500">
+                <Star size={13} fill="currentColor" />
+                <span>{profile.rating.toFixed(2)}</span>
               </span>
               <span>{profile.totalRides.toLocaleString('pt-BR')} corridas</span>
               <span className="flex items-center gap-1">
@@ -62,35 +80,75 @@ export default function PerfilPage() {
               </span>
             </div>
           </div>
-          <Badge className="bg-success/15 text-success">
-            <ShieldCheck size={12} /> Verificado
+          <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
+            <ShieldCheck size={13} /> Ativo
           </Badge>
         </Card>
 
-        <div className="grid grid-cols-3 gap-2">
-          <Stat label="Hoje" value={formatBRL(todayEarnings)} accent="text-success" />
-          <Stat label="Liquido" value={formatBRL(todayNet)} accent={todayNet >= 0 ? 'text-success' : 'text-danger'} />
-          <Stat label="Meta" value={`${Math.round((todayEarnings / state.goalTarget) * 100)}%`} accent="text-brand-400" />
+        {/* ESTATÍSTICAS RÁPIDAS */}
+        <div className="grid grid-cols-3 gap-2.5">
+          <Stat label="Hoje" value={formatBRL(todayEarnings)} accent="text-emerald-500" />
+          <Stat label="Líquido" value={formatBRL(todayNet)} accent={todayNet >= 0 ? 'text-emerald-500' : 'text-red-500'} />
+          <Stat label="Meta" value={`${Math.round((todayEarnings / state.goalTarget) * 100)}%`} accent="text-blue-400" />
         </div>
 
+        {/* ATALHOS RÁPIDOS */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <Link href="/ajustes" className="block">
+            <Card className="p-3 flex items-center justify-between hover:border-blue-500/40 transition border">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center">
+                  <Settings size={16} />
+                </div>
+                <div className="text-xs font-bold text-gray-900 dark:text-slate-100">Ajustes & GPS</div>
+              </div>
+              <ChevronRight size={16} className="text-slate-400" />
+            </Card>
+          </Link>
+
+          <button onClick={() => setSupportOpen(true)} className="w-full text-left">
+            <Card className="p-3 flex items-center justify-between hover:border-blue-500/40 transition border">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center">
+                  <Headphones size={16} />
+                </div>
+                <div className="text-xs font-bold text-gray-900 dark:text-slate-100">Central Ajuda</div>
+              </div>
+              <ChevronRight size={16} className="text-slate-400" />
+            </Card>
+          </button>
+        </div>
+
+        {/* DADOS DO VEÍCULO */}
         <div>
-          <SectionTitle className="mb-2 flex items-center gap-1.5">
-            <CarFront size={14} className="text-brand-400" /> Veiculo
-          </SectionTitle>
-          <Card>
+          <div className="flex items-center justify-between mb-2">
+            <SectionTitle className="text-xs font-bold text-gray-500 dark:text-slate-400 flex items-center gap-1.5">
+              <CarFront size={14} className="text-blue-400" /> Veículo Cadastrado
+            </SectionTitle>
+            {!editing && (
+              <button
+                onClick={() => setEditing(true)}
+                className="text-xs text-blue-500 hover:text-blue-400 font-bold flex items-center gap-1"
+              >
+                <Edit3 size={13} /> Editar
+              </button>
+            )}
+          </div>
+
+          <Card className="border">
             {editing ? (
-              <div className="space-y-2">
-                <Field label="Nome">
+              <div className="space-y-3">
+                <Field label="Nome do Condutor">
                   <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass()} />
                 </Field>
-                <Field label="Telefone">
+                <Field label="Telefone de Contato">
                   <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass()} />
                 </Field>
-                <Field label="Veiculo">
+                <Field label="Modelo do Veículo">
                   <input value={model} onChange={(e) => setModel(e.target.value)} className={inputClass()} />
                 </Field>
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Placa">
+                  <Field label="Placa (Mercosul)">
                     <input
                       value={plate}
                       onChange={(e) => setPlate(e.target.value.toUpperCase())}
@@ -106,65 +164,56 @@ export default function PerfilPage() {
                     Cancelar
                   </Button>
                   <Button full onClick={save}>
-                    Salvar
+                    Salvar Alterações
                   </Button>
                 </div>
               </div>
             ) : (
               <div>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 text-slate-400">
-                      <CarFront size={15} className="text-brand-400" /> Veiculo
+                    <span className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
+                      <CarFront size={15} className="text-blue-400" /> Modelo
                     </span>
-                    <span className="font-medium text-slate-200">{profile.vehicle.model}</span>
+                    <span className="font-bold text-gray-900 dark:text-slate-100">{profile.vehicle.model}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 text-slate-400">
-                      <Phone size={15} className="text-brand-400" /> Placa
+                    <span className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
+                      <Phone size={15} className="text-blue-400" /> Placa
                     </span>
-                    <span className="font-medium tabular-nums text-slate-200">
+                    <span className="font-bold tabular-nums text-gray-900 dark:text-slate-100 bg-gray-100 dark:bg-dark-700 px-2 py-0.5 rounded-lg border border-gray-300 dark:border-dark-600">
                       {profile.vehicle.plate}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-400">Cor / Ano</span>
-                    <span className="font-medium text-slate-200">
-                      {profile.vehicle.color} / {profile.vehicle.year}
+                    <span className="text-gray-500 dark:text-slate-400">Cor / Ano</span>
+                    <span className="font-medium text-gray-900 dark:text-slate-200">
+                      {profile.vehicle.color} · {profile.vehicle.year}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-400">CNH</span>
-                    <span className="font-medium tabular-nums text-slate-200">{profile.license}</span>
+                    <span className="text-gray-500 dark:text-slate-400">CNH Profissional</span>
+                    <span className="font-medium tabular-nums text-gray-900 dark:text-slate-200">{profile.license}</span>
                   </div>
                 </div>
-                <Button variant="outline" full className="mt-3" onClick={() => setEditing(true)}>
-                  Editar perfil
-                </Button>
               </div>
             )}
           </Card>
         </div>
 
-        <div>
-          <SectionTitle className="mb-2 flex items-center gap-1.5">
-            <Award size={14} className="text-brand-400" /> Sobre o MobiPro 360
-          </SectionTitle>
-          <Card className="text-xs leading-relaxed text-slate-400">
-            <p>
-              Super app do motorista profissional: receba corridas, avalie a rentabilidade em R$/km
-              e R$/hora antes de aceitar, descubra as zonas de alta demanda e trabalhe com seguranca
-              ativa. Feito para o dia a dia de quem vive do volante.
-            </p>
-            <p className="mt-2 text-slate-500">
-              Versao demo 0.1 · Dados salvos localmente no dispositivo. Integracao com Supabase,
-              maps, pagamentos e notificacoes chega na fase 2. Hoje: {todayKey()}.
-            </p>
-          </Card>
-        </div>
+        {/* LOGOUT */}
+        <Button
+          variant="outline"
+          full
+          onClick={signOut}
+          className="border-red-500/30 text-red-500 hover:bg-red-500/10 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold"
+        >
+          <LogOut size={16} /> Desconectar da Conta
+        </Button>
       </div>
 
+      <SupportModal isOpen={supportOpen} onClose={() => setSupportOpen(false)} />
       <BottomNav />
-    </>
+    </div>
   );
 }

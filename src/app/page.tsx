@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, LogOut, MapPin, Navigation } from 'lucide-react';
+import { Bell, Car, MapPin, Navigation, TrendingUp, Trophy } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import RentabilityOverlay from '@/components/RentabilityOverlay';
 import RideRequestCard from '@/components/RideRequestCard';
@@ -13,7 +13,7 @@ import { useApp, useSimulateRide } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { buildMockRequest } from '@/lib/mock-data';
-import { isToday } from '@/lib/utils';
+import { formatBRL, isToday } from '@/lib/utils';
 
 export default function HomePage() {
   const { state, dispatch } = useApp();
@@ -85,39 +85,40 @@ export default function HomePage() {
     month: 'long'
   });
 
+  const todayEarningsTotal = state.earnings
+    .filter((e) => isToday(e.date))
+    .reduce((s, e) => s + e.amount, 0);
+
+  const todayRidesCount = state.rideHistory.filter(
+    (r) => r.completedAt && isToday(r.completedAt)
+  ).length;
+
+  const goalPct = Math.round((todayEarningsTotal / state.goalTarget) * 100);
+
   return (
     <>
-      <header className="sticky top-0 z-30 bg-brand-700 dark:bg-dark-800/95 px-4 pb-3 pt-4 shadow-md dark:border-b dark:border-dark-700">
+      <header className="sticky top-0 z-30 border-b border-dark-700 bg-dark-800/95 px-4 pb-3 pt-safe-top pt-4 backdrop-blur-md shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-extrabold text-white">
-              Olá, {driverName}
+            <h1 className="text-xl font-extrabold text-slate-50">
+              Olá, <span className="text-brand-400">{driverName}</span> 👋
             </h1>
-            <p className="text-[11px] capitalize text-brand-200 dark:text-slate-400">{dateLabel}</p>
+            <p className="text-[11px] capitalize text-slate-400">{dateLabel}</p>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <StatusPill />
-            <button className="relative rounded-full bg-brand-600 dark:bg-dark-700 p-2 text-white transition hover:bg-brand-800 dark:hover:text-brand-400">
+            <button className="relative rounded-full bg-dark-700 p-2 text-slate-300 transition hover:bg-dark-600 hover:text-white">
               <Bell size={16} />
               {state.status === 'available' && state.incomingRide && (
                 <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-ping rounded-full bg-red-500" />
               )}
             </button>
-
-            {/* BOTÃO DE LOGOUT */}
-            <button
-              onClick={signOut}
-              title="Sair do aplicativo"
-              className="rounded-full bg-red-500/20 text-red-400 p-2 hover:bg-red-600 hover:text-white transition"
-            >
-              <LogOut size={16} />
-            </button>
           </div>
         </div>
       </header>
 
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-4 pb-28">
         <StatusControl />
 
         {state.incomingRide ? (
@@ -125,24 +126,25 @@ export default function HomePage() {
         ) : state.activeRide ? (
           <ActiveRideCard />
         ) : state.status === 'available' ? (
-          <Card className="flex flex-col items-center gap-3 border border-brand-200 dark:border-brand-500/30 py-8 text-center">
+          <Card className="flex flex-col items-center gap-4 border border-brand-500/20 bg-brand-900/10 py-10 text-center">
             <div className="relative">
               <span className="absolute inset-0 animate-ping rounded-full bg-brand-500/20" />
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-600/20">
-                <Navigation size={26} className="text-brand-500" />
+              <span className="absolute inset-0 animate-ping rounded-full bg-brand-500/10 delay-500" />
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-brand-600/20 ring-2 ring-brand-500/30">
+                <Navigation size={32} className="text-brand-400" />
               </div>
             </div>
             <div>
-              <div className="font-semibold text-gray-900 dark:text-slate-100">Procurando corridas...</div>
-              <div className="text-xs text-gray-500 dark:text-slate-400">
+              <div className="font-bold text-slate-100">Procurando corridas...</div>
+              <div className="mt-1 text-xs text-slate-400">
                 Fique atento às novas chamadas e ao filtro de rentabilidade.
               </div>
             </div>
           </Card>
         ) : (
-          <Card className="py-8 text-center text-gray-500 dark:text-slate-400">
+          <Card className="py-10 text-center">
             <EmptyState
-              icon={<MapPin size={28} className="text-gray-400" />}
+              icon={<MapPin size={28} className="text-slate-500" />}
               title={
                 state.status === 'break' ? 'Você está em pausa' : 'Você está offline'
               }
@@ -151,37 +153,41 @@ export default function HomePage() {
           </Card>
         )}
 
+        {/* KPI Cards */}
         <div>
-          <SectionTitle className="mb-2 text-gray-600 dark:text-slate-400">Resumo do dia</SectionTitle>
+          <SectionTitle className="mb-3 text-slate-400">Resumo do dia</SectionTitle>
           <div className="grid grid-cols-3 gap-3">
-            <Card className="flex flex-col items-center justify-center p-3 text-center">
-              <div className="text-[11px] uppercase text-gray-500 dark:text-slate-500">Rendimento</div>
-              <div className="text-lg font-bold tabular-nums text-gray-900 dark:text-slate-50">
-                {`R$ ${state.earnings
-                  .filter((e) => isToday(e.date))
-                  .reduce((s, e) => s + e.amount, 0)
-                  .toFixed(0)}`}
+            <Card className="flex flex-col items-center gap-1.5 p-3 text-center">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-success/15">
+                <TrendingUp size={16} className="text-success" />
+              </div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-500">Rendimento</div>
+              <div className="text-base font-extrabold tabular-nums text-slate-50">
+                {formatBRL(todayEarningsTotal)}
               </div>
             </Card>
-            <Card className="flex flex-col items-center justify-center p-3 text-center">
-              <div className="text-[11px] uppercase text-gray-500 dark:text-slate-500">Corridas</div>
-              <div className="text-lg font-bold tabular-nums text-gray-900 dark:text-slate-50">
-                {state.rideHistory.filter(
-                  (r) => r.completedAt && isToday(r.completedAt)
-                ).length}
+
+            <Card className="flex flex-col items-center gap-1.5 p-3 text-center">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500/15">
+                <Car size={16} className="text-brand-400" />
+              </div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-500">Corridas</div>
+              <div className="text-base font-extrabold tabular-nums text-slate-50">
+                {todayRidesCount}
               </div>
             </Card>
-            <Card className="flex flex-col items-center justify-center p-3 text-center">
-              <div className="text-[11px] uppercase text-gray-500 dark:text-slate-500">Meta</div>
-              <div className="text-lg font-bold tabular-nums text-gray-900 dark:text-slate-50">
-                {Math.round(
-                  (state.earnings
-                    .filter((e) => isToday(e.date))
-                    .reduce((s, e) => s + e.amount, 0) /
-                    state.goalTarget) *
-                  100
-                )}
-                %
+
+            <Card className="flex flex-col items-center gap-1.5 p-3 text-center">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-warn/15">
+                <Trophy size={16} className="text-warn" />
+              </div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-500">Meta</div>
+              <div
+                className={`text-base font-extrabold tabular-nums ${
+                  goalPct >= 100 ? 'text-success' : 'text-slate-50'
+                }`}
+              >
+                {goalPct}%
               </div>
             </Card>
           </div>
