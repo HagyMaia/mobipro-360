@@ -91,61 +91,6 @@ export default function RadarPage() {
           </div>
         </Card>
 
-        {/* Ranking de zonas */}
-        <div>
-          <SectionTitle className="mb-2 flex items-center gap-1.5">
-            <TrendingUp size={14} className="text-brand-400" />
-            Ranking de zonas
-          </SectionTitle>
-          <Card className="space-y-4">
-            {ranked.map((zone, i) => (
-              <div key={zone.id} className="flex items-center gap-3">
-                <div
-                  className={`w-6 shrink-0 text-center text-sm font-bold ${
-                    i === 0
-                      ? 'text-warn'
-                      : i < 3
-                        ? 'text-brand-400'
-                        : 'text-slate-500'
-                  }`}
-                >
-                  {i + 1}°
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 truncate text-sm font-medium text-slate-200">
-                      <MapPin size={13} className="shrink-0 text-slate-500" />
-                      {zone.name}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <Badge className={intensityBadgeClass(zone.intensity)}>
-                        {intensityLabel(zone.intensity)}
-                      </Badge>
-                      <span className="text-xs tabular-nums text-slate-400">
-                        {formatBRLShort(zone.avgFare)} méd.
-                      </span>
-                    </div>
-                  </div>
-                  <ProgressBar
-                    value={zone.intensity / 100}
-                    className="mt-1.5 h-1.5"
-                    barClassName={intensityColor(zone.intensity)}
-                  />
-                  {zone.events && (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {zone.events.map((e) => (
-                        <Badge key={e} className="bg-warn/15 text-warn">
-                          <Flame size={10} />
-                          {e}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </Card>
-        </div>
 
         {/* Alertas de eventos */}
         <div>
