@@ -2,13 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Car, Flame, ShieldAlert, User, Wallet, Lock } from 'lucide-react';
+// Note que adicionei o CalendarClock na linha abaixo
+import { Car, Flame, ShieldAlert, User, Wallet, Lock, CalendarClock } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/lib/auth';
 
 const BASE_ITEMS = [
   { href: '/', label: 'Corridas', icon: Car },
   { href: '/radar', label: 'Radar', icon: Flame },
+  { href: '/agendadas', label: 'Agendadas', icon: CalendarClock }, // NOVA ABA ADICIONADA AQUI
   { href: '/financeiro', label: 'Financeiro', icon: Wallet },
   { href: '/seguranca', label: 'Segurança', icon: ShieldAlert },
   { href: '/perfil', label: 'Perfil', icon: User }
