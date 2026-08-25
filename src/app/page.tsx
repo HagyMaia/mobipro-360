@@ -33,7 +33,7 @@ export default function HomePage() {
 
       // Se NÃO houver usuário logado, força o envio para a tela de login
       if (!user) {
-        router.replace('/login');
+        router.replace('/welcome');
         return;
       }
 
