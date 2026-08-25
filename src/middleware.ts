@@ -34,14 +34,14 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = request.nextUrl.pathname.startsWith('/login') || 
                      request.nextUrl.pathname.startsWith('/recuperar-senha')
 
-  // Se não estiver logado e tentar acessar qualquer página que não seja /login, manda para o /login
+  // Se não estiver logado e tentar acessar qualquer página protegida, envia para o /login
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // Se já estiver logado e tentar acessar /login, manda direto para a home
+  // Se já estiver logado e tentar acessar /login, envia direto para a home
   if (user && isAuthPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
@@ -53,9 +53,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Intercepta todas as rotas exceto arquivos estáticos, imagens e rotas internas de API
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
