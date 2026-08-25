@@ -1,10 +1,11 @@
-// src/lib/supabase.ts
+import { createBrowserClient } from '@supabase/ssr'
 
-import { createClient } from '@supabase/supabase-js';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-// Acessa as variáveis de ambiente com um valor de fallback (placeholder)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('As variáveis de ambiente do Supabase não foram encontradas.')
+}
 
-// Inicializa o cliente Supabase com os valores corretos
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Cria o cliente cliente-side sincronizado com os cookies do middleware
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
