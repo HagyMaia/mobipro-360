@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Bell, Car, MapPin, Navigation, TrendingUp, Trophy } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import RentabilityOverlay from '@/components/RentabilityOverlay';
@@ -16,6 +17,8 @@ import { buildMockRequest } from '@/lib/mock-data';
 import { formatBRL, isToday } from '@/lib/utils';
 
 export default function HomePage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
   const { state, dispatch } = useApp();
   const { signOut } = useAuth();
   const simulate = useSimulateRide();
@@ -23,26 +26,35 @@ export default function HomePage() {
   const [driverName, setDriverName] = useState('Motorista');
   const counter = useRef(0);
 
+  // Verificação de Autenticação e Carregamento do Perfil
   useEffect(() => {
-    async function loadDriverProfile() {
+    async function checkAuthAndLoadProfile() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: motorista } = await supabase
-          .from('motoristas')
-          .select('nome')
-          .eq('id', user.id)
-          .maybeSingle();
 
-        if (motorista?.nome) {
-          setDriverName(motorista.nome.split(' ')[0]);
-        } else if (user.email) {
-          setDriverName(user.email.split('@')[0]);
-        }
+      // Se NÃO houver usuário logado, força o envio para a tela de login
+      if (!user) {
+        router.replace('/login');
+        return;
       }
+
+      // Se houver usuário, busca as informações do perfil
+      const { data: motorista } = await supabase
+        .from('motoristas')
+        .select('nome')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (motorista?.nome) {
+        setDriverName(motorista.nome.split(' ')[0]);
+      } else if (user.email) {
+        setDriverName(user.email.split('@')[0]);
+      }
+
+      setLoading(false);
     }
 
-    loadDriverProfile();
-  }, []);
+    checkAuthAndLoadProfile();
+  }, [router]);
 
   const triggerRequest = useCallback(() => {
     counter.current += 1;
@@ -78,6 +90,18 @@ export default function HomePage() {
       }
     }
   }, [state.incomingRide, state.filters, dispatch]);
+
+  // Se estiver validando o token do usuário, exibe a tela de carregamento
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-dark-900 text-slate-100">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
+          <p className="text-sm font-medium text-slate-400">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
 
   const dateLabel = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
