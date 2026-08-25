@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
-import './globals.css';
+import '@/app/globals.css';
 import { AppProvider } from '@/lib/store';
 import { AuthProvider } from '@/lib/auth';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -8,15 +8,14 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'MobiPro 360 - App do Motorista',
-  description:
-    'Super app para motoristas profissionais e taxistas: corridas, rentabilidade em tempo real, radar de demanda e segurança.',
+  title: 'SR Logística - App do Motorista',
+  description: 'Super app para motoristas profissionais e taxistas da SR Logística.',
   manifest: '/manifest.webmanifest',
-  applicationName: 'MobiPro 360',
+  applicationName: 'SR Logística',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'MobiPro 360'
+    title: 'SR Logística'
   }
 };
 
