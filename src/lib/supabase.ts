@@ -1,6 +1,10 @@
+// src/lib/supabase.ts
+
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.https://lvdplhnbkkmlcxeuqhdo.supabase.co/rest/v1/ || 'https://placeholder.supabase.co';
-const supabaseAnonKey = process.env.sb_publishable_CoC8vHLwAQ3kGsXwWBlaoA_4LB5SzsK || 'placeholder';
+// Acessa as variáveis de ambiente com um valor de fallback (placeholder)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
 
+// Inicializa o cliente Supabase com os valores corretos
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
