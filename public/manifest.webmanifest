@@ -1,7 +1,7 @@
 {
-  "name": "MobiPro 360",
-  "short_name": "MobiPro",
-  "description": "Corridas, rentabilidade em tempo real, radar de demanda e segurança para motoristas profissionais.",
+  "name": "SR Logística",
+  "short_name": "SR Logística",
+  "description": "Aplicativo para motoristas da SR Logística",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0B1220",
