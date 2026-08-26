@@ -60,7 +60,7 @@ export default function HeatmapMap({ zones }: { zones: HeatZone[] }) {
   // Ponto central padrão baseado nas zonas enviadas
   const center: [number, number] = zones && zones.length > 0
     ? [zones[0].lat, zones[0].lng]
-    : [-23.5505, -46.6333];
+    : [-3.1316, -60.0236];
 
   return (
     <div className="h-64 w-full rounded-xl overflow-hidden relative z-0">

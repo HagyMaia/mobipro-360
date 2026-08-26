@@ -18,10 +18,10 @@ const HeatmapMap = dynamic(() => import('@/components/HeatmapMap'), {
 });
 
 const EVENT_NEWS = [
-  { label: 'Show no Tom Brasil (23h)', zone: 'Paulista', time: 'Hoje' },
-  { label: 'Chegada de voos (23h–1h)', zone: 'Aeroporto CGH', time: 'Hoje' },
-  { label: 'Jogo Palmeiras vs Corinthians', zone: 'Allianz Parque', time: 'Qui 20h' },
-  { label: 'Fim do expediente Faria Lima', zone: 'Faria Lima', time: '18h–20h' },
+  { label: 'Eventos no Centro (23h)', zone: 'Teatro Amazonas', time: 'Hoje' },
+  { label: 'Chegada de voos (23h–1h)', zone: 'Aeroporto Eduardo Gomes', time: 'Hoje' },
+  { label: 'Movimento noturno na orla', zone: 'Ponta Negra', time: 'Hoje' },
+  { label: 'Fim do expediente industrial', zone: 'Distrito Industrial', time: '18h–20h' },
 ];
 
 function intensityColor(intensity: number): string {
