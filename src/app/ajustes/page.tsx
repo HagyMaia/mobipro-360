@@ -213,7 +213,7 @@ export default function AjustesPage() {
 
         {/* INFORMAÇÕES DE BUILD */}
         <Card className="p-4 bg-gray-50 dark:bg-dark-800/40 border text-center text-xs text-gray-500 dark:text-slate-400">
-          <p className="font-bold text-gray-900 dark:text-slate-200">MobiPro 360 - Driver Edition</p>
+          <p className="font-bold text-gray-900 dark:text-slate-200">SR Logística - App do Motorista</p>
           <p className="mt-0.5">Versão 1.0.0 (Build 342) · Pronto para produção</p>
           <p className="text-[10px] text-slate-500 mt-1">Compatível com PWA, Capacitor e React Native Webview</p>
         </Card>

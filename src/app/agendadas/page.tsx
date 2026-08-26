@@ -76,7 +76,7 @@ export default function AgendadasPage() {
 
       {/* Elementos Inferiores Estilo Foto */}
       <div className="fixed bottom-24 left-0 w-full px-4 flex items-center justify-between pointer-events-none z-10">
-        <button className="w-14 h-14 bg-[#38B6FF] text-white rounded-full flex items-center justify-center shadow-lg pointer-events-auto hover:bg-[#2fa0e6] transition">
+        <button type="button" aria-label="Voltar ao início da lista" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="w-14 h-14 bg-[#38B6FF] text-white rounded-full flex items-center justify-center shadow-lg pointer-events-auto hover:bg-[#2fa0e6] transition">
           <Target size={24} />
         </button>
         <span className="text-sm text-gray-500 pr-10 bg-white/80 px-2 py-1 rounded-md">Atualizando em 4...</span>

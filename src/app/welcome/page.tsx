@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { HelpCircle, ArrowRight, Info, CarTaxiFront, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { HelpCircle, ArrowRight, Info, CarTaxiFront, CheckCircle2, ShieldCheck, Download } from 'lucide-react';
 import { SupportModal } from '@/components/Support/SupportModal';
 
 export default function WelcomeScreen() {
@@ -34,7 +34,7 @@ export default function WelcomeScreen() {
           </div>
           <div>
             <span className="font-black text-white text-xl tracking-tight leading-none block">
-              MobiPro<span className="text-blue-500">360</span>
+              SR <span className="text-blue-500">Logística</span>
             </span>
             <span className="text-[10px] font-semibold text-blue-300/80 uppercase tracking-wider block mt-0.5">
               App do Motorista
@@ -96,6 +96,15 @@ export default function WelcomeScreen() {
             <span>Entrar</span>
             <ArrowRight size={20} className="text-white" strokeWidth={2.5} />
           </Link>
+
+          <a
+            href="/sr-logistica.apk"
+            download
+            className="flex items-center justify-center gap-2 w-full border border-emerald-400/50 bg-emerald-500/10 text-emerald-300 py-3 px-6 rounded-2xl font-bold text-sm hover:bg-emerald-500/20 active:scale-[0.98] transition-all"
+          >
+            <Download size={17} />
+            Baixar aplicativo Android
+          </a>
         </div>
 
         {/* Versão do App */}

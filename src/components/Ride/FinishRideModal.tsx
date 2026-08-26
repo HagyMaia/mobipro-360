@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { Camera } from 'lucide-react';
 
 interface FinishRideModalProps {
     isOpen: boolean;
@@ -9,6 +10,7 @@ interface FinishRideModalProps {
 export const FinishRideModal: React.FC<FinishRideModalProps> = ({ isOpen, onClose, onConfirm }) => {
     const [valor, setValor] = useState('120,00');
     const [voucher, setVoucher] = useState('');
+    const voucherInputRef = useRef<HTMLInputElement>(null);
 
     if (!isOpen) return null;
 
@@ -42,7 +44,10 @@ export const FinishRideModal: React.FC<FinishRideModalProps> = ({ isOpen, onClos
                             onChange={(e) => setVoucher(e.target.value)}
                             className="flex-1 border-b border-gray-400 outline-none py-1"
                         />
-                        <button className="bg-gray-200 p-2 rounded text-gray-600">📷</button>
+                        <input ref={voucherInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => setVoucher(event.target.files?.[0]?.name || '')} />
+                        <button type="button" aria-label="Fotografar voucher" onClick={() => voucherInputRef.current?.click()} className="bg-gray-200 p-2 rounded text-gray-600">
+                            <Camera size={18} />
+                        </button>
                     </div>
                 </div>
 

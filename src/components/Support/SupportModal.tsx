@@ -32,13 +32,13 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
 
         <h3 className="text-xl font-extrabold text-white mb-1">Central de Ajuda</h3>
         <p className="text-slate-400 text-xs mb-5">
-          Suporte 24h para motoristas e taxistas MobiPro.
+          Suporte 24h para motoristas e taxistas SR Logística.
         </p>
 
         <div className="flex flex-col gap-2.5 mb-5 text-left">
           {/* Botão Chat WhatsApp */}
           <a
-            href="https://wa.me/5511999999999?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20o%20MobiPro%20360"
+            href="https://wa.me/5511999999999?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20o%20SR%20Log%C3%ADstica"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3.5 bg-[#0F1722] hover:bg-[#1D2939] border border-white/10 p-3.5 rounded-2xl transition group"
@@ -69,7 +69,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
           </a>
 
           {/* Dúvidas Frequentes */}
-          <div className="flex items-center gap-3.5 bg-[#0F1722] hover:bg-[#1D2939] border border-white/10 p-3.5 rounded-2xl transition group cursor-pointer">
+          <a href="mailto:suporte@mobipro360.com?subject=Dúvidas%20frequentes" className="flex items-center gap-3.5 bg-[#0F1722] hover:bg-[#1D2939] border border-white/10 p-3.5 rounded-2xl transition group cursor-pointer">
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
               <ShieldQuestion size={20} />
             </div>
@@ -78,7 +78,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
               <p className="text-slate-400 text-xs truncate">Tarifas, repasse e cadastro</p>
             </div>
             <ChevronRight size={18} className="text-slate-500 group-hover:text-white transition" />
-          </div>
+          </a>
         </div>
 
         <button

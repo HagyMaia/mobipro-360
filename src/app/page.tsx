@@ -24,6 +24,7 @@ export default function HomePage() {
   const simulate = useSimulateRide();
   const [tick, setTick] = useState(0);
   const [driverName, setDriverName] = useState('Motorista');
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const counter = useRef(0);
 
   // Verificação de Autenticação e Carregamento do Perfil
@@ -132,7 +133,12 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <StatusPill />
-            <button className="relative rounded-full bg-dark-700 p-2 text-slate-300 transition hover:bg-dark-600 hover:text-white">
+            <button
+              type="button"
+              aria-label="Notificações"
+              onClick={() => setNotificationsOpen((open) => !open)}
+              className="relative rounded-full bg-dark-700 p-2 text-slate-300 transition hover:bg-dark-600 hover:text-white"
+            >
               <Bell size={16} />
               {state.status === 'available' && state.incomingRide && (
                 <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-ping rounded-full bg-red-500" />
@@ -140,6 +146,11 @@ export default function HomePage() {
             </button>
           </div>
         </div>
+        {notificationsOpen && (
+          <div className="mt-3 rounded-xl border border-dark-600 bg-dark-900 px-3 py-2 text-xs text-slate-300">
+            {state.incomingRide ? 'Você tem uma nova solicitação de corrida.' : 'Nenhuma notificação nova.'}
+          </div>
+        )}
       </header>
 
       <div className="space-y-4 p-4 pb-28">

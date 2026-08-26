@@ -1,17 +1,54 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { useApp } from '@/lib/store';
 import { Card, SectionTitle } from '@/components/ui';
-import { Users, Clock, DollarSign, Activity } from 'lucide-react';
+import { Users, Clock, DollarSign, Activity, Check, X } from 'lucide-react';
 
-const MOCK_DRIVERS = [
-  { id: 1, name: 'João Silva', status: 'Ativo', rides: 142, rating: 4.9 },
-  { id: 2, name: 'Maria Souza', status: 'Em corrida', rides: 89, rating: 5.0 },
-  { id: 3, name: 'Carlos Alves', status: 'Offline', rides: 320, rating: 4.7 }
-];
+type Driver = {
+  id: string;
+  nome: string;
+  email?: string;
+  status: string;
+  telefone?: string;
+  categoria?: string;
+};
 
 export default function AdminPage() {
   const { state, todayEarnings, todayRides } = useApp();
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [loadingDrivers, setLoadingDrivers] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadDrivers = async () => {
+    setLoadingDrivers(true);
+    const { data, error: driversError } = await supabase
+      .from('motoristas')
+      .select('id, nome, status, telefone, categoria')
+      .order('created_at', { ascending: false });
+
+    if (driversError) {
+      setError('Não foi possível carregar os motoristas. Verifique a tabela e as políticas RLS.');
+    } else {
+      setDrivers(data || []);
+      setError('');
+    }
+    setLoadingDrivers(false);
+  };
+
+  useEffect(() => {
+    loadDrivers();
+  }, []);
+
+  const updateDriverStatus = async (id: string, status: 'Aprovado' | 'Reprovado') => {
+    const { error: updateError } = await supabase.from('motoristas').update({ status }).eq('id', id);
+    if (updateError) {
+      setError('Não foi possível atualizar este motorista. Verifique se sua conta é administradora.');
+      return;
+    }
+    setDrivers((current) => current.map((driver) => driver.id === id ? { ...driver, status } : driver));
+  };
 
   const totalTime = state.rideHistory.reduce((acc, ride) => {
     if (ride.startedAt && ride.completedAt) {
@@ -101,34 +138,40 @@ export default function AdminPage() {
 
       {/* Driver Profiles */}
       <div className="pb-10">
-        <SectionTitle className="mb-3 text-gray-600">Perfis de Motoristas (Simulação)</SectionTitle>
+        <SectionTitle className="mb-3 text-gray-600">Aprovações de Motoristas</SectionTitle>
         <Card className="border border-gray-200 p-0 shadow-sm">
-          <div className="divide-y divide-gray-100">
-            {MOCK_DRIVERS.map((d) => (
-              <div key={d.id} className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 font-bold text-brand-600">
-                    {d.name.charAt(0)}
-                  </div>
+          {error && <div className="border-b border-red-100 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+          {loadingDrivers ? (
+            <div className="p-6 text-center text-sm text-gray-500">Carregando motoristas...</div>
+          ) : drivers.length === 0 ? (
+            <div className="p-6 text-center text-sm text-gray-500">Nenhum motorista cadastrado.</div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {drivers.map((driver) => (
+                <div key={driver.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <div className="font-semibold text-gray-900">{d.name}</div>
-                    <div className="text-xs text-gray-500">Corridas: {d.rides} • ★ {d.rating}</div>
+                    <div className="font-semibold text-gray-900">{driver.nome}</div>
+                    <div className="text-xs text-gray-500">{driver.categoria || 'Categoria não informada'} {driver.telefone ? `• ${driver.telefone}` : ''}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${driver.status === 'Aprovado' ? 'bg-green-100 text-green-700' : driver.status === 'Reprovado' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {driver.status}
+                    </span>
+                    {driver.status === 'Pendente' && (
+                      <>
+                        <button type="button" aria-label={`Aprovar ${driver.nome}`} onClick={() => updateDriverStatus(driver.id, 'Aprovado')} className="rounded-lg bg-green-600 p-2 text-white hover:bg-green-700">
+                          <Check size={16} />
+                        </button>
+                        <button type="button" aria-label={`Reprovar ${driver.nome}`} onClick={() => updateDriverStatus(driver.id, 'Reprovado')} className="rounded-lg bg-red-600 p-2 text-white hover:bg-red-700">
+                          <X size={16} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
-                <div
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                    d.status === 'Ativo'
-                      ? 'bg-green-100 text-green-700'
-                      : d.status === 'Em corrida'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  {d.status}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
     </div>

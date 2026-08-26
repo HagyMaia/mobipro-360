@@ -1,19 +1,27 @@
 "use client";
 import React, { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { ArrowLeft, HelpCircle, CarTaxiFront, Info, Download } from 'lucide-react';
+import { SupportModal } from '@/components/Support/SupportModal';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [supportOpen, setSupportOpen] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    if (!isSupabaseConfigured) {
+      setError('O acesso ainda não está configurado. Adicione as chaves do Supabase no arquivo .env.local e reinicie o servidor.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -31,8 +39,13 @@ export default function Login() {
         .eq('id', authData.user.id)
         .maybeSingle();
 
-      if (dbError || !motorista) {
-        window.location.href = '/';
+      if (dbError) {
+        throw new Error('Não foi possível carregar seu cadastro. Confirme se a tabela motoristas e suas políticas RLS foram criadas no Supabase.');
+      }
+
+      if (!motorista) {
+        await supabase.auth.signOut();
+        setError('Sua conta existe, mas o cadastro de motorista não foi encontrado. Faça o cadastro novamente ou procure o suporte.');
         return;
       }
 
@@ -46,8 +59,8 @@ export default function Login() {
         setError('Seu cadastro foi reprovado. Entre em contato com o suporte.');
       }
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Não foi possível entrar. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -70,7 +83,7 @@ export default function Login() {
           <span className="font-extrabold text-white text-lg tracking-wide">SR <span className="text-blue-500">Logística</span></span>
         </Link>
 
-        <button className="flex items-center gap-1.5 text-white font-medium text-sm hover:text-blue-300 transition-colors">
+        <button onClick={() => setSupportOpen(true)} className="flex items-center gap-1.5 text-white font-medium text-sm hover:text-blue-300 transition-colors">
           Ajuda <HelpCircle size={18} className="text-slate-300" />
         </button>
       </header>
@@ -166,6 +179,7 @@ export default function Login() {
           </p>
         </div>
       </footer>
+      <SupportModal isOpen={supportOpen} onClose={() => setSupportOpen(false)} />
     </div>
   );
 }

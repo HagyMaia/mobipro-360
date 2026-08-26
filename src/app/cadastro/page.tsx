@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { ArrowLeft, CarTaxiFront, CheckCircle2, ShieldCheck, User, Car, Lock, Mail, Phone, CreditCard, ChevronRight } from 'lucide-react';
 
@@ -50,6 +50,12 @@ export default function CadastroMotorista() {
     setLoading(true);
     setError('');
 
+    if (!isSupabaseConfigured) {
+      setError('O cadastro ainda não está configurado. Adicione as chaves do Supabase no arquivo .env.local e reinicie o servidor.');
+      setLoading(false);
+      return;
+    }
+
     try {
       // 1. Cadastra o usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -83,13 +89,20 @@ export default function CadastroMotorista() {
           }
         ]);
 
+      if (dbError) {
+        if (authData.user) {
+          await supabase.auth.signOut();
+        }
+        throw new Error('A conta foi criada, mas o perfil não pôde ser salvo. Verifique a tabela motoristas e as políticas RLS no Supabase.');
+      }
+
       setIsSuccess(true);
       setTimeout(() => {
         router.push('/login');
       }, 2500);
 
-    } catch (err: any) {
-      setError(err.message || 'Ocorreu um erro durante o cadastro.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Ocorreu um erro durante o cadastro.');
     } finally {
       setLoading(false);
     }
@@ -108,7 +121,7 @@ export default function CadastroMotorista() {
         <div className="flex items-center gap-2">
           <CarTaxiFront size={22} className="text-blue-400" />
           <span className="font-extrabold text-white text-base">
-            MobiPro<span className="text-blue-500">360</span>
+            SR <span className="text-blue-500">Logística</span>
           </span>
         </div>
         <div className="text-xs font-bold text-slate-400 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
