@@ -80,12 +80,15 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen flex flex-col justify-between bg-[#0B141A] text-white font-sans overflow-hidden">
-      {/* Imagem de Fundo (Táxi) com Gradiente Escuro */}
+      {/* Fundo estilizado com destaque da marca (gradiente + overlay) */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40 mix-blend-luminosity"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1556122071-e404eaedb77f?auto=format&fit=crop&q=80&w=1000')" }}
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 10% 10%, rgba(224,184,0,0.06), transparent 10%), linear-gradient(180deg, rgba(224,184,0,0.06) 0%, rgba(11,18,36,0.9) 100%)'
+        }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0B141A]/80 via-[#0B141A]/90 to-[#0B141A] pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0B141A]/75 via-[#0B141A]/88 to-[#0B141A] pointer-events-none" />
 
       {/* Topo: Logo e Ajuda */}
       <header className="relative z-10 flex justify-between items-center p-6 pt-10">
