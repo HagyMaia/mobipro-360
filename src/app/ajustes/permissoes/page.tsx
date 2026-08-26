@@ -39,8 +39,8 @@ export default function PermissoesApp() {
       </header>
 
       <main className="p-4 flex-1 flex flex-col gap-3.5 max-w-md w-full mx-auto">
-        <div className="bg-brand/10 border border-brand/20 p-3.5 rounded-2xl text-xs text-brand/70 flex items-start gap-2.5">
-          <AlertCircle size={16} className="text-brand shrink-0 mt-0.5" />
+        <div className="bg-brand/10 border border-brand/20 p-3.5 rounded-2xl text-xs text-brand-600 flex items-start gap-2.5">
+          <AlertCircle size={16} className="text-brand-600 shrink-0 mt-0.5" />
           <span>Para receber chamadas em segundo plano e com a tela bloqueada, mantenha todas as permissões ativas.</span>
         </div>
 

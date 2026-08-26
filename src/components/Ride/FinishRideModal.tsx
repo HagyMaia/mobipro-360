@@ -52,7 +52,7 @@ export const FinishRideModal: React.FC<FinishRideModalProps> = ({ isOpen, onClos
                 </div>
 
                 <div className="flex justify-end gap-4">
-                    <button onClick={onClose} className="text-brand font-semibold text-sm">CANCELAR</button>
+                    <button onClick={onClose} className="text-brand-600 font-semibold text-sm">CANCELAR</button>
                     <button onClick={() => onConfirm(valor, voucher)} className="bg-brand text-white px-4 py-2 rounded-lg font-semibold">OK</button>
                 </div>
             </div>

@@ -29,7 +29,7 @@ export default function FinanceiroPage() {
           {/* Card Hoje */}
           <Card className="p-5 flex items-center justify-between bg-[color:var(--surface)]/60 border-l-4 border-brand shadow-sm">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-white/6 text-brand rounded-full">
+              <div className="p-3 bg-white/6 text-brand-600 rounded-full">
                 <DollarSign size={24} />
               </div>
               <div>

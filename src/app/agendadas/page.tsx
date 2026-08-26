@@ -87,7 +87,7 @@ export default function AgendadasPage() {
           <table className="w-full text-center text-[14px] text-slate-300">
             <thead className="text-slate-400">
               <tr className="border-b border-white/6">
-                <th className="py-3 px-1 font-semibold flex items-center justify-center gap-1"><span className="text-brand font-bold text-lg leading-none">↑↓</span> Área</th>
+                <th className="py-3 px-1 font-semibold flex items-center justify-center gap-1"><span className="text-brand-600 font-bold text-lg leading-none">↑↓</span> Área</th>
                 <th className="py-3 px-1 font-normal border-l border-white/6">Veículos</th>
                 <th className="py-3 px-1 font-normal border-l border-white/6">15</th>
                 <th className="py-3 px-1 font-normal border-l border-white/6">30</th>
@@ -114,7 +114,7 @@ export default function AgendadasPage() {
             <div className="w-full max-w-sm rounded-xl bg-[color:var(--surface)] p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-brand">Área selecionada</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">Área selecionada</p>
                   <h2 className="mt-1 text-xl font-bold text-slate-100">{selectedArea.area}</h2>
                 </div>
                 <button type="button" aria-label="Fechar detalhes" onClick={() => setSelectedArea(null)} className="rounded-full p-1 text-slate-400 hover:bg-white/6"><X size={20} /></button>
@@ -139,7 +139,7 @@ export default function AgendadasPage() {
             <form onSubmit={createAgendamento} className="w-full max-w-sm rounded-xl bg-[color:var(--surface)] p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-brand">Novo agendamento</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">Novo agendamento</p>
                   <h2 className="mt-1 text-xl font-bold text-slate-100">Criar posição</h2>
                 </div>
                 <button type="button" aria-label="Fechar criação" onClick={() => setCreateOpen(false)} className="rounded-full p-1 text-slate-400 hover:bg-white/6"><X size={20} /></button>

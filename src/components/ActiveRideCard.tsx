@@ -35,7 +35,7 @@ export default function ActiveRideCard() {
     <Card className="border-brand-500/30">
       {/* Cabeçalho */}
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-bold text-brand-300">Corrida em andamento</span>
+        <span className="text-sm font-bold text-brand-600">Corrida em andamento</span>
         <Badge className="bg-dark-700 text-slate-300">
           {ride.passengerName}
         </Badge>
@@ -84,7 +84,7 @@ export default function ActiveRideCard() {
       {/* Botão de navegação — destaque visual */}
       <button
         onClick={handleNavigate}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600/20 py-3 text-sm font-bold text-brand-300 ring-1 ring-brand-500/30 transition hover:bg-brand-600/30 active:scale-95"
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600/20 py-3 text-sm font-bold text-brand-600 ring-1 ring-brand-600/30 transition hover:bg-brand-600/30 active:scale-95"
       >
         <Navigation size={16} />
         {navLabel}

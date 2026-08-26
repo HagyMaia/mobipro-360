@@ -55,7 +55,7 @@ export default function RideRequestCard({ ride }: { ride: RideRequest }) {
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="inline-flex h-2.5 w-2.5 animate-pulse rounded-full bg-brand-400" />
-          <span className="text-sm font-bold text-brand-300">Nova corrida</span>
+          <span className="text-sm font-bold text-brand-600">Nova corrida</span>
         </div>
         <Badge className="bg-dark-700 text-slate-300">
           <Clock size={11} />
@@ -95,7 +95,7 @@ export default function RideRequestCard({ ride }: { ride: RideRequest }) {
 
       <div className="mt-3 flex items-center justify-between rounded-xl bg-dark-700/40 px-3 py-2">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600/30 text-sm font-bold text-brand-300">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600/30 text-sm font-bold text-brand-600">
             {ride.passengerName.charAt(0)}
           </div>
           <div>

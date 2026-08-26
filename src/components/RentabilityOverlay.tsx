@@ -11,7 +11,7 @@ export default function RentabilityOverlay() {
     <div className="pointer-events-none fixed bottom-24 right-4 z-30 w-max max-w-[calc(100vw-2rem)]">
       <div className="rounded-2xl border border-dark-700 bg-dark-800/95 px-4 py-3 shadow-overlay backdrop-blur-md">
         <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          <TrendingUp size={12} className="text-brand-400" />
+          <TrendingUp size={12} className="text-brand-600" />
           Hoje · {todayRides} corridas
         </div>
         <div className="flex items-baseline gap-3">

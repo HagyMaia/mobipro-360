@@ -59,7 +59,7 @@ export default function AjustesPage() {
             </Link>
             <div>
               <h1 className="text-xl font-extrabold text-slate-100">
-                Ajustes e <span className="text-brand">Preferências</span>
+                Ajustes e <span className="text-brand-600">Preferências</span>
               </h1>
               <p className="text-xs text-slate-300">
                 Personalize o comportamento do aplicativo
@@ -80,11 +80,11 @@ export default function AjustesPage() {
           <Link href="/ajustes/permissoes">
             <Card className="flex items-center justify-between p-4 hover:border-brand/40 transition border group">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-brand/15 text-brand flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-brand/15 text-brand-600 flex items-center justify-center">
                   <Smartphone size={20} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-100 group-hover:text-brand transition">
+                  <h3 className="text-sm font-bold text-slate-100 group-hover:text-brand-600 transition">
                     Permissões do App
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-slate-400">
@@ -170,7 +170,7 @@ export default function AjustesPage() {
               <div className="pt-2 border-t border-white/6">
               <div className="flex items-center justify-between mb-1.5">
                 <h4 className="text-sm font-bold text-slate-100">Nota Mínima do Passageiro</h4>
-                <span className="text-xs font-extrabold text-brand">★ {minRating.toFixed(1)}</span>
+                <span className="text-xs font-extrabold text-brand-600">★ {minRating.toFixed(1)}</span>
               </div>
               <input
                 type="range"

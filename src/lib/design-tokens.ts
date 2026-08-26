@@ -1,10 +1,12 @@
 export const colors = {
   background: '#FFFFFF',
-  surface: '#FFF9ED',
-  brand: '#FFD400',
-  brandDark: '#E6C200',
+  surface: '#FFF6E0',
+  // brand adjusted to a slightly darker yellow for better contrast
+  brand: '#E0B800',
+  brandDark: '#C9A400',
   text: '#0B1224',
-  muted: '#737373',
+  // muted text darker for readability on light surfaces
+  muted: '#575757',
   success: '#00D084',
   warn: '#FFB300',
   danger: '#FF5252'

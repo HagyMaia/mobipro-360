@@ -55,7 +55,7 @@ export function ExpenseForm({ onAdd }: { onAdd: (e: Expense) => void }) {
                 onClick={() => setCategory(key)}
                 className={`flex flex-col items-center gap-1 rounded-lg border px-1 py-2 text-[10px] font-medium transition ${
                   category === key
-                    ? 'border-brand-500 bg-brand-600/20 text-brand-300'
+                    ? 'border-brand-500 bg-brand-600/20 text-brand-600'
                     : 'border-dark-700 text-slate-400 hover:border-dark-600'
                 }`}
               >

@@ -51,7 +51,7 @@ export function StatusPill() {
     offline: { label: 'Offline', dot: 'bg-danger', text: 'text-danger' },
     available: { label: 'Disponível', dot: 'bg-success', text: 'text-success' },
     'en-route': { label: 'A caminho do passageiro', dot: 'bg-warn', text: 'text-warn' },
-    'on-ride': { label: 'Em corrida', dot: 'bg-brand-400', text: 'text-brand-400' },
+    'on-ride': { label: 'Em corrida', dot: 'bg-brand-600', text: 'text-brand-600' },
     break: { label: 'Em pausa', dot: 'bg-slate-500', text: 'text-slate-400' }
   };
   const info = map[state.status];

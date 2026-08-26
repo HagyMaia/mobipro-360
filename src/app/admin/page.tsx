@@ -82,7 +82,7 @@ export default function AdminPage() {
 
       <div className="grid grid-cols-2 gap-3">
         <Card className="flex flex-col gap-1 border border-white/6 bg-[color:var(--surface)]/60 p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-brand">
+          <div className="flex items-center gap-2 text-brand-700">
             <DollarSign size={20} />
             <span className="text-[11px] font-bold uppercase tracking-wider">Faturamento (Hoje)</span>
           </div>
@@ -135,7 +135,7 @@ export default function AdminPage() {
                       <div className="text-xs text-gray-500">{ride.passengerName}</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-xs font-medium text-brand">{ride.status.toUpperCase()}</div>
+                      <div className="text-xs font-medium text-brand-700">{ride.status.toUpperCase()}</div>
                       <div className="text-[10px] text-gray-400">Tempo: {timeStr}</div>
                     </div>
                   </div>
