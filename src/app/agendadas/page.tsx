@@ -13,12 +13,14 @@ export default function AgendadasPage() {
     { id: 3, area: '20-ANA BRA', veiculos: '', min15: '', min30: '', min45: '2' },
   ];
   type Agendamento = (typeof initialAgendamentos)[number];
-  const [agendamentos, setAgendamentos] = useState<Agendamento[]>(initialAgendamentos);
+  type AgendamentoCompleto = Agendamento & { endereco?: string };
+  const [agendamentos, setAgendamentos] = useState<AgendamentoCompleto[]>(initialAgendamentos);
   const [secondsUntilUpdate, setSecondsUntilUpdate] = useState(4);
-  const [selectedArea, setSelectedArea] = useState<Agendamento | null>(null);
+  const [selectedArea, setSelectedArea] = useState<AgendamentoCompleto | null>(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [createOpen, setCreateOpen] = useState(false);
   const [newArea, setNewArea] = useState('');
+  const [newAddress, setNewAddress] = useState('');
   const [newWindow, setNewWindow] = useState<'15' | '30' | '45'>('15');
 
   useEffect(() => {
@@ -42,10 +44,12 @@ export default function AgendadasPage() {
   const createAgendamento = (event: React.FormEvent) => {
     event.preventDefault();
     const area = newArea.trim().toUpperCase();
-    if (!area) return;
-    const newAgendamento: Agendamento = {
+    const address = newAddress.trim();
+    if (!area || !address) return;
+    const newAgendamento: AgendamentoCompleto = {
       id: Date.now(),
       area,
+      endereco: address,
       veiculos: '1',
       min15: newWindow === '15' ? '1' : '',
       min30: newWindow === '30' ? '1' : '',
@@ -53,6 +57,7 @@ export default function AgendadasPage() {
     };
     setAgendamentos((current) => [newAgendamento, ...current]);
     setNewArea('');
+    setNewAddress('');
     setNewWindow('15');
     setCreateOpen(false);
     refreshAreas();
@@ -143,6 +148,10 @@ export default function AgendadasPage() {
                   <X size={20} />
                 </button>
               </div>
+              <div className="mt-4 rounded-lg bg-blue-50 px-3 py-2 text-sm text-gray-700">
+                <span className="block text-xs font-semibold uppercase tracking-wide text-blue-700">Endereço de embarque</span>
+                <span className="mt-1 block">{selectedArea.endereco || 'Endereço não informado'}</span>
+              </div>
               <div className="mt-5 grid grid-cols-4 divide-x rounded-lg border border-gray-200 py-3 text-center text-sm text-gray-600">
                 <span><strong className="block text-lg text-gray-900">{selectedArea.veiculos || '0'}</strong>veículos</span>
                 <span><strong className="block text-lg text-gray-900">{selectedArea.min15 || '0'}</strong>15 min</span>
@@ -169,6 +178,10 @@ export default function AgendadasPage() {
               <label className="mt-5 block text-sm font-semibold text-gray-700">
                 Área de Manaus
                 <input value={newArea} onChange={(event) => setNewArea(event.target.value)} placeholder="Ex.: Ponta Negra" required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-normal outline-none focus:border-blue-600" />
+              </label>
+              <label className="mt-4 block text-sm font-semibold text-gray-700">
+                Endereço de embarque
+                <input value={newAddress} onChange={(event) => setNewAddress(event.target.value)} placeholder="Rua, número e referência" required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-normal outline-none focus:border-blue-600" />
               </label>
               <label className="mt-4 block text-sm font-semibold text-gray-700">
                 Janela de espera
