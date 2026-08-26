@@ -4,10 +4,12 @@
 
 :root {
   --bg: #FFFFFF;
-  --surface: #FFF9ED;
-  --brand: #FFD400;
-  --muted: #737373;
+  --surface: #FFF6E0;
+  --brand: #E0B800;
+  --muted: #575757;
   --text: #0B1224;
+  /* control for login background gradient strength (0.0 - 1.0) */
+  --login-gradient-opacity: 0.75;
   color-scheme: light;
 }
 
