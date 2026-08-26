@@ -33,6 +33,7 @@ export default function CadastroMotorista() {
 
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[Cadastro] handleNextStep called', formData);
     if (!formData.nome || !formData.cpf || !formData.email || !formData.password) {
       setError('Por favor, preencha todos os campos obrigatórios do Passo 1.');
       return;
@@ -49,7 +50,7 @@ export default function CadastroMotorista() {
     e.preventDefault();
     setLoading(true);
     setError('');
-
+    console.log('[Cadastro] handleSubmit called', { formData });
     if (!isSupabaseConfigured) {
       setError('O cadastro ainda não está configurado. Adicione as chaves do Supabase no arquivo .env.local e reinicie o servidor.');
       setLoading(false);
@@ -57,12 +58,14 @@ export default function CadastroMotorista() {
     }
 
     try {
+      console.log('[Cadastro] chamando supabase.auth.signUp', formData.email);
       // 1. Cadastra o usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
       });
 
+      console.log('[Cadastro] signUp result', { authData, authError });
       if (authError && !authError.message.includes('mock')) {
         // Se der erro de auth real, lança exceção (a não ser que seja offline demo)
         throw new Error(authError.message);
@@ -119,10 +122,8 @@ export default function CadastroMotorista() {
           <ArrowLeft size={18} />
         </Link>
         <div className="flex items-center gap-2">
-          <CarTaxiFront size={22} className="text-blue-400" />
-          <span className="font-extrabold text-white text-base">
-            SR <span className="text-blue-500">Logística</span>
-          </span>
+          <CarTaxiFront size={22} className="text-brand" />
+          <span className="font-extrabold text-white text-base">SR <span className="text-brand">Logística</span></span>
         </div>
         <div className="text-xs font-bold text-slate-400 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
           Etapa {step}/2
@@ -157,8 +158,8 @@ export default function CadastroMotorista() {
 
           {/* BARRA DE PROGRESSO DO STEPPER */}
           <div className="grid grid-cols-2 gap-2 mb-6">
-            <div className={`h-1.5 rounded-full transition-all ${step >= 1 ? 'bg-blue-500' : 'bg-slate-800'}`} />
-            <div className={`h-1.5 rounded-full transition-all ${step >= 2 ? 'bg-blue-500' : 'bg-slate-800'}`} />
+            <div className={`h-1.5 rounded-full transition-all ${step >= 1 ? 'bg-brand-500' : 'bg-slate-800'}`} />
+            <div className={`h-1.5 rounded-full transition-all ${step >= 2 ? 'bg-brand-500' : 'bg-slate-800'}`} />
           </div>
 
           {error && (
@@ -177,7 +178,7 @@ export default function CadastroMotorista() {
                     value={formData.nome}
                     placeholder="Ex: Carlos Silva"
                     onChange={handleInputChange}
-                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-blue-500 text-sm"
+                    className="bg-white/4 border border-white/6 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
                     required
                   />
                 </div>
@@ -190,7 +191,7 @@ export default function CadastroMotorista() {
                       value={formData.cpf}
                       placeholder="000.000.000-00"
                       onChange={handleInputChange}
-                      className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-blue-500 text-sm"
+                      className="bg-white/4 border border-white/6 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
                       required
                     />
                   </div>
@@ -201,7 +202,7 @@ export default function CadastroMotorista() {
                       value={formData.cnh}
                       placeholder="00000000000"
                       onChange={handleInputChange}
-                      className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-blue-500 text-sm"
+                      className="bg-white/4 border border-white/6 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
                       required
                     />
                   </div>
@@ -214,7 +215,7 @@ export default function CadastroMotorista() {
                     value={formData.telefone}
                     placeholder="(11) 98765-4321"
                     onChange={handleInputChange}
-                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-blue-500 text-sm"
+                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
                     required
                   />
                 </div>
@@ -227,7 +228,7 @@ export default function CadastroMotorista() {
                     value={formData.email}
                     placeholder="seu.email@exemplo.com"
                     onChange={handleInputChange}
-                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-blue-500 text-sm"
+                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
                     required
                   />
                 </div>
@@ -240,7 +241,7 @@ export default function CadastroMotorista() {
                     value={formData.password}
                     placeholder="Mínimo 6 caracteres"
                     onChange={handleInputChange}
-                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-blue-500 text-sm"
+                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
                     required
                     minLength={6}
                   />
@@ -248,7 +249,7 @@ export default function CadastroMotorista() {
 
                 <button
                   type="submit"
-                  className="w-full bg-blue-600 active:bg-blue-700 text-white p-4 rounded-2xl mt-2 font-extrabold text-base hover:bg-blue-500 transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2"
+                  className="w-full bg-brand text-white active:bg-brand-600 p-4 rounded-2xl mt-2 font-extrabold text-base hover:bg-brand-600 transition shadow-lg shadow-brand/30 flex items-center justify-center gap-2"
                 >
                   <span>Continuar para Veículo</span>
                   <ChevronRight size={18} />
@@ -262,7 +263,7 @@ export default function CadastroMotorista() {
                     name="categoria"
                     value={formData.categoria}
                     onChange={handleInputChange}
-                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-blue-500 text-sm"
+                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
                   >
                     <option value="Táxi Convencional (Branco)">Táxi Convencional (Branco)</option>
                     <option value="Táxi Executivo / Black">Táxi Executivo / Black</option>
@@ -279,7 +280,7 @@ export default function CadastroMotorista() {
                       value={formData.marca}
                       placeholder="Ex: Toyota"
                       onChange={handleInputChange}
-                      className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-blue-500 text-sm"
+                      className="bg-white/4 border border-white/6 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
                       required
                     />
                   </div>
@@ -290,7 +291,7 @@ export default function CadastroMotorista() {
                       value={formData.modelo}
                       placeholder="Ex: Corolla"
                       onChange={handleInputChange}
-                      className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-blue-500 text-sm"
+                      className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
                       required
                     />
                   </div>
@@ -304,7 +305,7 @@ export default function CadastroMotorista() {
                       value={formData.ano}
                       placeholder="Ex: 2023"
                       onChange={handleInputChange}
-                      className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-blue-500 text-sm"
+                      className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
                       required
                     />
                   </div>
@@ -315,14 +316,14 @@ export default function CadastroMotorista() {
                       value={formData.placa}
                       placeholder="ABC1D23"
                       onChange={handleInputChange}
-                      className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-blue-500 uppercase text-sm font-bold tracking-wider"
+                      className="bg-white/4 border border-white/6 p-3 rounded-2xl text-white outline-none focus:border-brand-500 uppercase text-sm font-bold tracking-wider"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 p-3 rounded-2xl bg-blue-600/10 border border-blue-500/20 text-xs text-blue-300">
-                  <ShieldCheck size={16} className="shrink-0 text-blue-400" />
+                <div className="flex items-center gap-2 p-3 rounded-2xl bg-brand/10 border border-brand/20 text-xs text-brand/70">
+                  <ShieldCheck size={16} className="shrink-0 text-brand" />
                   <span>Veículo pronto para receber corridas com rentabilidade em tempo real.</span>
                 </div>
 
@@ -337,7 +338,7 @@ export default function CadastroMotorista() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-2/3 bg-emerald-600 active:bg-emerald-700 hover:bg-emerald-500 text-white p-3.5 rounded-2xl font-extrabold text-sm transition shadow-lg shadow-emerald-600/30 disabled:opacity-50"
+                    className="w-2/3 bg-brand active:bg-brand-600 hover:bg-brand-600 text-white p-3.5 rounded-2xl font-extrabold text-sm transition shadow-lg shadow-brand/30 disabled:opacity-50"
                   >
                     {loading ? 'Cadastrando...' : 'Finalizar Cadastro'}
                   </button>
@@ -350,12 +351,12 @@ export default function CadastroMotorista() {
 
       {/* FOOTER */}
       <footer className="relative z-10 text-center py-2">
-        <p className="text-slate-400 text-xs">
-          Já tem conta?{' '}
-          <Link href="/login" className="text-blue-400 font-extrabold hover:text-blue-300 transition">
-            Fazer login
-          </Link>
-        </p>
+          <p className="text-slate-400 text-xs">
+            Já tem conta?{' '}
+            <Link href="/login" className="text-brand font-extrabold hover:text-brand-300 transition">
+              Fazer login
+            </Link>
+          </p>
       </footer>
     </div>
   );

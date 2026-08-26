@@ -46,7 +46,7 @@ export default function RecuperarSenha() {
 
       {/* Topo */}
       <header className="relative z-10 p-6 pt-10">
-        <Link href="/login" className="flex items-center gap-2 text-blue-400 hover:opacity-80 transition w-fit">
+        <Link href="/login" className="flex items-center gap-2 text-brand hover:opacity-80 transition w-fit">
           <ArrowLeft size={22} className="text-white" />
           <span className="text-white font-medium">Voltar para o Login</span>
         </Link>
@@ -56,7 +56,7 @@ export default function RecuperarSenha() {
       <main className="relative z-10 flex-1 flex flex-col justify-center px-6 pb-20 max-w-md w-full mx-auto">
         <div className="flex justify-center mb-8">
           <div className="bg-[#1F2C34]/80 p-4 rounded-full border border-white/10 shadow-lg">
-            <CarTaxiFront size={40} className="text-blue-500" strokeWidth={1.5} />
+            <CarTaxiFront size={40} className="text-brand" strokeWidth={1.5} />
           </div>
         </div>
 
@@ -88,7 +88,7 @@ export default function RecuperarSenha() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
-                  className="bg-[#1F2C34]/80 border border-white/10 p-3.5 rounded-xl text-white outline-none focus:ring-2 focus:ring-blue-500 text-sm transition"
+                  className="bg-[#1F2C34]/80 border border-white/10 p-3.5 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand text-sm transition"
                   required
                 />
               </div>
@@ -96,7 +96,7 @@ export default function RecuperarSenha() {
               <button
                 type="submit"
                 disabled={loading || !email}
-                className="w-full bg-blue-600 text-white mt-2 py-3.5 rounded-xl font-bold text-base hover:bg-blue-700 transition disabled:opacity-50 shadow-lg shadow-blue-600/30"
+                className="w-full bg-brand text-white mt-2 py-3.5 rounded-xl font-bold text-base hover:brightness-95 transition disabled:opacity-50 shadow-lg"
               >
                 {loading ? 'Enviando...' : 'Enviar link de recuperação'}
               </button>

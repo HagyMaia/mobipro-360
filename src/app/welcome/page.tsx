@@ -29,27 +29,27 @@ export default function WelcomeScreen() {
       {/* HEADER: LOGO E AJUDA */}
       <header className="relative z-10 flex justify-between items-center px-6 pt-10 pb-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-blue-600/30 border border-blue-400/40 backdrop-blur-md flex items-center justify-center text-blue-400 shadow-lg">
+          <div className="w-10 h-10 rounded-2xl bg-brand/30 border border-brand-400/40 backdrop-blur-md flex items-center justify-center text-brand shadow-lg">
             <CarTaxiFront size={24} strokeWidth={2} />
           </div>
           <div>
             <span className="font-black text-white text-xl tracking-tight leading-none block">
-              SR <span className="text-blue-500">Logística</span>
+              SR <span className="text-brand">Logística</span>
             </span>
-            <span className="text-[10px] font-semibold text-blue-300/80 uppercase tracking-wider block mt-0.5">
+            <span className="text-[10px] font-semibold text-brand/70 uppercase tracking-wider block mt-0.5">
               App do Motorista
             </span>
           </div>
         </div>
 
         {/* Botão de Ajuda */}
-        <button
-          onClick={() => setSupportOpen(true)}
-          className="flex items-center gap-2 text-white/90 bg-white/10 hover:bg-white/20 active:scale-95 backdrop-blur-md px-3.5 py-2 rounded-full font-medium text-xs border border-white/15 transition-all shadow-sm"
-        >
-          <span>Ajuda</span>
-          <HelpCircle size={16} className="text-blue-300" />
-        </button>
+          <button
+            onClick={() => setSupportOpen(true)}
+            className="flex items-center gap-2 text-white/90 bg-white/6 hover:bg-white/10 active:scale-95 backdrop-blur-md px-3.5 py-2 rounded-full font-medium text-xs border border-white/15 transition-all shadow-sm"
+          >
+            <span>Ajuda</span>
+            <HelpCircle size={16} className="text-brand/70" />
+          </button>
       </header>
 
       {/* TOAST DE ATUALIZAÇÃO / STATUS */}
@@ -80,10 +80,10 @@ export default function WelcomeScreen() {
           {/* Botão Primário: Cadastrar Conta */}
           <Link
             href="/cadastro"
-            className="flex items-center justify-between w-full bg-white text-gray-950 py-4 px-6 rounded-2xl font-extrabold text-[17px] shadow-xl hover:bg-slate-100 active:scale-[0.98] transition-all duration-150"
+            className="flex items-center justify-between w-full bg-brand text-white py-4 px-6 rounded-2xl font-extrabold text-[17px] shadow-xl hover:bg-brand-600 active:scale-[0.98] transition-all duration-150"
           >
             <span>Cadastrar Conta</span>
-            <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-900">
+            <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white">
               <ArrowRight size={16} strokeWidth={2.5} />
             </div>
           </Link>
@@ -91,7 +91,7 @@ export default function WelcomeScreen() {
           {/* Botão Secundário: Entrar */}
           <Link
             href="/login"
-            className="flex items-center justify-between w-full border border-white/80 bg-[#0B141A]/70 backdrop-blur-xl text-white py-4 px-6 rounded-2xl font-extrabold text-[17px] hover:bg-white/10 active:scale-[0.98] transition-all duration-150 shadow-lg"
+            className="flex items-center justify-between w-full border border-white/10 bg-white/3 text-white py-4 px-6 rounded-2xl font-extrabold text-[17px] hover:bg-white/6 active:scale-[0.98] transition-all duration-150 shadow"
           >
             <span>Entrar</span>
             <ArrowRight size={20} className="text-white" strokeWidth={2.5} />

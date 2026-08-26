@@ -33,11 +33,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className={`${inter.variable} font-sans antialiased bg-[#070D18] dark:bg-dark text-gray-900 dark:text-slate-50 transition-colors min-h-dvh select-none`}>
+      <body className={`${inter.variable} font-sans antialiased bg-[color:var(--bg)] dark:bg-dark text-gray-900 dark:text-slate-50 transition-colors min-h-dvh select-none`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <AuthProvider>
             <AppProvider>
-              <div className="mx-auto min-h-dvh max-w-md w-full flex flex-col relative bg-[#0B141A] dark:bg-[#0B1220] shadow-2xl overflow-x-hidden">
+              <div className="mx-auto min-h-dvh max-w-md w-full flex flex-col relative bg-[color:var(--surface)] dark:bg-[#0B1220] shadow-2xl overflow-x-hidden">
                 {children}
               </div>
             </AppProvider>

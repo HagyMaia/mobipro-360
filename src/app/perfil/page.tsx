@@ -43,17 +43,17 @@ export default function PerfilPage() {
   return (
     <div className="min-h-screen flex flex-col justify-between pb-24 font-sans select-none">
       {/* HEADER */}
-      <header className="sticky top-0 z-30 border-b border-gray-200 dark:border-dark-700 bg-white/90 dark:bg-dark-800/95 px-4 pb-3 pt-4 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-white/6 bg-[color:var(--surface)]/90 dark:bg-dark-800/95 px-4 pb-3 pt-4 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-extrabold text-gray-900 dark:text-slate-50">
-              Perfil do <span className="text-blue-500">Motorista</span>
+            <h1 className="text-xl font-extrabold text-slate-100">
+              Perfil do <span className="text-brand">Motorista</span>
             </h1>
             <p className="text-xs text-gray-500 dark:text-slate-400">Informações da conta e do veículo</p>
           </div>
           <Link
             href="/ajustes"
-            className="w-9 h-9 rounded-2xl bg-gray-100 dark:bg-dark-700 flex items-center justify-center text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-dark-600 transition"
+            className="w-9 h-9 rounded-2xl bg-white/6 flex items-center justify-center text-slate-200 hover:bg-white/10 transition"
             title="Ajustes"
           >
             <Settings size={18} />
@@ -64,7 +64,7 @@ export default function PerfilPage() {
       <div className="space-y-4 p-4 flex-1">
         {/* CARD PRINCIPAL DO MOTORISTA */}
         <Card className="flex items-center gap-4 p-4 border">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-blue-600/20 text-2xl font-black text-blue-400 border border-blue-500/30 shadow-inner">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand/20 text-2xl font-black text-brand border border-brand/30 shadow-inner">
             {profile.name.charAt(0)}
           </div>
           <div className="min-w-0 flex-1">
@@ -89,15 +89,15 @@ export default function PerfilPage() {
         <div className="grid grid-cols-3 gap-2.5">
           <Stat label="Hoje" value={formatBRL(todayEarnings)} accent="text-emerald-500" />
           <Stat label="Líquido" value={formatBRL(todayNet)} accent={todayNet >= 0 ? 'text-emerald-500' : 'text-red-500'} />
-          <Stat label="Meta" value={`${Math.round((todayEarnings / state.goalTarget) * 100)}%`} accent="text-blue-400" />
+          <Stat label="Meta" value={`${Math.round((todayEarnings / state.goalTarget) * 100)}%`} accent="text-brand" />
         </div>
 
         {/* ATALHOS RÁPIDOS */}
         <div className="grid grid-cols-2 gap-2.5">
           <Link href="/ajustes" className="block">
-            <Card className="p-3 flex items-center justify-between hover:border-blue-500/40 transition border">
+            <Card className="p-3 flex items-center justify-between hover:border-brand/40 transition border">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-brand/15 text-brand flex items-center justify-center">
                   <Settings size={16} />
                 </div>
                 <div className="text-xs font-bold text-gray-900 dark:text-slate-100">Ajustes & GPS</div>
@@ -107,7 +107,7 @@ export default function PerfilPage() {
           </Link>
 
           <button onClick={() => setSupportOpen(true)} className="w-full text-left">
-            <Card className="p-3 flex items-center justify-between hover:border-blue-500/40 transition border">
+            <Card className="p-3 flex items-center justify-between hover:border-brand/40 transition border">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center">
                   <Headphones size={16} />
@@ -121,14 +121,14 @@ export default function PerfilPage() {
 
         {/* DADOS DO VEÍCULO */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <SectionTitle className="text-xs font-bold text-gray-500 dark:text-slate-400 flex items-center gap-1.5">
-              <CarFront size={14} className="text-blue-400" /> Veículo Cadastrado
+                  <div className="flex items-center justify-between mb-2">
+            <SectionTitle className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <CarFront size={14} className="text-brand" /> Veículo Cadastrado
             </SectionTitle>
             {!editing && (
               <button
                 onClick={() => setEditing(true)}
-                className="text-xs text-blue-500 hover:text-blue-400 font-bold flex items-center gap-1"
+                className="text-xs text-brand hover:text-brand-70 font-bold flex items-center gap-1"
               >
                 <Edit3 size={13} /> Editar
               </button>
@@ -173,13 +173,13 @@ export default function PerfilPage() {
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
-                      <CarFront size={15} className="text-blue-400" /> Modelo
+                      <CarFront size={15} className="text-brand" /> Modelo
                     </span>
                     <span className="font-bold text-gray-900 dark:text-slate-100">{profile.vehicle.model}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
-                      <Phone size={15} className="text-blue-400" /> Placa
+                      <Phone size={15} className="text-brand" /> Placa
                     </span>
                     <span className="font-bold tabular-nums text-gray-900 dark:text-slate-100 bg-gray-100 dark:bg-dark-700 px-2 py-0.5 rounded-lg border border-gray-300 dark:border-dark-600">
                       {profile.vehicle.plate}

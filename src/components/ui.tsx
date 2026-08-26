@@ -19,15 +19,14 @@ export function Card({
 type Variant = 'primary' | 'success' | 'danger' | 'ghost' | 'outline' | 'warn';
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-500 active:bg-brand-700',
-  success: 'bg-success text-white hover:bg-emerald-600 active:bg-emerald-700',
-  danger: 'bg-danger text-white hover:bg-red-500 active:bg-red-700',
+  primary: 'bg-brand text-white hover:bg-brand-600 active:bg-brand-700 shadow-lg',
+  success: 'bg-success text-white hover:bg-success/90 active:bg-success/80 shadow',
+  danger: 'bg-danger text-white hover:bg-danger/90 active:bg-danger/80 shadow',
 
-  // CORRIGIDOS ABAIXO:
-  ghost: 'bg-transparent text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10',
-  outline: 'border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-dark-700 dark:text-slate-200 dark:hover:bg-white/5',
+  ghost: 'bg-transparent text-slate-200 hover:bg-white/5',
+  outline: 'border border-white/10 text-slate-200 hover:bg-white/3',
 
-  warn: 'bg-warn text-slate-900 hover:bg-amber-400'
+  warn: 'bg-warn text-slate-900 hover:bg-warn/90'
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -37,9 +36,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const SIZES = {
-  sm: 'px-3 py-1.5 text-xs rounded-lg',
-  md: 'px-4 py-2 text-sm rounded-xl',
-  lg: 'px-5 py-3 text-sm rounded-xl',
+  sm: 'px-3 py-1.5 text-xs rounded-md',
+  md: 'px-4 py-2 text-sm rounded-lg',
+  lg: 'px-5 py-3 text-sm rounded-lg',
   xl: 'px-6 py-4 text-base rounded-2xl'
 };
 
@@ -53,7 +52,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+        'font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 inline-flex items-center justify-center gap-2',
         VARIANTS[variant],
         SIZES[size],
         full && 'w-full',
@@ -71,7 +70,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full bg-dark-700 px-2.5 py-0.5 text-[11px] font-medium text-slate-300',
+        'inline-flex items-center gap-1 rounded-full bg-white/6 px-2.5 py-0.5 text-[11px] font-medium text-slate-200',
         className
       )}
       {...props}
@@ -159,7 +158,7 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-slate-400">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-slate-300">{label}</span>
       {children}
     </label>
   );
@@ -169,7 +168,7 @@ export function inputClass(
   className?: string
 ) {
   return cn(
-    'w-full rounded-xl border border-dark-700 bg-dark-800 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 placeholder:text-slate-500',
+    'w-full rounded-lg border border-white/6 bg-white/3 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 placeholder:text-slate-500',
     className
   );
 }

@@ -15,7 +15,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
       onClick={onClose}
     >
       <div 
-        className="bg-[#16202B] dark:bg-[#111A2E] border border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl text-center relative animate-in slide-in-from-bottom-6 duration-300"
+        className="bg-[color:var(--surface)] dark:bg-dark-800 border border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl text-center relative animate-in slide-in-from-bottom-6 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         <button 
@@ -26,22 +26,22 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
           <X size={20} />
         </button>
 
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-3">
+        <div className="mx-auto w-14 h-14 rounded-2xl bg-brand/20 border border-brand-300 flex items-center justify-center text-brand mb-3">
           <Headphones size={28} />
         </div>
 
         <h3 className="text-xl font-extrabold text-white mb-1">Central de Ajuda</h3>
         <p className="text-slate-400 text-xs mb-5">
-          Suporte 24h para motoristas e taxistas SR Logística.
+          Suporte 24h para motoristas e parceiros SR Logística.
         </p>
 
         <div className="flex flex-col gap-2.5 mb-5 text-left">
           {/* Botão Chat WhatsApp */}
           <a
-            href="https://wa.me/5511999999999?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20o%20SR%20Log%C3%ADstica"
+            href="https://wa.me/5511999999999?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20a%20SR%20Log%C3%ADstica"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3.5 bg-[#0F1722] hover:bg-[#1D2939] border border-white/10 p-3.5 rounded-2xl transition group"
+            className="flex items-center gap-3.5 bg-[color:var(--surface)] hover:bg-[color:var(--surface)]/90 border border-white/10 p-3.5 rounded-2xl transition group"
           >
             <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
               <MessageCircle size={20} />
@@ -56,9 +56,9 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
           {/* Botão Ligar 0800 */}
           <a
             href="tel:0800000360"
-            className="flex items-center gap-3.5 bg-[#0F1722] hover:bg-[#1D2939] border border-white/10 p-3.5 rounded-2xl transition group"
+            className="flex items-center gap-3.5 bg-[color:var(--surface)] hover:bg-[color:var(--surface)]/90 border border-white/10 p-3.5 rounded-2xl transition group"
           >
-            <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-brand/20 text-brand flex items-center justify-center shrink-0">
               <Phone size={20} />
             </div>
             <div className="flex-1 min-w-0">
@@ -69,7 +69,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
           </a>
 
           {/* Dúvidas Frequentes */}
-          <a href="mailto:suporte@mobipro360.com?subject=Dúvidas%20frequentes" className="flex items-center gap-3.5 bg-[#0F1722] hover:bg-[#1D2939] border border-white/10 p-3.5 rounded-2xl transition group cursor-pointer">
+          <a href="mailto:suporte@mobipro360.com?subject=Dúvidas%20frequentes" className="flex items-center gap-3.5 bg-[color:var(--surface)] hover:bg-[color:var(--surface)]/90 border border-white/10 p-3.5 rounded-2xl transition group cursor-pointer">
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
               <ShieldQuestion size={20} />
             </div>

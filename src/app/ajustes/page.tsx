@@ -48,20 +48,20 @@ export default function AjustesPage() {
   return (
     <div className="min-h-screen flex flex-col justify-between pb-24 font-sans select-none">
       {/* HEADER */}
-      <header className="sticky top-0 z-30 border-b border-gray-200 dark:border-dark-700 bg-white/90 dark:bg-dark-800/95 px-4 pb-3 pt-4 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-white/6 bg-[color:var(--surface)]/80 px-4 pb-3 pt-4 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/perfil"
-              className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-dark-700 flex items-center justify-center text-gray-700 dark:text-slate-300 hover:bg-gray-200 transition"
+              className="w-8 h-8 rounded-xl bg-white/6 flex items-center justify-center text-slate-200 hover:bg-white/10 transition"
             >
               <ArrowLeft size={16} />
             </Link>
             <div>
-              <h1 className="text-xl font-extrabold text-gray-900 dark:text-slate-50">
-                Ajustes e <span className="text-blue-500">Preferências</span>
+              <h1 className="text-xl font-extrabold text-slate-100">
+                Ajustes e <span className="text-brand">Preferências</span>
               </h1>
-              <p className="text-xs text-gray-500 dark:text-slate-400">
+              <p className="text-xs text-slate-300">
                 Personalize o comportamento do aplicativo
               </p>
             </div>
@@ -78,13 +78,13 @@ export default function AjustesPage() {
             Acesso e Dispositivo
           </SectionTitle>
           <Link href="/ajustes/permissoes">
-            <Card className="flex items-center justify-between p-4 hover:border-blue-500/40 transition border group">
+            <Card className="flex items-center justify-between p-4 hover:border-brand/40 transition border group">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-400 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-brand/15 text-brand flex items-center justify-center">
                   <Smartphone size={20} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100 group-hover:text-blue-400 transition">
+                  <h3 className="text-sm font-bold text-slate-100 group-hover:text-brand transition">
                     Permissões do App
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-slate-400">
@@ -107,13 +107,13 @@ export default function AjustesPage() {
           <SectionTitle className="mb-2 text-xs font-bold text-gray-500 dark:text-slate-400">
             Navegador GPS Padrão
           </SectionTitle>
-          <Card className="p-2 grid grid-cols-2 gap-2">
+            <Card className="p-2 grid grid-cols-2 gap-2">
             <button
               onClick={() => dispatch({ type: 'SET_NAV_APP', navApp: 'waze' })}
               className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-bold transition ${
                 navApp === 'waze'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-gray-100 dark:bg-dark-700/60 text-gray-700 dark:text-slate-300'
+                  ? 'bg-brand text-white shadow-md'
+                  : 'bg-white/4 text-slate-200'
               }`}
             >
               <Navigation size={16} /> Waze GPS
@@ -122,8 +122,8 @@ export default function AjustesPage() {
               onClick={() => dispatch({ type: 'SET_NAV_APP', navApp: 'gmaps' })}
               className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-bold transition ${
                 navApp === 'gmaps'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-gray-100 dark:bg-dark-700/60 text-gray-700 dark:text-slate-300'
+                  ? 'bg-brand text-white shadow-md'
+                  : 'bg-white/4 text-slate-200'
               }`}
             >
               <Navigation size={16} /> Google Maps
@@ -136,11 +136,11 @@ export default function AjustesPage() {
           <SectionTitle className="mb-2 text-xs font-bold text-gray-500 dark:text-slate-400">
             Filtros Automáticos de Rentabilidade
           </SectionTitle>
-          <Card className="space-y-4 p-4">
+            <Card className="space-y-4 p-4 bg-[color:var(--surface)]/60">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-bold text-gray-900 dark:text-slate-100">Auto-Recusar Baixa Rentabilidade</h4>
-                <p className="text-xs text-gray-500 dark:text-slate-400">
+                <h4 className="text-sm font-bold text-slate-100">Auto-Recusar Baixa Rentabilidade</h4>
+                <p className="text-xs text-slate-300">
                   Descarta chamadas com R$/km abaixo do limite mínimo
                 </p>
               </div>
@@ -148,7 +148,7 @@ export default function AjustesPage() {
                 type="checkbox"
                 checked={autoReject}
                 onChange={(e) => handleFilterChange(e.target.checked, rejectCash, minRating)}
-                className="w-5 h-5 accent-blue-600 rounded cursor-pointer"
+                className="w-5 h-5 accent-brand rounded cursor-pointer"
               />
             </div>
 
@@ -163,14 +163,14 @@ export default function AjustesPage() {
                 type="checkbox"
                 checked={rejectCash}
                 onChange={(e) => handleFilterChange(autoReject, e.target.checked, minRating)}
-                className="w-5 h-5 accent-blue-600 rounded cursor-pointer"
+                className="w-5 h-5 accent-brand rounded cursor-pointer"
               />
             </div>
 
-            <div className="pt-2 border-t border-gray-100 dark:border-dark-700">
+              <div className="pt-2 border-t border-white/6">
               <div className="flex items-center justify-between mb-1.5">
-                <h4 className="text-sm font-bold text-gray-900 dark:text-slate-100">Nota Mínima do Passageiro</h4>
-                <span className="text-xs font-extrabold text-blue-400">★ {minRating.toFixed(1)}</span>
+                <h4 className="text-sm font-bold text-slate-100">Nota Mínima do Passageiro</h4>
+                <span className="text-xs font-extrabold text-brand">★ {minRating.toFixed(1)}</span>
               </div>
               <input
                 type="range"
@@ -179,7 +179,7 @@ export default function AjustesPage() {
                 step="0.1"
                 value={minRating}
                 onChange={(e) => handleFilterChange(autoReject, rejectCash, parseFloat(e.target.value))}
-                className="w-full accent-blue-600 cursor-pointer"
+                className="w-full accent-brand cursor-pointer"
               />
             </div>
           </Card>
@@ -206,7 +206,7 @@ export default function AjustesPage() {
               type="checkbox"
               checked={soundAlerts}
               onChange={(e) => setSoundAlerts(e.target.checked)}
-              className="w-5 h-5 accent-blue-600 rounded cursor-pointer"
+              className="w-5 h-5 accent-brand rounded cursor-pointer"
             />
           </Card>
         </div>

@@ -77,12 +77,12 @@ export default function SegurancaPage() {
   return (
     <div className="min-h-screen flex flex-col justify-between pb-24 font-sans select-none">
       {/* HEADER */}
-      <header className="sticky top-0 z-30 border-b border-gray-200 dark:border-dark-700 bg-white/90 dark:bg-dark-800/95 px-4 pb-3 pt-4 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-white/6 bg-[color:var(--surface)]/90 dark:bg-dark-800/95 px-4 pb-3 pt-4 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-extrabold text-gray-900 dark:text-slate-50 flex items-center gap-2">
               <ShieldAlert className="text-red-500" size={22} />
-              Central de <span className="text-blue-500">Segurança</span>
+              Central de <span className="text-brand">Segurança</span>
             </h1>
             <p className="text-xs text-gray-500 dark:text-slate-400">
               Monitoramento ativo e proteção ao condutor
@@ -152,10 +152,10 @@ export default function SegurancaPage() {
           <div className="grid grid-cols-2 gap-3">
             <Card
               onClick={() => setCameraActive(!cameraActive)}
-              className="p-3.5 flex flex-col justify-between cursor-pointer hover:border-blue-500/40 transition border"
+              className="p-3.5 flex flex-col justify-between cursor-pointer hover:border-brand/40 transition border"
             >
               <div className="flex items-center justify-between mb-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-brand/20 text-brand flex items-center justify-center">
                   <Camera size={18} />
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cameraActive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
@@ -168,7 +168,7 @@ export default function SegurancaPage() {
 
             <Card
               onClick={handleShareLocation}
-              className="p-3.5 flex flex-col justify-between cursor-pointer hover:border-blue-500/40 transition border"
+              className="p-3.5 flex flex-col justify-between cursor-pointer hover:border-brand/40 transition border"
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
@@ -203,7 +203,7 @@ export default function SegurancaPage() {
 
             <a
               href="tel:192"
-              className="flex items-center justify-between p-3 rounded-2xl bg-blue-600/10 border border-blue-500/25 text-blue-400 hover:bg-blue-600/20 transition"
+              className="flex items-center justify-between p-3 rounded-2xl bg-brand/10 border border-brand/25 text-brand hover:bg-brand/20 transition"
             >
               <div className="flex items-center gap-2">
                 <PhoneCall size={16} />
@@ -222,7 +222,7 @@ export default function SegurancaPage() {
             </SectionTitle>
             <button
               onClick={() => setIsAddingContact(true)}
-              className="text-xs text-blue-500 hover:text-blue-400 font-bold flex items-center gap-1"
+              className="text-xs text-brand hover:text-brand-70 font-bold flex items-center gap-1"
             >
               <UserPlus size={14} /> Adicionar
             </button>
@@ -230,7 +230,7 @@ export default function SegurancaPage() {
 
           {/* FORMULÁRIO DE NOVO CONTATO */}
           {isAddingContact && (
-            <Card className="mb-3 p-4 border border-blue-500/30">
+            <Card className="mb-3 p-4 border border-brand/30">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-xs font-bold text-white">Novo Contato de Emergência</h4>
                 <button onClick={() => setIsAddingContact(false)} className="text-slate-400 hover:text-white">
@@ -242,20 +242,20 @@ export default function SegurancaPage() {
                   placeholder="Nome do contato (Ex: Maria)"
                   value={newContact.name}
                   onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-                  className="bg-dark-800 border border-dark-700 p-2.5 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                  className="bg-dark-800 border border-dark-700 p-2.5 rounded-xl text-xs text-white outline-none focus:border-brand-500"
                   required
                 />
                 <input
                   placeholder="Telefone (Ex: 11 99999-9999)"
                   value={newContact.phone}
                   onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
-                  className="bg-dark-800 border border-dark-700 p-2.5 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                  className="bg-dark-800 border border-dark-700 p-2.5 rounded-xl text-xs text-white outline-none focus:border-brand-500"
                   required
                 />
                 <select
                   value={newContact.relationship}
                   onChange={(e) => setNewContact({ ...newContact, relationship: e.target.value })}
-                  className="bg-dark-800 border border-dark-700 p-2.5 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                  className="bg-dark-800 border border-dark-700 p-2.5 rounded-xl text-xs text-white outline-none focus:border-brand-500"
                 >
                   <option value="Família">Família / Cônjuge</option>
                   <option value="Amigo">Amigo</option>
@@ -274,7 +274,7 @@ export default function SegurancaPage() {
             {state.contacts.map((contact) => (
               <Card key={contact.id} className="flex items-center justify-between p-3 border">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-brand/15 text-brand flex items-center justify-center shrink-0">
                     <Phone size={18} />
                   </div>
                   <div>

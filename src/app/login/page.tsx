@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase, browserUrl } from '@/lib/supabase';
 import Link from 'next/link';
 import { ArrowLeft, HelpCircle, CarTaxiFront, Info, Download } from 'lucide-react';
 import { SupportModal } from '@/components/Support/SupportModal';
@@ -17,20 +17,31 @@ export default function Login() {
     setLoading(true);
     setError('');
 
+    console.log('[Login] tente login', { email });
+    console.log('[Login] supabase url', browserUrl);
+
     if (!isSupabaseConfigured) {
       setError('O acesso ainda não está configurado. Adicione as chaves do Supabase no arquivo .env.local e reinicie o servidor.');
       setLoading(false);
       return;
     }
 
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    let authData: any = null;
+    let authError: any = null;
 
-      if (authError || !authData.user) {
-        throw new Error('E-mail ou senha incorretos.');
+    try {
+      try {
+        const res = await supabase.auth.signInWithPassword({ email, password });
+        authData = res.data;
+        authError = res.error;
+        console.log('[Login] signInWithPassword result', { authData, authError });
+      } catch (e) {
+        console.error('[Login] signInWithPassword threw', e);
+        throw e;
+      }
+
+      if (authError || !authData?.user) {
+        throw new Error(authError?.message || 'E-mail ou senha incorretos.');
       }
 
       const { data: motorista, error: dbError } = await supabase
@@ -38,6 +49,7 @@ export default function Login() {
         .select('status')
         .eq('id', authData.user.id)
         .maybeSingle();
+      console.log('[Login] motorista query result', { motorista, dbError });
 
       if (dbError) {
         throw new Error('Não foi possível carregar seu cadastro. Confirme se a tabela motoristas e suas políticas RLS foram criadas no Supabase.');
@@ -77,13 +89,13 @@ export default function Login() {
 
       {/* Topo: Logo e Ajuda */}
       <header className="relative z-10 flex justify-between items-center p-6 pt-10">
-        <Link href="/welcome" className="flex items-center gap-2 text-blue-400 hover:opacity-80 transition">
+        <Link href="/welcome" className="flex items-center gap-2 text-brand hover:opacity-80 transition">
           <ArrowLeft size={22} className="text-white" />
           <CarTaxiFront size={28} strokeWidth={1.5} />
-          <span className="font-extrabold text-white text-lg tracking-wide">SR <span className="text-blue-500">Logística</span></span>
+          <span className="font-extrabold text-white text-lg tracking-wide">SR <span className="text-brand">Logística</span></span>
         </Link>
 
-        <button onClick={() => setSupportOpen(true)} className="flex items-center gap-1.5 text-white font-medium text-sm hover:text-blue-300 transition-colors">
+        <button onClick={() => setSupportOpen(true)} className="flex items-center gap-1.5 text-white font-medium text-sm hover:text-brand-300 transition-colors">
           Ajuda <HelpCircle size={18} className="text-slate-300" />
         </button>
       </header>
@@ -110,7 +122,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
-                className="bg-[#1F2C34]/80 border border-white/10 p-3.5 rounded-xl text-white outline-none focus:ring-2 focus:ring-blue-500 text-sm transition"
+                className="bg-white/4 border border-white/6 p-3.5 rounded-lg text-white outline-none focus:ring-2 focus:ring-brand/40 text-sm transition"
                 required
               />
             </div>
@@ -118,7 +130,7 @@ export default function Login() {
             <div className="flex flex-col gap-1.5">
               <div className="flex justify-between items-center">
                 <label className="text-xs font-semibold text-slate-300">Senha</label>
-                <Link href="/recuperar-senha" className="text-xs text-blue-400 hover:text-blue-300 transition">
+                <Link href="/recuperar-senha" className="text-xs text-brand hover:text-brand-300 transition">
                   Esqueceu a senha?
                 </Link>
               </div>
@@ -127,7 +139,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••"
-                className="bg-[#1F2C34]/80 border border-white/10 p-3.5 rounded-xl text-white outline-none focus:ring-2 focus:ring-blue-500 text-sm transition"
+                className="bg-white/4 border border-white/6 p-3.5 rounded-lg text-white outline-none focus:ring-2 focus:ring-brand/40 text-sm transition"
                 required
               />
             </div>
@@ -135,7 +147,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white mt-2 py-3.5 rounded-xl font-bold text-base hover:bg-blue-700 transition disabled:opacity-50 shadow-lg shadow-blue-600/30"
+              className="w-full bg-brand text-white mt-2 py-3.5 rounded-2xl font-bold text-base hover:bg-brand-600 transition disabled:opacity-50 shadow-lg shadow-brand/30"
             >
               {loading ? 'Verificando...' : 'Entrar'}
             </button>
@@ -144,7 +156,7 @@ export default function Login() {
           <div className="mt-6 text-center space-y-5">
             <p className="text-slate-400 text-xs">
               Ainda não tem conta?{' '}
-              <Link href="/cadastro" className="text-blue-400 font-bold hover:text-blue-300 transition">
+              <Link href="/cadastro" className="text-brand font-bold hover:text-brand-300 transition">
                 Criar uma conta
               </Link>
             </p>

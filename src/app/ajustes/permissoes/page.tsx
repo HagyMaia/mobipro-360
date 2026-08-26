@@ -18,9 +18,9 @@ export default function PermissoesApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070D18] text-white flex flex-col justify-between font-sans select-none pb-8">
+    <div className="min-h-screen bg-[color:var(--bg)] text-white flex flex-col justify-between font-sans select-none pb-8">
       {/* HEADER */}
-      <header className="p-4 pt-6 flex items-center justify-between border-b border-white/10 bg-[#0D1826]/80 backdrop-blur-md sticky top-0 z-20">
+      <header className="p-4 pt-6 flex items-center justify-between border-b border-white/10 bg-[color:var(--surface)]/80 backdrop-blur-md sticky top-0 z-20">
         <div className="flex items-center gap-3">
           <Link 
             href="/ajustes" 
@@ -39,8 +39,8 @@ export default function PermissoesApp() {
       </header>
 
       <main className="p-4 flex-1 flex flex-col gap-3.5 max-w-md w-full mx-auto">
-        <div className="bg-blue-600/10 border border-blue-500/30 p-3.5 rounded-2xl text-xs text-blue-300 flex items-start gap-2.5">
-          <AlertCircle size={16} className="text-blue-400 shrink-0 mt-0.5" />
+        <div className="bg-brand/10 border border-brand/20 p-3.5 rounded-2xl text-xs text-brand/70 flex items-start gap-2.5">
+          <AlertCircle size={16} className="text-brand shrink-0 mt-0.5" />
           <span>Para receber chamadas em segundo plano e com a tela bloqueada, mantenha todas as permissões ativas.</span>
         </div>
 
@@ -66,8 +66,8 @@ export default function PermissoesApp() {
 
         <PermissaoCard
           icon={Compass}
-          iconColor="text-blue-400"
-          iconBg="bg-blue-500/15"
+          iconColor="text-brand"
+          iconBg="bg-brand/15"
           title="Localização em Segundo Plano"
           desc="Permite encontrar passageiros próximos mesmo quando você estiver usando o Waze."
           active={permissions.gpsBackground}
@@ -106,7 +106,7 @@ function PermissaoCard({
   onToggle: () => void; 
 }) {
   return (
-    <div className="bg-[#0D1826]/90 border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
+    <div className="bg-[color:var(--surface)]/90 border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
       <div className="flex items-start gap-3">
         <div className={`w-10 h-10 rounded-xl ${iconBg} ${iconColor} flex items-center justify-center shrink-0`}>
           <Icon size={20} />

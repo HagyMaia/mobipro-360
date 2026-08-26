@@ -7,26 +7,25 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: '#2563EB',
-          50: '#EFF6FF',
-          100: '#DBEAFE',
-          200: '#BFDBFE',
-          300: '#93C5FD',
-          400: '#60A5FA',
-          500: '#2563EB',
-          600: '#1D4ED8',
-          700: '#1E40AF',
-          800: '#1E3A8A',
-          900: '#1E3A8A'
+          50: '#FFF9E6',
+          100: '#FFF4CC',
+          200: '#FFE699',
+          300: '#FFD966',
+          400: '#FFCF33',
+          DEFAULT: '#FFD400',
+          600: '#E6C000',
+          700: '#B38F00',
+          800: '#806700',
+          900: '#4D4400'
         },
         dark: {
-          DEFAULT: '#0B1220',
-          800: '#111A2E',
-          700: '#1A2740'
+          DEFAULT: '#071021',
+          700: '#0B1624',
+          800: '#071224'
         },
-        success: '#10B981',
-        warn: '#F59E0B',
-        danger: '#EF4444'
+        success: '#00D084',
+        warn: '#FFC107',
+        danger: '#FF5252'
       },
       fontFamily: {
         sans: ['var(--font-inter)', 'system-ui', 'sans-serif']

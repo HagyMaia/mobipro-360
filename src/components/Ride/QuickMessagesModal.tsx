@@ -23,9 +23,9 @@ export const QuickMessagesModal: React.FC<QuickMessagesModalProps> = ({ isOpen, 
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-lg w-full max-w-sm overflow-hidden shadow-xl">
-                <div className="p-4 border-b">
-                    <h3 className="text-lg font-medium text-gray-800">Mensagem para Base</h3>
+            <div className="bg-[color:var(--surface)] rounded-lg w-full max-w-sm overflow-hidden shadow-xl border border-white/6">
+                <div className="p-4 border-b border-white/6">
+                    <h3 className="text-lg font-medium text-slate-100">Mensagem para Base</h3>
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                     <ul className="flex flex-col">
@@ -33,7 +33,7 @@ export const QuickMessagesModal: React.FC<QuickMessagesModalProps> = ({ isOpen, 
                             <li key={index}>
                                 <button
                                     onClick={() => onSendMessage(msg)}
-                                    className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-50"
+                                    className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-white/4 border-b border-white/6"
                                 >
                                     {msg}
                                 </button>
@@ -42,7 +42,7 @@ export const QuickMessagesModal: React.FC<QuickMessagesModalProps> = ({ isOpen, 
                     </ul>
                 </div>
                 <div className="p-4 flex justify-end">
-                    <button onClick={onClose} className="text-blue-500 font-semibold text-sm">
+                    <button onClick={onClose} className="text-brand font-semibold text-sm">
                         CANCELAR
                     </button>
                 </div>

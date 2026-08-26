@@ -28,7 +28,7 @@ import {
 } from './mock-data';
 import { isToday, uid } from './utils';
 
-const STORAGE_KEY = 'mobipro360_state_v1';
+const STORAGE_KEY = 'srlogistica_state_v1';
 
 export interface AppState {
   status: DriverStatus;
