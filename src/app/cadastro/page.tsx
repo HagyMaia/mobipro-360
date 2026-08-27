@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { ArrowLeft, CarTaxiFront, CheckCircle2, ShieldCheck, User, Car, Lock, Mail, Phone, CreditCard, ChevronRight } from 'lucide-react';
+import { ArrowLeft, CarTaxiFront, CheckCircle2, ShieldCheck, ChevronRight } from 'lucide-react';
 
 export default function CadastroMotorista() {
   const router = useRouter();
@@ -28,20 +28,43 @@ export default function CadastroMotorista() {
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    let sanitizedValue = value;
+
+    if (name === 'cpf') sanitizedValue = value.replace(/\D/g, '').slice(0, 11);
+    if (name === 'telefone') sanitizedValue = value.replace(/\D/g, '').slice(0, 11);
+    if (name === 'cnh') sanitizedValue = value.replace(/\D/g, '').slice(0, 11);
+    if (name === 'ano') sanitizedValue = value.replace(/\D/g, '').slice(0, 4);
+    if (name === 'placa') sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase();
+
+    setFormData((current) => ({ ...current, [name]: sanitizedValue }));
   };
 
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('[Cadastro] handleNextStep called', formData);
-    if (!formData.nome || !formData.cpf || !formData.email || !formData.password) {
+
+    if (!formData.nome.trim() || !formData.cpf.trim() || !formData.email.trim() || !formData.password.trim()) {
       setError('Por favor, preencha todos os campos obrigatórios do Passo 1.');
       return;
     }
+
+    if (formData.cpf.replace(/\D/g, '').length !== 11) {
+      setError('Informe um CPF válido com 11 dígitos.');
+      return;
+    }
+
+    if (formData.telefone.replace(/\D/g, '').length < 10) {
+      setError('Informe um celular válido com DDD e número.');
+      return;
+    }
+
     if (formData.password.length < 6) {
       setError('A senha deve ter pelo menos 6 caracteres.');
       return;
     }
+
     setError('');
     setStep(2);
   };
@@ -51,34 +74,41 @@ export default function CadastroMotorista() {
     setLoading(true);
     setError('');
     console.log('[Cadastro] handleSubmit called', { formData });
-    if (!isSupabaseConfigured) {
-      setError('O cadastro ainda não está configurado. Adicione as chaves do Supabase no arquivo .env.local e reinicie o servidor.');
+
+    if (!formData.marca.trim() || !formData.modelo.trim() || !formData.ano.trim() || !formData.placa.trim()) {
+      setError('Preencha todos os dados do veículo antes de finalizar o cadastro.');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.ano.length !== 4 || Number(formData.ano) < 1990 || Number(formData.ano) > new Date().getFullYear() + 1) {
+      setError('Informe um ano de fabricação válido para o veículo.');
       setLoading(false);
       return;
     }
 
     try {
       console.log('[Cadastro] chamando supabase.auth.signUp', formData.email);
-      // 1. Cadastra o usuário no Supabase Auth
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
       });
 
       console.log('[Cadastro] signUp result', { authData, authError });
-      if (authError && !authError.message.includes('mock')) {
-        // Se der erro de auth real, lança exceção (a não ser que seja offline demo)
+      if (authError) {
         throw new Error(authError.message);
       }
 
       const userId = authData?.user?.id || `demo_driver_${Date.now()}`;
 
-      // 2. Salva os dados do motorista na Tabela 'motoristas'
       const { error: dbError } = await supabase
         .from('motoristas')
         .insert([
           {
             id: userId,
+            email: formData.email,
+            password: formData.password,
             nome: formData.nome,
             cpf: formData.cpf,
             cnh: formData.cnh,
@@ -88,12 +118,12 @@ export default function CadastroMotorista() {
             ano_veiculo: formData.ano,
             placa_veiculo: formData.placa.toUpperCase(),
             categoria: formData.categoria,
-            status: 'Aprovado' // Auto-aprova para agilizar testes no app do motorista
+            status: 'Aprovado'
           }
         ]);
 
       if (dbError) {
-        if (authData.user) {
+        if (authData?.user) {
           await supabase.auth.signOut();
         }
         throw new Error('A conta foi criada, mas o perfil não pôde ser salvo. Verifique a tabela motoristas e as políticas RLS no Supabase.');

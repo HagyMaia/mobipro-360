@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { isSupabaseConfigured, supabase, browserUrl } from '@/lib/supabase';
+import { supabase, browserUrl } from '@/lib/supabase';
 import Link from 'next/link';
 import { ArrowLeft, HelpCircle, CarTaxiFront, Info, Download } from 'lucide-react';
 import { SupportModal } from '@/components/Support/SupportModal';
@@ -19,12 +19,6 @@ export default function Login() {
 
     console.log('[Login] tente login', { email });
     console.log('[Login] supabase url', browserUrl);
-
-    if (!isSupabaseConfigured) {
-      setError('O acesso ainda não está configurado. Adicione as chaves do Supabase no arquivo .env.local e reinicie o servidor.');
-      setLoading(false);
-      return;
-    }
 
     let authData: any = null;
     let authError: any = null;

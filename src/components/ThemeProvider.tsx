@@ -1,12 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { ThemeProvider as NextThemesProvider, type ThemeProviderProps } from 'next-themes';
-import { colors, radii, spacing, shadows, font } from '@/lib/design-tokens';
+import { colors, radii, shadows, font } from '@/lib/design-tokens';
 
-export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const root = document.documentElement;
+    const savedTheme = localStorage.getItem('sr-theme') || 'dark';
+
+    root.classList.toggle('dark', savedTheme === 'dark');
+    root.classList.toggle('light', savedTheme === 'light');
     root.style.setProperty('--bg', colors.background);
     root.style.setProperty('--surface', colors.surface);
     root.style.setProperty('--brand', colors.brand);
@@ -20,5 +23,5 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
     root.style.setProperty('--font-body', font.body);
   }, []);
 
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+  return <>{children}</>;
 }

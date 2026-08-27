@@ -29,9 +29,11 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Rotas que qualquer pessoa deslogada pode acessar sem ser barrada
-  const isPublicPage = pathname === '/welcome' || 
-                       pathname.startsWith('/login') || 
+  // Rotas públicas acessíveis sem login
+  const isPublicPage = pathname === '/welcome' ||
+                       pathname === '/cadastro' ||
+                       pathname === '/sr-logistica.apk' ||
+                       pathname.startsWith('/login') ||
                        pathname.startsWith('/recuperar-senha')
 
   // Se NÃO estiver logado e tentar acessar uma rota privada (ex: dashboard), vai para a tela inicial (/welcome)
@@ -41,8 +43,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Se JÁ estiver logado e tentar abrir /welcome ou /login, envia direto para o Dashboard (/)
-  if (user && (pathname === '/welcome' || pathname === '/login')) {
+  // Se JÁ estiver logado e tentar abrir rotas públicas, envia direto para o Dashboard (/)
+  if (user && (pathname === '/welcome' || pathname === '/login' || pathname === '/cadastro')) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)

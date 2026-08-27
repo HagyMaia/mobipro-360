@@ -4,8 +4,10 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 
+type DemoUser = Pick<User, 'id' | 'email'> & { [key: string]: unknown };
+
 interface AuthContextType {
-  user: User | null;
+  user: User | DemoUser | null;
   loading: boolean;
   isLoading: boolean;
   signOut: () => Promise<void>;
@@ -19,16 +21,16 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | DemoUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_: unknown, session: any) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
