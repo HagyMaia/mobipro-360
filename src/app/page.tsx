@@ -143,13 +143,13 @@ export default function HomePage() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-dark-700 bg-dark-800/95 px-4 pb-3 pt-safe-top pt-4 backdrop-blur-md shadow-lg">
+      <header className="sticky top-0 z-30 border-b border-slate-200 dark:border-dark-700 bg-white/95 dark:bg-dark-800/95 px-4 pb-3 pt-safe-top pt-4 backdrop-blur-md shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-extrabold text-slate-50">
-              Olá, <span className="text-brand-400">{driverName}</span> 👋
+            <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-50">
+              Olá, <span className="text-brand-500 dark:text-brand-400">{driverName}</span> 👋
             </h1>
-            <p className="text-[11px] capitalize text-slate-400">{dateLabel}</p>
+            <p className="text-[11px] capitalize text-slate-500 dark:text-slate-400">{dateLabel}</p>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -158,7 +158,7 @@ export default function HomePage() {
               type="button"
               aria-label="Notificações"
               onClick={() => setNotificationsOpen((open) => !open)}
-              className="relative rounded-full bg-dark-700 p-2 text-slate-300 transition hover:bg-dark-600 hover:text-white"
+              className="relative rounded-full bg-slate-100 dark:bg-dark-700 p-2 text-slate-600 dark:text-slate-300 transition hover:bg-slate-200 dark:hover:bg-dark-600 hover:text-slate-900 dark:hover:text-white"
             >
               <Bell size={16} />
               {state.status === 'available' && state.incomingRide && (
@@ -168,7 +168,7 @@ export default function HomePage() {
           </div>
         </div>
         {notificationsOpen && (
-          <div className="mt-3 rounded-xl border border-dark-600 bg-dark-900 px-3 py-2 text-xs text-slate-300">
+          <div className="mt-3 rounded-xl border border-slate-200 dark:border-dark-600 bg-white dark:bg-dark-900 px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
             {state.incomingRide ? 'Você tem uma nova solicitação de corrida.' : 'Nenhuma notificação nova.'}
           </div>
         )}
@@ -191,8 +191,8 @@ export default function HomePage() {
               </div>
             </div>
             <div>
-              <div className="font-bold text-slate-100">Procurando corridas...</div>
-              <div className="mt-1 text-xs text-slate-400">
+              <div className="font-bold text-slate-900 dark:text-slate-100">Procurando corridas...</div>
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Fique atento às novas chamadas e ao filtro de rentabilidade.
               </div>
             </div>
@@ -211,7 +211,7 @@ export default function HomePage() {
 
         {/* KPI Cards */}
         <div>
-          <SectionTitle className="mb-3 text-slate-400">Resumo do dia</SectionTitle>
+          <SectionTitle className="mb-3 text-slate-600 dark:text-slate-400">Resumo do dia</SectionTitle>
           <div className="grid grid-cols-3 gap-3">
             <Card className="flex flex-col items-center gap-1.5 p-3 text-center">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-success/15">

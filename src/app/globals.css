@@ -3,14 +3,22 @@
 @tailwind utilities;
 
 :root {
-  --bg: #FFFFFF;
-  --surface: #FFF6E0;
+  --bg: #F4F7FA;          /* Um branco ligeiramente acinzentado */
+  --surface: #FFFFFF;     /* Branco puro para os cards */
   --brand: #E0B800;
-  --muted: #575757;
-  --text: #0B1224;
-  /* control for login background gradient strength (0.0 - 1.0) */
+  --muted: #8E98A8;
+  --text: #0B1224;        /* Escuro bem forte */
   --login-gradient-opacity: 0.75;
   color-scheme: light;
+}
+
+.dark {
+  --bg: #070B14;          /* Fundo escuro profundo */
+  --surface: #101625;     /* Fundo de card um pouco mais claro */
+  --brand: #FFD500;
+  --muted: #64748B;
+  --text: #F1F5F9;        /* Quase branco */
+  color-scheme: dark;
 }
 
 html,
@@ -20,8 +28,9 @@ body {
 
 body {
   overscroll-behavior-y: none;
-  background: linear-gradient(180deg, var(--bg) 0%, var(--surface) 60%);
+  background-color: var(--bg);
   color: var(--text);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Leaflet no tema escuro */

@@ -20,7 +20,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
                 if (!profile) {
                     // Se não tem perfil, joga para o login
-                    router.replace('/login');
+                    window.location.href = '/login';
                     return;
                 }
 
@@ -29,10 +29,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                 // Se o status não for APPROVED, ele é travado e enviado para a tela de status
                 // (Evita loop infinito se ele já estiver na tela de status)
                 if (profile.status !== 'APPROVED' && pathname !== '/status') {
-                    router.replace('/status');
+                    window.location.href = '/status';
                 } else if (profile.status === 'APPROVED' && pathname === '/status') {
                     // Se foi aprovado e tentou acessar a tela de status, joga pro mapa
-                    router.replace('/mapa');
+                    window.location.href = '/mapa';
                 }
             } catch (error) {
                 console.error('Erro ao verificar acesso:', error);
@@ -55,7 +55,12 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
     // Se o usuário não for aprovado e esta não é a página de status, não renderiza nada (aguarda redirect)
     if (status !== 'APPROVED' && pathname !== '/status') {
-        return null;
+        return (
+            <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center">
+                <div className="w-12 h-12 border-4 border-zinc-700 border-t-brand-primary rounded-full animate-spin"></div>
+                <p className="text-zinc-400 mt-4 font-medium text-sm">Redirecionando...</p>
+            </div>
+        );
     }
 
     return <>{children}</>;

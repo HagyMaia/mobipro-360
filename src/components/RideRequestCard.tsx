@@ -13,9 +13,9 @@ export function RentabilityPanel({ fare, distanceKm, minutes }: { fare: number; 
   const meta = profitabilityMeta(verdict);
 
   return (
-    <div className="rounded-xl bg-dark-700/60 p-3">
+    <div className="rounded-xl bg-slate-100 dark:bg-dark-700/60 p-3 shadow-sm dark:shadow-none">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
           Rentabilidade
         </span>
         <span
@@ -26,15 +26,15 @@ export function RentabilityPanel({ fare, distanceKm, minutes }: { fare: number; 
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg bg-dark-800 px-3 py-2">
+        <div className="rounded-lg bg-white dark:bg-dark-800 px-3 py-2 shadow-sm dark:shadow-none">
           <div className="text-[10px] uppercase text-slate-500">R$ por km</div>
-          <div className="text-lg font-bold tabular-nums text-slate-100">
+          <div className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">
             {formatBRL(perKm)}
           </div>
         </div>
-        <div className="rounded-lg bg-dark-800 px-3 py-2">
+        <div className="rounded-lg bg-white dark:bg-dark-800 px-3 py-2 shadow-sm dark:shadow-none">
           <div className="text-[10px] uppercase text-slate-500">R$ por hora</div>
-          <div className="text-lg font-bold tabular-nums text-slate-100">
+          <div className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">
             {formatBRL(perHour)}
           </div>
         </div>
@@ -51,13 +51,13 @@ export default function RideRequestCard({ ride }: { ride: RideRequest }) {
     (ride.paymentMethod === 'cash' && false);
 
   return (
-    <Card className="animate-[pulse-in_.3s_ease-out] border-brand-500/40">
+    <Card className="animate-[pulse-in_.3s_ease-out] border-brand/40 bg-white dark:bg-[#101625] shadow-lg">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="inline-flex h-2.5 w-2.5 animate-pulse rounded-full bg-brand-400" />
-          <span className="text-sm font-bold text-brand-600">Nova corrida</span>
+          <span className="inline-flex h-2.5 w-2.5 animate-pulse rounded-full bg-brand" />
+          <span className="text-sm font-bold text-slate-900 dark:text-white">Nova corrida</span>
         </div>
-        <Badge className="bg-dark-700 text-slate-300">
+        <Badge className="bg-slate-100 dark:bg-dark-700 text-slate-600 dark:text-slate-300">
           <Clock size={11} />
           {ride.estimatedMinutes} min
         </Badge>
@@ -65,29 +65,29 @@ export default function RideRequestCard({ ride }: { ride: RideRequest }) {
 
       <div className="mb-3 flex items-end justify-between">
         <div>
-          <div className="text-3xl font-extrabold tabular-nums text-slate-50">
+          <div className="text-3xl font-extrabold tabular-nums text-slate-900 dark:text-slate-50">
             {formatBRL(ride.fare)}
           </div>
-          <div className="mt-0.5 text-xs capitalize text-slate-400">
-            Pagamento via <span className="font-semibold text-slate-200">{ride.paymentMethod}</span>
+          <div className="mt-0.5 text-xs capitalize text-slate-500 dark:text-slate-400">
+            Pagamento via <span className="font-semibold text-slate-700 dark:text-slate-200">{ride.paymentMethod}</span>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <Badge className="bg-dark-700">
+          <Badge className="bg-slate-100 dark:bg-dark-700 text-slate-600 dark:text-slate-300">
             <Route size={11} />
             {ride.distanceKm.toLocaleString('pt-BR')} km
           </Badge>
         </div>
       </div>
 
-      <div className="mb-3 space-y-2 rounded-xl bg-dark-700/40 p-3">
+      <div className="mb-3 space-y-2 rounded-xl bg-slate-50 dark:bg-dark-700/40 p-3 border border-slate-100 dark:border-transparent">
         <div className="flex items-start gap-2">
-          <MapPin size={16} className="mt-0.5 shrink-0 text-success" />
-          <span className="text-sm text-slate-200">{ride.pickup}</span>
+          <MapPin size={16} className="mt-0.5 shrink-0 text-emerald-500" />
+          <span className="text-sm text-slate-700 dark:text-slate-200">{ride.pickup}</span>
         </div>
         <div className="flex items-start gap-2">
-          <MapPin size={16} className="mt-0.5 shrink-0 text-danger" />
-          <span className="text-sm text-slate-200">{ride.dropoff}</span>
+          <MapPin size={16} className="mt-0.5 shrink-0 text-rose-500" />
+          <span className="text-sm text-slate-700 dark:text-slate-200">{ride.dropoff}</span>
         </div>
       </div>
 
