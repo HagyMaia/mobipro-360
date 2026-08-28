@@ -1,42 +1,34 @@
-import type { Config } from 'tailwindcss';
+import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: ['./src/**/*.{ts,tsx}'],
-  darkMode: 'class',
+  content: [
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
   theme: {
     extend: {
       colors: {
         brand: {
-          50: '#FFF8E6',
-          100: '#FFF2CC',
-          200: '#FEE199',
-          300: '#FDD066',
-          400: '#F6C433',
-          DEFAULT: '#E0B800',
-          600: '#C9A400',
-          700: '#9C7E00',
-          800: '#715C00',
-          900: '#453800'
+          primary: '#FFC800',     // Amarelo Vivo 99
+          hover: '#E5B400',
+          dark: '#1A1A1A',        // Grafite Fundo
+          surface: '#242424',     // Superfície de Cards
+          border: '#333333',
         },
-        dark: {
-          DEFAULT: '#071021',
-          700: '#0B1624',
-          800: '#071224'
-        },
-        success: '#00D084',
-        warn: '#FFC107',
-        danger: '#FF5252'
-      },
-      fontFamily: {
-        sans: ['var(--font-inter)', 'system-ui', 'sans-serif']
+        status: {
+          online: '#10B981',      // Verde Ativo
+          offline: '#6B7280',     // Cinza Inativo
+          busy: '#EF4444',        // Vermelho Ocupado
+          warning: '#F59E0B',     // Laranja Alerta/Pendente
+        }
       },
       boxShadow: {
-        card: '0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.08)',
-        overlay: '0 8px 30px rgba(0,0,0,.35)'
+        'sheet': '0 -4px 20px rgba(0, 0, 0, 0.25)',
+        'floating': '0 4px 12px rgba(0, 0, 0, 0.3)',
       }
-    }
+    },
   },
-  plugins: []
+  plugins: [],
 };
-
 export default config;

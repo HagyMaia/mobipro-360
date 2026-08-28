@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js'
 import { createBrowserClient } from '@supabase/ssr'
 
 type DemoUser = {
@@ -6,6 +5,7 @@ type DemoUser = {
   email: string;
   app_metadata?: Record<string, unknown>;
   user_metadata?: Record<string, unknown>;
+
 };
 
 type DemoSession = {
@@ -296,3 +296,4 @@ function createMockSupabase() {
 const browserClient = isSupabaseConfigured ? createBrowserClient(browserUrl, browserKey) : createMockSupabase()
 
 export const supabase = browserClient as any
+export const createClient = () => supabase;

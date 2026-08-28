@@ -1,392 +1,414 @@
-"use client";
+// src/app/cadastro/page.tsx
+
+'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import Link from 'next/link';
-import { ArrowLeft, CarTaxiFront, CheckCircle2, ShieldCheck, ChevronRight } from 'lucide-react';
+import { createClient } from '@/lib/supabase';
+import { DriverService, DriverRegistrationData } from '@/services/driver/DriverService';
+import { DocumentType } from '@/types';
 
-export default function CadastroMotorista() {
+export default function RegisterWizard() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [step, setStep] = useState<number>(1);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
-    nome: '',
+  // Form State
+  const [formData, setFormData] = useState<DriverRegistrationData>({
+    fullName: '',
     cpf: '',
-    telefone: '',
-    cnh: '',
-    marca: '',
-    modelo: '',
-    placa: '',
-    ano: '',
-    categoria: 'Táxi Convencional',
+    phone: '',
     email: '',
-    password: ''
+    zipCode: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    vehicleMake: '',
+    vehicleModel: '',
+    vehicleYear: new Date().getFullYear(),
+    vehiclePlate: '',
+    vehicleColor: '',
+    vehicleCategory: 'POPULAR',
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+  const [password, setPassword] = useState('');
+  const [documents, setDocuments] = useState<Record<string, File | null>>({
+    CNH: null,
+    CRLV: null,
+    PROFILE_PICTURE: null,
+    PROOF_OF_RESIDENCE: null,
+  });
 
-    let sanitizedValue = value;
-
-    if (name === 'cpf') sanitizedValue = value.replace(/\D/g, '').slice(0, 11);
-    if (name === 'telefone') sanitizedValue = value.replace(/\D/g, '').slice(0, 11);
-    if (name === 'cnh') sanitizedValue = value.replace(/\D/g, '').slice(0, 11);
-    if (name === 'ano') sanitizedValue = value.replace(/\D/g, '').slice(0, 4);
-    if (name === 'placa') sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase();
-
-    setFormData((current) => ({ ...current, [name]: sanitizedValue }));
+  const handleInputChange = (field: keyof DriverRegistrationData, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleNextStep = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('[Cadastro] handleNextStep called', formData);
-
-    if (!formData.nome.trim() || !formData.cpf.trim() || !formData.email.trim() || !formData.password.trim()) {
-      setError('Por favor, preencha todos os campos obrigatórios do Passo 1.');
-      return;
-    }
-
-    if (formData.cpf.replace(/\D/g, '').length !== 11) {
-      setError('Informe um CPF válido com 11 dígitos.');
-      return;
-    }
-
-    if (formData.telefone.replace(/\D/g, '').length < 10) {
-      setError('Informe um celular válido com DDD e número.');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres.');
-      return;
-    }
-
-    setError('');
-    setStep(2);
+  const handleFileChange = (docType: DocumentType, file: File | null) => {
+    setDocuments((prev) => ({ ...prev, [docType]: file }));
   };
+
+  // Busca CEP automático via ViaCEP API
+  const handleZipCodeBlur = async () => {
+    const cleanZip = formData.zipCode.replace(/\D/g, '');
+    if (cleanZip.length === 8) {
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${cleanZip}/json/`);
+        const data = await res.json();
+        if (!data.erro) {
+          setFormData((prev) => ({
+            ...prev,
+            street: data.logradouro,
+            neighborhood: data.bairro,
+            city: data.localidade,
+            state: data.uf,
+          }));
+        }
+      } catch (e) {
+        console.error('Erro ao buscar CEP', e);
+      }
+    }
+  };
+
+  const handleNextStep = () => setStep((s) => Math.min(s + 1, 5));
+  const handlePrevStep = () => setStep((s) => Math.max(s - 1, 1));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    console.log('[Cadastro] handleSubmit called', { formData });
-
-    if (!formData.marca.trim() || !formData.modelo.trim() || !formData.ano.trim() || !formData.placa.trim()) {
-      setError('Preencha todos os dados do veículo antes de finalizar o cadastro.');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.ano.length !== 4 || Number(formData.ano) < 1990 || Number(formData.ano) > new Date().getFullYear() + 1) {
-      setError('Informe um ano de fabricação válido para o veículo.');
-      setLoading(false);
-      return;
-    }
+    setErrorMessage(null);
 
     try {
-      console.log('[Cadastro] chamando supabase.auth.signUp', formData.email);
+      const supabase = createClient();
 
+      // 1. Autenticação/Criação do usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
-        password: formData.password,
+        password: password,
       });
 
-      console.log('[Cadastro] signUp result', { authData, authError });
-      if (authError) {
-        throw new Error(authError.message);
+      if (authError || !authData.user) {
+        throw new Error(authError?.message || 'Falha ao criar conta de usuário.');
       }
 
-      const userId = authData?.user?.id || `demo_driver_${Date.now()}`;
+      // 2. Registro de Perfil, Veículo e Envio de Documentos
+      await DriverService.registerDriver(
+        authData.user.id,
+        formData,
+        documents as Record<DocumentType, File>
+      );
 
-      const { error: dbError } = await supabase
-        .from('motoristas')
-        .insert([
-          {
-            id: userId,
-            email: formData.email,
-            password: formData.password,
-            nome: formData.nome,
-            cpf: formData.cpf,
-            cnh: formData.cnh,
-            telefone: formData.telefone,
-            marca_veiculo: formData.marca,
-            modelo_veiculo: formData.modelo,
-            ano_veiculo: formData.ano,
-            placa_veiculo: formData.placa.toUpperCase(),
-            categoria: formData.categoria,
-            status: 'Aprovado'
-          }
-        ]);
-
-      if (dbError) {
-        if (authData?.user) {
-          await supabase.auth.signOut();
-        }
-        throw new Error('A conta foi criada, mas o perfil não pôde ser salvo. Verifique a tabela motoristas e as políticas RLS no Supabase.');
-      }
-
-      setIsSuccess(true);
-      setTimeout(() => {
-        router.push('/login');
-      }, 2500);
-
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Ocorreu um erro durante o cadastro.');
+      // Redireciona para a tela de Acompanhamento do Status de Aprovação
+      router.push('/status');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Ocorreu um erro ao realizar o cadastro.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-[#070D18] text-white flex flex-col justify-between font-sans select-none p-6">
-      {/* HEADER */}
-      <header className="relative z-10 flex items-center justify-between pt-4 pb-2">
-        <Link
-          href="/welcome"
-          className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition"
-        >
-          <ArrowLeft size={18} />
-        </Link>
-        <div className="flex items-center gap-2">
-          <CarTaxiFront size={22} className="text-brand" />
-          <span className="font-extrabold text-white text-base">SR <span className="text-brand">Logística</span></span>
+    <div className="min-h-screen bg-brand-dark text-white flex flex-col justify-between p-4 max-w-md mx-auto">
+      {/* Header com Progresso */}
+      <header className="py-4">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-xs text-zinc-400">Passo {step} de 5</span>
+          <span className="text-xs text-brand-primary font-semibold">MobiPro 360</span>
         </div>
-        <div className="text-xs font-bold text-slate-400 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
-          Etapa {step}/2
+        <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+          <div
+            className="bg-brand-primary h-full transition-all duration-300"
+            style={{ width: `${(step / 5) * 100}%` }}
+          />
         </div>
       </header>
 
-      {/* SUCESSO TELA CHEIA */}
-      {isSuccess ? (
-        <main className="relative z-10 flex-1 flex flex-col items-center justify-center text-center p-6 animate-in zoom-in-95 duration-300">
-          <div className="w-20 h-20 rounded-3xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mb-6 shadow-2xl">
-            <CheckCircle2 size={44} />
-          </div>
-          <h2 className="text-2xl font-black text-white mb-2">Cadastro Realizado!</h2>
-          <p className="text-slate-300 text-sm max-w-xs leading-relaxed mb-6">
-            Sua conta de motorista foi cadastrada com sucesso. Redirecionando para o login...
-          </p>
-          <div className="h-1.5 w-32 bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500 animate-pulse w-full" />
-          </div>
-        </main>
-      ) : (
-        <main className="relative z-10 flex-1 flex flex-col justify-center py-4 max-w-md w-full mx-auto">
-          {/* TÍTULO E SUBTÍTULO */}
-          <div className="mb-5">
-            <h1 className="text-2xl font-black text-white tracking-tight mb-1">
-              {step === 1 ? 'Cadastre seu perfil' : 'Dados do seu Veículo'}
-            </h1>
-            <p className="text-slate-400 text-xs">
-              {step === 1 ? 'Preencha suas informações de condutor para iniciar.' : 'Informe os detalhes do táxi ou veículo cadastrado.'}
-            </p>
-          </div>
-
-          {/* BARRA DE PROGRESSO DO STEPPER */}
-          <div className="grid grid-cols-2 gap-2 mb-6">
-            <div className={`h-1.5 rounded-full transition-all ${step >= 1 ? 'bg-brand-500' : 'bg-slate-800'}`} />
-            <div className={`h-1.5 rounded-full transition-all ${step >= 2 ? 'bg-brand-500' : 'bg-slate-800'}`} />
-          </div>
-
-          {error && (
-            <div className="bg-red-500/15 border border-red-500/40 text-red-400 p-3.5 rounded-2xl text-xs font-semibold text-center mb-4">
-              {error}
-            </div>
-          )}
-
-          <div className="bg-[#0D1826]/90 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-2xl">
-            {step === 1 ? (
-              <form onSubmit={handleNextStep} className="flex flex-col gap-3.5">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-300">Nome Completo</label>
-                  <input
-                    name="nome"
-                    value={formData.nome}
-                    placeholder="Ex: Carlos Silva"
-                    onChange={handleInputChange}
-                    className="bg-white/4 border border-white/6 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-300">CPF</label>
-                    <input
-                      name="cpf"
-                      value={formData.cpf}
-                      placeholder="000.000.000-00"
-                      onChange={handleInputChange}
-                      className="bg-white/4 border border-white/6 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-300">CNH</label>
-                    <input
-                      name="cnh"
-                      value={formData.cnh}
-                      placeholder="00000000000"
-                      onChange={handleInputChange}
-                      className="bg-white/4 border border-white/6 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-300">Celular / WhatsApp</label>
-                  <input
-                    name="telefone"
-                    value={formData.telefone}
-                    placeholder="(11) 98765-4321"
-                    onChange={handleInputChange}
-                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-300">E-mail de Acesso</label>
-                  <input
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    placeholder="seu.email@exemplo.com"
-                    onChange={handleInputChange}
-                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-300">Criar Senha</label>
-                  <input
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    placeholder="Mínimo 6 caracteres"
-                    onChange={handleInputChange}
-                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
-                    required
-                    minLength={6}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full bg-brand text-white active:bg-brand-600 p-4 rounded-2xl mt-2 font-extrabold text-base hover:bg-brand-600 transition shadow-lg shadow-brand/30 flex items-center justify-center gap-2"
-                >
-                  <span>Continuar para Veículo</span>
-                  <ChevronRight size={18} />
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-300">Categoria do Veículo</label>
-                  <select
-                    name="categoria"
-                    value={formData.categoria}
-                    onChange={handleInputChange}
-                    className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
-                  >
-                    <option value="Táxi Convencional (Branco)">Táxi Convencional (Branco)</option>
-                    <option value="Táxi Executivo / Black">Táxi Executivo / Black</option>
-                    <option value="Táxi Especial / Acessível">Táxi Especial / Acessível</option>
-                    <option value="Motorista de App">Motorista de App</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-300">Marca</label>
-                    <input
-                      name="marca"
-                      value={formData.marca}
-                      placeholder="Ex: Toyota"
-                      onChange={handleInputChange}
-                      className="bg-white/4 border border-white/6 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-300">Modelo</label>
-                    <input
-                      name="modelo"
-                      value={formData.modelo}
-                      placeholder="Ex: Corolla"
-                      onChange={handleInputChange}
-                      className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-300">Ano de Fabricação</label>
-                    <input
-                      name="ano"
-                      value={formData.ano}
-                      placeholder="Ex: 2023"
-                      onChange={handleInputChange}
-                      className="bg-[#08101C] border border-white/15 p-3 rounded-2xl text-white outline-none focus:border-brand-500 text-sm"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-300">Placa (Mercosul)</label>
-                    <input
-                      name="placa"
-                      value={formData.placa}
-                      placeholder="ABC1D23"
-                      onChange={handleInputChange}
-                      className="bg-white/4 border border-white/6 p-3 rounded-2xl text-white outline-none focus:border-brand-500 uppercase text-sm font-bold tracking-wider"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 p-3 rounded-2xl bg-brand/10 border border-brand/20 text-xs text-brand/70">
-                  <ShieldCheck size={16} className="shrink-0 text-brand" />
-                  <span>Veículo pronto para receber corridas com rentabilidade em tempo real.</span>
-                </div>
-
-                <div className="flex gap-2.5 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 p-3.5 rounded-2xl font-bold text-sm transition border border-white/10"
-                  >
-                    Voltar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-2/3 bg-brand active:bg-brand-600 hover:bg-brand-600 text-white p-3.5 rounded-2xl font-extrabold text-sm transition shadow-lg shadow-brand/30 disabled:opacity-50"
-                  >
-                    {loading ? 'Cadastrando...' : 'Finalizar Cadastro'}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </main>
+      {errorMessage && (
+        <div className="bg-red-500/10 border border-red-500 text-red-400 p-3 rounded-lg text-sm mb-4">
+          {errorMessage}
+        </div>
       )}
 
-      {/* FOOTER */}
-      <footer className="relative z-10 text-center py-2">
-          <p className="text-slate-400 text-xs">
-            Já tem conta?{' '}
-            <Link href="/login" className="text-brand font-extrabold hover:text-brand-300 transition">
-              Fazer login
-            </Link>
-          </p>
+      {/* Formulário Dinâmico */}
+      <main className="flex-1 overflow-y-auto py-2">
+        {step === 1 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-bold">1. Dados Pessoais</h2>
+            <div>
+              <label className="text-xs text-zinc-400">Nome Completo</label>
+              <input
+                type="text"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                value={formData.fullName}
+                onChange={(e) => handleInputChange('fullName', e.target.value)}
+                placeholder="Ex: João Silva"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400">CPF</label>
+              <input
+                type="text"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                value={formData.cpf}
+                onChange={(e) => handleInputChange('cpf', e.target.value)}
+                placeholder="000.000.000-00"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400">Telefone / WhatsApp</label>
+              <input
+                type="text"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400">E-mail</label>
+              <input
+                type="email"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="seuemail@exemplo.com"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400">Senha de Acesso</label>
+              <input
+                type="password"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+          </section>
+        )}
+
+        {step === 2 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-bold">2. Endereço</h2>
+            <div>
+              <label className="text-xs text-zinc-400">CEP</label>
+              <input
+                type="text"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                value={formData.zipCode}
+                onChange={(e) => handleInputChange('zipCode', e.target.value)}
+                onBlur={handleZipCodeBlur}
+                placeholder="00000-000"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400">Rua / Logradouro</label>
+              <input
+                type="text"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                value={formData.street}
+                onChange={(e) => handleInputChange('street', e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-zinc-400">Número</label>
+                <input
+                  type="text"
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                  value={formData.number}
+                  onChange={(e) => handleInputChange('number', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Complemento</label>
+                <input
+                  type="text"
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                  value={formData.complement}
+                  onChange={(e) => handleInputChange('complement', e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400">Bairro</label>
+              <input
+                type="text"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                value={formData.neighborhood}
+                onChange={(e) => handleInputChange('neighborhood', e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-zinc-400">Cidade</label>
+                <input
+                  type="text"
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                  value={formData.city}
+                  onChange={(e) => handleInputChange('city', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">UF</label>
+                <input
+                  type="text"
+                  maxLength={2}
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary uppercase"
+                  value={formData.state}
+                  onChange={(e) => handleInputChange('state', e.target.value)}
+                />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {step === 3 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-bold">3. Documentos</h2>
+            <p className="text-xs text-zinc-400">Tire fotos legíveis dos seus documentos originais.</p>
+
+            {[
+              { id: 'CNH', label: 'CNH (Com EAR)' },
+              { id: 'CRLV', label: 'CRLV (Documento do Veículo)' },
+              { id: 'PROFILE_PICTURE', label: 'Foto de Perfil (Selfie)' },
+              { id: 'PROOF_OF_RESIDENCE', label: 'Comprovante de Residência' },
+            ].map((doc) => (
+              <div key={doc.id} className="bg-brand-surface p-3 border border-brand-border rounded-lg">
+                <label className="text-xs font-semibold block mb-1">{doc.label}</label>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="text-xs text-zinc-400 file:mr-2 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:bg-zinc-800 file:text-brand-primary hover:file:bg-zinc-700"
+                  onChange={(e) => handleFileChange(doc.id as DocumentType, e.target.files?.[0] || null)}
+                />
+              </div>
+            ))}
+          </section>
+        )}
+
+        {step === 4 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-bold">4. Veículo</h2>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-zinc-400">Marca</label>
+                <input
+                  type="text"
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                  value={formData.vehicleMake}
+                  onChange={(e) => handleInputChange('vehicleMake', e.target.value)}
+                  placeholder="Ex: Chevrolet"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Modelo</label>
+                <input
+                  type="text"
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                  value={formData.vehicleModel}
+                  onChange={(e) => handleInputChange('vehicleModel', e.target.value)}
+                  placeholder="Ex: Onix"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-zinc-400">Ano</label>
+                <input
+                  type="number"
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                  value={formData.vehicleYear}
+                  onChange={(e) => handleInputChange('vehicleYear', Number(e.target.value))}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Placa</label>
+                <input
+                  type="text"
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm uppercase focus:outline-none focus:border-brand-primary"
+                  value={formData.vehiclePlate}
+                  onChange={(e) => handleInputChange('vehiclePlate', e.target.value)}
+                  placeholder="ABC1D23"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400">Cor</label>
+              <input
+                type="text"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                value={formData.vehicleColor}
+                onChange={(e) => handleInputChange('vehicleColor', e.target.value)}
+                placeholder="Ex: Preto"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400">Categoria</label>
+              <select
+                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                value={formData.vehicleCategory}
+                onChange={(e) => handleInputChange('vehicleCategory', e.target.value)}
+              >
+                <option value="POPULAR">MobiPro Popular</option>
+                <option value="COMFORT">MobiPro Conforto</option>
+                <option value="EXECUTIVE">MobiPro Executivo</option>
+              </select>
+            </div>
+          </section>
+        )}
+
+        {step === 5 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-bold">5. Revisão e Envio</h2>
+            <div className="bg-brand-surface p-4 rounded-lg space-y-2 text-sm border border-brand-border">
+              <p><strong className="text-zinc-400">Nome:</strong> {formData.fullName}</p>
+              <p><strong className="text-zinc-400">CPF:</strong> {formData.cpf}</p>
+              <p><strong className="text-zinc-400">E-mail:</strong> {formData.email}</p>
+              <p><strong className="text-zinc-400">Cidade/UF:</strong> {formData.city}/{formData.state}</p>
+              <p><strong className="text-zinc-400">Veículo:</strong> {formData.vehicleMake} {formData.vehicleModel} - {formData.vehiclePlate}</p>
+              <p><strong className="text-zinc-400">Documentos anexados:</strong> {Object.values(documents).filter(Boolean).length} de 4</p>
+            </div>
+            <p className="text-xs text-zinc-500">
+              Ao clicar em Enviar, seus dados passarão por uma análise cadastral.
+            </p>
+          </section>
+        )}
+      </main>
+
+      {/* Footer / Ações de Navegação */}
+      <footer className="py-4 border-t border-brand-border flex justify-between gap-3">
+        {step > 1 && (
+          <button
+            type="button"
+            onClick={handlePrevStep}
+            disabled={loading}
+            className="w-1/3 bg-zinc-800 text-white font-semibold py-3 rounded-lg hover:bg-zinc-700 transition"
+          >
+            Voltar
+          </button>
+        )}
+        {step < 5 ? (
+          <button
+            type="button"
+            onClick={handleNextStep}
+            className="flex-1 bg-brand-primary text-black font-bold py-3 rounded-lg hover:bg-brand-hover transition"
+          >
+            Avançar
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="flex-1 bg-brand-primary text-black font-bold py-3 rounded-lg hover:bg-brand-hover transition flex justify-center items-center"
+          >
+            {loading ? 'Enviando...' : 'Finalizar Cadastro'}
+          </button>
+        )}
       </footer>
     </div>
   );
