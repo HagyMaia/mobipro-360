@@ -30,7 +30,10 @@ export default function PerfilPage() {
     rating: dbProfile.rating,
     totalRides: dbProfile.totalRides,
     status: dbProfile.status,
-  } : mockProfile;
+  } : {
+    ...mockProfile,
+    status: 'APPROVED'
+  };
 
   const [editing, setEditing] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);

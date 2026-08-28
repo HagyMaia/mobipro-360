@@ -14,7 +14,7 @@ export class FinanceService {
 
         if (error) throw new Error(`Erro ao buscar histórico: ${error.message}`);
 
-        const totalEarned = rides.reduce((acc, ride: any) => acc + Number(ride.fare_amount), 0);
+        const totalEarned = rides.reduce((acc: number, ride: any) => acc + Number(ride.fare_amount), 0);
 
         return { rides: rides || [], totalEarned };
     }
