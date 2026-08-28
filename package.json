@@ -14,6 +14,7 @@
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
     "@types/leaflet.heat": "^0.2.5",
+    "expo": "^57.0.17",
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",
     "lucide-react": "^0.454.0",

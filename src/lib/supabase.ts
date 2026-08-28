@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 type DemoUser = {
   id: string;
@@ -292,12 +293,6 @@ function createMockSupabase() {
   }
 }
 
-const browserClient = isSupabaseConfigured ? createClient(browserUrl, browserKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-}) : createMockSupabase()
+const browserClient = isSupabaseConfigured ? createBrowserClient(browserUrl, browserKey) : createMockSupabase()
 
 export const supabase = browserClient as any

@@ -30,28 +30,49 @@ export default function HomePage() {
   // Verificação de Autenticação e Carregamento do Perfil
   useEffect(() => {
     async function checkAuthAndLoadProfile() {
-      const { data: { user } } = await supabase.auth.getUser();
+      try {
+        let user = null;
+        try {
+          const res = await supabase.auth.getUser();
+          user = res.data?.user;
+        } catch (authErr) {
+          console.error('[App] Erro ao buscar usuário no Supabase:', authErr);
+        }
 
-      // Se NÃO houver usuário logado, força o envio para a tela de login
-      if (!user) {
+        // Se NÃO houver usuário logado, força o envio para a tela de login
+        if (!user) {
+          router.replace('/welcome');
+          return;
+        }
+
+        // Se houver usuário, busca as informações do perfil
+        try {
+          const { data: motorista, error: dbError } = await supabase
+            .from('motoristas')
+            .select('nome')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (dbError) {
+            console.error('[App] Erro ao buscar dados do motorista:', dbError);
+          }
+
+          if (motorista?.nome) {
+            setDriverName(motorista.nome.split(' ')[0]);
+          } else if (user.email) {
+            setDriverName(user.email.split('@')[0]);
+          }
+        } catch (dbErr) {
+          console.error('[App] Erro inesperado ao buscar motorista:', dbErr);
+        }
+
+        // Apenas definimos loading como false se não formos redirecionar
+        setLoading(false);
+
+      } catch (err) {
+        console.error('[App] Falha crítica na verificação de auth:', err);
         router.replace('/welcome');
-        return;
       }
-
-      // Se houver usuário, busca as informações do perfil
-      const { data: motorista } = await supabase
-        .from('motoristas')
-        .select('nome')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (motorista?.nome) {
-        setDriverName(motorista.nome.split(' ')[0]);
-      } else if (user.email) {
-        setDriverName(user.email.split('@')[0]);
-      }
-
-      setLoading(false);
     }
 
     checkAuthAndLoadProfile();

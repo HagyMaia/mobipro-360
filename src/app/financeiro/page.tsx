@@ -8,7 +8,7 @@ import { Wallet, TrendingUp, DollarSign } from 'lucide-react';
 export default function FinanceiroPage() {
   // Valores para demonstração do visual (podem ser conectados ao banco depois)
   const ganhosHoje = 150.00;
-  const ganhosMes = 3450.00;
+const ganhosMes = 3450.00;
   
   // Cálculo do líquido (Ex: desconta 10% de taxa da plataforma)
   const taxaPlataforma = 0.10;

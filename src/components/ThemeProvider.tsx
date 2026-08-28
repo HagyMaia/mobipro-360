@@ -20,7 +20,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty('--radius-md', radii.md);
     root.style.setProperty('--radius-lg', radii.lg);
     root.style.setProperty('--shadow-card', shadows.card);
-    root.style.setProperty('--font-body', font.body);
+    root.style.setProperty('--font-inter', font.body);
   }, []);
 
   return <>{children}</>;
