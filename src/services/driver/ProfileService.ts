@@ -17,7 +17,7 @@ export class ProfileService {
         }
 
         const { data: profile, error: profileError } = await supabase
-            .from('drivers')
+            .from('motoristas')
             .select('*')
             .eq('id', authData.user.id)
             .single();

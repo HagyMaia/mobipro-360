@@ -65,22 +65,18 @@ export class DriverService {
 
         // 1. Cadastra o perfil do motorista
         const { error: driverError } = await supabase
-            .from('drivers')
+            .from('motoristas')
             .insert({
                 id: userId,
-                full_name: data.fullName,
+                nome: data.fullName,
                 cpf: data.cpf,
-                phone: data.phone,
-                email: data.email,
-                zip_code: data.zipCode,
-                street: data.street,
-                number: data.number,
-                complement: data.complement,
-                neighborhood: data.neighborhood,
-                city: data.city,
-                state: data.state,
-                status: 'IN_ANALYSIS', // Entra como Em Análise por padrão
-                work_status: 'OFFLINE',
+                telefone: data.phone,
+                marca_veiculo: data.vehicleMake,
+                modelo_veiculo: data.vehicleModel,
+                ano_veiculo: String(data.vehicleYear),
+                placa_veiculo: data.vehiclePlate,
+                categoria: data.vehicleCategory,
+                status: 'Pendente', // Entra como Pendente por padrão
             });
 
         if (driverError) throw new Error(`Erro ao cadastrar motorista: ${driverError.message}`);
