@@ -1,4 +1,4 @@
-export type DriverStatus = 'offline' | 'available' | 'en-route' | 'on-ride' | 'break';
+export type WorkStatus = 'offline' | 'available' | 'en-route' | 'on-ride' | 'break';
 
 export type RideStatus = 'pending' | 'accepted' | 'in-progress' | 'completed' | 'cancelled';
 

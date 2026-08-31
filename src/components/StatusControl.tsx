@@ -2,10 +2,10 @@
 
 import { Coffee, Moon, Play, Wifi } from 'lucide-react';
 import { useApp } from '@/lib/store';
-import type { DriverStatus } from '@/lib/types';
+import type { WorkStatus } from '@/lib/types';
 import { cn } from '@/lib/cn';
 
-const OPTIONS: Array<{ status: DriverStatus; label: string; icon: typeof Play }> = [
+const OPTIONS: Array<{ status: WorkStatus; label: string; icon: typeof Play }> = [
   { status: 'available', label: 'Disponível', icon: Play },
   { status: 'break', label: 'Pausa', icon: Coffee },
   { status: 'offline', label: 'Offline', icon: Moon }
@@ -47,7 +47,7 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
 
 export function StatusPill() {
   const { state } = useApp();
-  const map: Record<DriverStatus, { label: string; dot: string; text: string }> = {
+  const map: Record<WorkStatus, { label: string; dot: string; text: string }> = {
     offline: { label: 'Offline', dot: 'bg-danger', text: 'text-danger' },
     available: { label: 'Disponível', dot: 'bg-success', text: 'text-success' },
     'en-route': { label: 'A caminho do passageiro', dot: 'bg-warn', text: 'text-warn' },

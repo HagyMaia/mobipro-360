@@ -12,7 +12,7 @@ import {
 } from 'react';
 import type {
   DriverProfile,
-  DriverStatus,
+  WorkStatus,
   EmergencyContact,
   Earning,
   Expense,
@@ -31,7 +31,7 @@ import { isToday, uid } from './utils';
 const STORAGE_KEY = 'srlogistica_state_v1';
 
 export interface AppState {
-  status: DriverStatus;
+  status: WorkStatus;
   incomingRide: RideRequest | null;
   activeRide: Ride | null;
   rideHistory: Ride[];
@@ -45,7 +45,7 @@ export interface AppState {
 }
 
 type Action =
-  | { type: 'SET_STATUS'; status: DriverStatus }
+  | { type: 'SET_STATUS'; status: WorkStatus }
   | { type: 'NEW_RIDE_REQUEST'; ride: RideRequest }
   | { type: 'ACCEPT_RIDE' }
   | { type: 'START_RIDE' }
@@ -256,7 +256,7 @@ export function useApp(): StoreContextValue {
 export function useSetStatus() {
   const { dispatch } = useApp();
   return useCallback(
-    (status: DriverStatus) => dispatch({ type: 'SET_STATUS', status }),
+    (status: WorkStatus) => dispatch({ type: 'SET_STATUS', status }),
     [dispatch]
   );
 }

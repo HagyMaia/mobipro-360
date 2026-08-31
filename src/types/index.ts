@@ -1,10 +1,10 @@
 // src/types/index.ts
 
-export type DriverStatus = 'PENDING' | 'IN_ANALYSIS' | 'APPROVED' | 'REJECTED' | 'BLOCKED';
+export type DriverStatus = 'Pendente' | 'Aprovado' | 'Reprovado' | 'Bloqueado';
 export type DriverWorkStatus = 'OFFLINE' | 'ONLINE' | 'BUSY';
 
 export type DocumentType = 'CNH' | 'CRLV' | 'PROFILE_PICTURE' | 'PROOF_OF_RESIDENCE';
-export type DocumentStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type DocumentStatus = 'Pendente' | 'Aprovado' | 'Reprovado';
 
 export type RideStatus =
     | 'IDLE'

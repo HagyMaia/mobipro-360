@@ -26,11 +26,11 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
                 setStatus(profile.status);
 
-                // Se o status não for APPROVED, ele é travado e enviado para a tela de status
+                // Se o status não for Aprovado, ele é travado e enviado para a tela de status
                 // (Evita loop infinito se ele já estiver na tela de status)
-                if (profile.status !== 'APPROVED' && pathname !== '/status') {
+                if (profile.status !== 'Aprovado' && pathname !== '/status') {
                     window.location.href = '/status';
-                } else if (profile.status === 'APPROVED' && pathname === '/status') {
+                } else if (profile.status === 'Aprovado' && pathname === '/status') {
                     // Se foi aprovado e tentou acessar a tela de status, joga pro mapa
                     window.location.href = '/mapa';
                 }
@@ -54,7 +54,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     }
 
     // Se o usuário não for aprovado e esta não é a página de status, não renderiza nada (aguarda redirect)
-    if (status !== 'APPROVED' && pathname !== '/status') {
+    if (status !== 'Aprovado' && pathname !== '/status') {
         return (
             <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center">
                 <div className="w-12 h-12 border-4 border-zinc-700 border-t-brand-primary rounded-full animate-spin"></div>
