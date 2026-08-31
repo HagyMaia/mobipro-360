@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <AuthProvider>
             <AppProvider>
-              <div className="mx-auto min-h-dvh max-w-md w-full flex flex-col relative bg-[color:var(--surface)] dark:bg-[#0B1220] shadow-2xl overflow-x-hidden text-inherit">
+              <div className="mx-auto min-h-dvh max-w-md w-full flex flex-col relative bg-[color:var(--surface)] dark:bg-dark-900 shadow-2xl overflow-x-hidden text-inherit">
                 {children}
               </div>
             </AppProvider>

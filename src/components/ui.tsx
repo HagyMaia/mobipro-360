@@ -8,7 +8,7 @@ export function Card({
   return (
     <div
       className={cn(
-        'rounded-lg bg-white dark:bg-dark-800 p-4 shadow-md dark:border dark:border-dark-700',
+        'rounded-xl bg-white dark:bg-dark-800 p-4 shadow-sm dark:border dark:border-dark-700/50',
         className
       )}
       {...props}
@@ -19,14 +19,14 @@ export function Card({
 type Variant = 'primary' | 'success' | 'danger' | 'ghost' | 'outline' | 'warn';
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-brand text-white hover:bg-brand-600 active:bg-brand-700 shadow-lg',
-  success: 'bg-success text-white hover:bg-success/90 active:bg-success/80 shadow',
-  danger: 'bg-danger text-white hover:bg-danger/90 active:bg-danger/80 shadow',
+  primary: 'bg-brand-primary text-dark-900 hover:bg-brand-600 active:bg-brand-700 shadow-sm',
+  success: 'bg-status-online text-white hover:bg-status-online/90 active:bg-status-online/80 shadow-sm',
+  danger: 'bg-status-busy text-white hover:bg-status-busy/90 active:bg-status-busy/80 shadow-sm',
 
   ghost: 'bg-transparent text-slate-200 hover:bg-white/5',
-  outline: 'border border-white/10 text-slate-200 hover:bg-white/3',
+  outline: 'border border-white/10 text-slate-200 hover:bg-white/10',
 
-  warn: 'bg-warn text-slate-900 hover:bg-warn/90'
+  warn: 'bg-status-warning text-slate-900 hover:bg-status-warning/90 shadow-sm'
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -124,7 +124,7 @@ export function ProgressBar({
   return (
     <div className={cn('h-2.5 w-full overflow-hidden rounded-full bg-dark-700', className)}>
       <div
-        className={cn('h-full rounded-full bg-brand-500 transition-all', barClassName)}
+        className={cn('h-full rounded-full bg-brand-primary transition-all', barClassName)}
         style={{ width: `${Math.min(100, Math.max(0, value * 100))}%` }}
       />
     </div>
@@ -168,7 +168,7 @@ export function inputClass(
   className?: string
 ) {
   return cn(
-    'w-full rounded-lg border border-white/6 bg-white/3 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 placeholder:text-slate-500',
+    'w-full rounded-lg border border-white/6 bg-white/3 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 placeholder:text-slate-500',
     className
   );
 }

@@ -81,14 +81,32 @@ export default function MapaPage() {
 
             {/* ... Restante do código (Top Bar e Bottom Sheet) mantido igual à versão anterior ... */}
 
-            <div className="absolute bottom-0 w-full bg-brand-surface rounded-t-3xl shadow-sheet z-20 border-t border-brand-border p-6 pb-8">
+            <div className="absolute bottom-0 w-full bg-white dark:bg-surface rounded-t-3xl shadow-2xl z-20 border-t border-slate-200 dark:border-white/10 p-6 pb-10 transition-all">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estado Atual</span>
+                        <span className={`text-lg font-black ${isOnline ? 'text-emerald-500' : 'text-slate-900 dark:text-white'}`}>
+                            {isOnline ? 'Disponível para Corridas' : 'Modo Offline'}
+                        </span>
+                    </div>
+                    <div className={`h-3 w-3 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                </div>
                 <button
                     onClick={handleToggleStatus}
                     disabled={isLoadingToggle}
-                    className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 ${isOnline ? 'bg-red-500 text-white' : 'bg-brand-primary text-black'
-                        }`}
+                    className={`w-full py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg ${
+                        isOnline 
+                        ? 'bg-red-500 text-white shadow-red-500/30 hover:bg-red-600' 
+                        : 'bg-brand text-white shadow-brand/30 hover:bg-brand-600'
+                    }`}
                 >
-                    {isLoadingToggle ? 'Carregando...' : (isOnline ? 'Ficar Offline' : 'Ficar Online')}
+                    {isLoadingToggle ? (
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                        <>
+                            {isOnline ? 'Encerrar Turno' : 'Iniciar Turno'}
+                        </>
+                    )}
                 </button>
             </div>
         </div>

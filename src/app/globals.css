@@ -13,9 +13,9 @@
 }
 
 .dark {
-  --bg: #070B14;          /* Fundo escuro profundo */
-  --surface: #101625;     /* Fundo de card um pouco mais claro */
-  --brand: #FFD500;
+  --bg: #0B1220;          /* Fundo escuro profundo */
+  --surface: #161E31;     /* Fundo de card um pouco mais claro */
+  --brand: #FFC800;
   --muted: #64748B;
   --text: #F1F5F9;        /* Quase branco */
   color-scheme: dark;

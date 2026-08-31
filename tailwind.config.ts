@@ -11,9 +11,9 @@ const config: Config = {
     extend: {
       colors: {
         dark: {
-          700: '#1a2235',
-          800: '#13192b',
-          900: '#0b0f19',
+          700: '#212B44',
+          800: '#161E31',
+          900: '#0B1220',
         },
         brand: {
           primary: '#FFC800',     // Amarelo Vivo 99
