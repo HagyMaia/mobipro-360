@@ -8,7 +8,7 @@ import { cn } from '@/lib/cn';
 import { useAuth } from '@/lib/auth';
 
 const BASE_ITEMS = [
-  { href: '/', label: 'Corridas', icon: Car },
+  { href: '/mapa', label: 'Corridas', icon: Car },
   { href: '/radar', label: 'Radar', icon: Flame },
   { href: '/agendadas', label: 'Agendadas', icon: CalendarClock }, // NOVA ABA ADICIONADA AQUI
   { href: '/financeiro', label: 'Financeiro', icon: Wallet },

@@ -111,7 +111,7 @@ export default function RegisterWizard() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-dark text-white flex flex-col justify-between p-4 max-w-md mx-auto">
+    <div className="min-h-screen bg-[#070D18] text-white flex flex-col justify-between p-4 max-w-md mx-auto">
       {/* Header com Progresso */}
       <header className="py-4">
         <div className="flex justify-between items-center mb-2">
@@ -120,7 +120,7 @@ export default function RegisterWizard() {
         </div>
         <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
           <div
-            className="bg-brand-primary h-full transition-all duration-300"
+            className="bg-brand h-full transition-all duration-300"
             style={{ width: `${(step / 5) * 100}%` }}
           />
         </div>
@@ -141,7 +141,7 @@ export default function RegisterWizard() {
               <label className="text-xs text-zinc-400">Nome Completo</label>
               <input
                 type="text"
-                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 value={formData.fullName}
                 onChange={(e) => handleInputChange('fullName', e.target.value)}
                 placeholder="Ex: João Silva"
@@ -151,7 +151,7 @@ export default function RegisterWizard() {
               <label className="text-xs text-zinc-400">CPF</label>
               <input
                 type="text"
-                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 value={formData.cpf}
                 onChange={(e) => handleInputChange('cpf', e.target.value)}
                 placeholder="000.000.000-00"
@@ -161,7 +161,7 @@ export default function RegisterWizard() {
               <label className="text-xs text-zinc-400">Telefone / WhatsApp</label>
               <input
                 type="text"
-                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
                 placeholder="(00) 00000-0000"
@@ -171,7 +171,7 @@ export default function RegisterWizard() {
               <label className="text-xs text-zinc-400">E-mail</label>
               <input
                 type="email"
-                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 placeholder="seuemail@exemplo.com"
@@ -181,7 +181,7 @@ export default function RegisterWizard() {
               <label className="text-xs text-zinc-400">Senha de Acesso</label>
               <input
                 type="password"
-                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -197,7 +197,7 @@ export default function RegisterWizard() {
               <label className="text-xs text-zinc-400">CEP</label>
               <input
                 type="text"
-                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 value={formData.zipCode}
                 onChange={(e) => handleInputChange('zipCode', e.target.value)}
                 onBlur={handleZipCodeBlur}
@@ -208,7 +208,7 @@ export default function RegisterWizard() {
               <label className="text-xs text-zinc-400">Rua / Logradouro</label>
               <input
                 type="text"
-                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 value={formData.street}
                 onChange={(e) => handleInputChange('street', e.target.value)}
               />
@@ -218,7 +218,7 @@ export default function RegisterWizard() {
                 <label className="text-xs text-zinc-400">Número</label>
                 <input
                   type="text"
-                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                   value={formData.number}
                   onChange={(e) => handleInputChange('number', e.target.value)}
                 />
@@ -227,7 +227,7 @@ export default function RegisterWizard() {
                 <label className="text-xs text-zinc-400">Complemento</label>
                 <input
                   type="text"
-                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                   value={formData.complement}
                   onChange={(e) => handleInputChange('complement', e.target.value)}
                 />
@@ -237,7 +237,7 @@ export default function RegisterWizard() {
               <label className="text-xs text-zinc-400">Bairro</label>
               <input
                 type="text"
-                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 value={formData.neighborhood}
                 onChange={(e) => handleInputChange('neighborhood', e.target.value)}
               />
@@ -247,7 +247,7 @@ export default function RegisterWizard() {
                 <label className="text-xs text-zinc-400">Cidade</label>
                 <input
                   type="text"
-                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                   value={formData.city}
                   onChange={(e) => handleInputChange('city', e.target.value)}
                 />
@@ -298,7 +298,7 @@ export default function RegisterWizard() {
                 <label className="text-xs text-zinc-400">Marca</label>
                 <input
                   type="text"
-                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                   value={formData.vehicleMake}
                   onChange={(e) => handleInputChange('vehicleMake', e.target.value)}
                   placeholder="Ex: Chevrolet"
@@ -308,7 +308,7 @@ export default function RegisterWizard() {
                 <label className="text-xs text-zinc-400">Modelo</label>
                 <input
                   type="text"
-                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                   value={formData.vehicleModel}
                   onChange={(e) => handleInputChange('vehicleModel', e.target.value)}
                   placeholder="Ex: Onix"
@@ -320,7 +320,7 @@ export default function RegisterWizard() {
                 <label className="text-xs text-zinc-400">Ano</label>
                 <input
                   type="number"
-                  className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                   value={formData.vehicleYear}
                   onChange={(e) => handleInputChange('vehicleYear', Number(e.target.value))}
                 />
@@ -340,7 +340,7 @@ export default function RegisterWizard() {
               <label className="text-xs text-zinc-400">Cor</label>
               <input
                 type="text"
-                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 value={formData.vehicleColor}
                 onChange={(e) => handleInputChange('vehicleColor', e.target.value)}
                 placeholder="Ex: Preto"
@@ -349,7 +349,7 @@ export default function RegisterWizard() {
             <div>
               <label className="text-xs text-zinc-400">Categoria</label>
               <select
-                className="w-full bg-brand-surface border border-brand-border rounded-lg p-3 text-sm focus:outline-none focus:border-brand-primary"
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 value={formData.vehicleCategory}
                 onChange={(e) => handleInputChange('vehicleCategory', e.target.value)}
               >
@@ -386,7 +386,7 @@ export default function RegisterWizard() {
             type="button"
             onClick={handlePrevStep}
             disabled={loading}
-            className="w-1/3 bg-zinc-800 text-white font-semibold py-3 rounded-lg hover:bg-zinc-700 transition"
+            className="w-1/3 bg-white/5 text-white font-semibold py-3 rounded-xl hover:bg-white/10 transition border border-white/10"
           >
             Voltar
           </button>
@@ -395,7 +395,7 @@ export default function RegisterWizard() {
           <button
             type="button"
             onClick={handleNextStep}
-            className="flex-1 bg-brand-primary text-black font-bold py-3 rounded-lg hover:bg-brand-hover transition"
+            className="flex-1 bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand-600 transition shadow-lg shadow-brand/20 active:scale-[0.98]"
           >
             Avançar
           </button>
@@ -404,7 +404,7 @@ export default function RegisterWizard() {
             type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="flex-1 bg-brand-primary text-black font-bold py-3 rounded-lg hover:bg-brand-hover transition flex justify-center items-center"
+            className="flex-1 bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand-600 transition flex justify-center items-center shadow-lg shadow-brand/20 active:scale-[0.98]"
           >
             {loading ? 'Enviando...' : 'Finalizar Cadastro'}
           </button>

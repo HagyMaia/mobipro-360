@@ -73,7 +73,7 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col justify-between bg-[#0B141A] text-white font-sans overflow-hidden">
+    <div className="relative min-h-screen flex flex-col justify-between bg-[#070D18] text-white font-sans overflow-hidden">
       {/* Fundo estilizado com destaque da marca (gradiente + overlay) */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -98,7 +98,7 @@ export default function Login() {
 
       {/* Formulário Central Translúcido */}
       <main className="relative z-10 flex-1 flex flex-col justify-center px-6 my-auto max-w-md w-full mx-auto">
-        <div className="bg-[#0B141A]/80 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-2xl">
+        <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl shadow-2xl">
           <div className="mb-6 text-center">
             <h1 className="text-2xl font-bold mb-1 text-white">Bem-vindo de volta</h1>
             <p className="text-slate-400 text-sm">Insira suas credenciais para acessar o app.</p>
@@ -118,7 +118,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
-                className="bg-white/5 border border-white/10 p-3.5 rounded-lg text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-brand/40 text-sm transition"
+                className="bg-white/5 border border-white/10 p-4 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition-all"
                 required
               />
             </div>
@@ -135,7 +135,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••"
-                className="bg-white/5 border border-white/10 p-3.5 rounded-lg text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-brand/40 text-sm transition"
+                className="bg-white/5 border border-white/10 p-4 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition-all"
                 required
               />
             </div>
@@ -143,7 +143,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-brand text-white mt-2 py-3.5 rounded-2xl font-bold text-base hover:bg-brand-600 transition disabled:opacity-50 shadow-lg shadow-brand/30"
+              className="w-full bg-brand text-white mt-2 py-4 rounded-2xl font-extrabold text-lg hover:bg-brand-600 active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl shadow-brand/30"
             >
               {loading ? 'Verificando...' : 'Entrar'}
             </button>
@@ -162,7 +162,7 @@ export default function Login() {
               <a
                 href="/sr-logistica.apk"
                 download
-                className="flex items-center gap-2 text-sm font-medium bg-[#1F2C34]/80 hover:bg-[#2A3B47] text-slate-200 py-2.5 px-5 rounded-full transition-colors border border-white/10"
+                className="flex items-center gap-2 text-sm font-bold bg-white/5 hover:bg-white/10 text-slate-200 py-3 px-6 rounded-full transition-all border border-white/10 active:scale-95"
               >
                 <Download size={18} className="text-green-400" />
                 Baixar App para Android
@@ -178,7 +178,7 @@ export default function Login() {
           Versão 3.42.00
         </div>
 
-        <div className="w-full bg-[#A832A8] p-4 flex items-center gap-3 cursor-pointer hover:bg-[#8F298F] transition-colors">
+        <div className="w-full bg-[#A832A8] p-4 flex items-center gap-3 cursor-pointer hover:bg-[#962896] active:bg-[#852385] transition-colors shadow-inner">
           <div className="bg-white rounded-full p-0.5 shrink-0">
             <Info size={14} className="text-[#A832A8]" strokeWidth={3} />
           </div>

@@ -30,7 +30,7 @@ export default function WelcomeScreen() {
       <header className="relative z-10 flex justify-between items-center px-6 pt-10 pb-4">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-2xl bg-brand/30 border border-brand-400/40 backdrop-blur-md flex items-center justify-center text-brand shadow-lg">
-            <CarTaxiFront size={24} strokeWidth={2} />
+            <CarTaxiFront size={26} strokeWidth={2.5} />
           </div>
           <div>
             <span className="font-black text-white text-xl tracking-tight leading-none block">
@@ -71,7 +71,7 @@ export default function WelcomeScreen() {
       {/* CONTEÚDO PRINCIPAL (BOTÕES CTAs) */}
       <main className="relative z-10 w-full px-6 pb-4">
         {/* Selo de Segurança */}
-        <div className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-slate-300/80 mb-4 text-center">
+        <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold text-emerald-400/80 mb-6 text-center tracking-wide">
           <ShieldCheck size={14} className="text-emerald-400" />
           <span>Plataforma oficial com corridas 100% seguras</span>
         </div>
@@ -80,10 +80,10 @@ export default function WelcomeScreen() {
           {/* Botão Primário: Cadastrar Conta */}
           <Link
             href="/cadastro"
-            className="flex items-center justify-between w-full bg-brand text-white py-4 px-6 rounded-2xl font-extrabold text-[17px] shadow-xl hover:bg-brand-600 active:scale-[0.98] transition-all duration-150"
+            className="group flex items-center justify-between w-full bg-brand text-white py-4 px-6 rounded-2xl font-extrabold text-lg shadow-[0_10px_20px_-5px_rgba(224,184,0,0.4)] hover:bg-brand-600 active:scale-[0.98] transition-all duration-200"
           >
             <span>Cadastrar Conta</span>
-            <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white group-hover:translate-x-1 transition-transform">
               <ArrowRight size={16} strokeWidth={2.5} />
             </div>
           </Link>
@@ -91,16 +91,16 @@ export default function WelcomeScreen() {
           {/* Botão Secundário: Entrar */}
           <Link
             href="/login"
-            className="flex items-center justify-between w-full border border-white/10 bg-white/3 text-white py-4 px-6 rounded-2xl font-extrabold text-[17px] hover:bg-white/6 active:scale-[0.98] transition-all duration-150 shadow"
+            className="group flex items-center justify-between w-full border border-white/20 bg-white/5 text-white py-4 px-6 rounded-2xl font-extrabold text-lg hover:bg-white/10 active:scale-[0.98] transition-all duration-200 shadow-xl backdrop-blur-sm"
           >
             <span>Entrar</span>
-            <ArrowRight size={20} className="text-white" strokeWidth={2.5} />
+            <ArrowRight size={20} className="text-white group-hover:translate-x-1 transition-transform" strokeWidth={3} />
           </Link>
 
           <a
             href="/sr-logistica.apk"
             download
-            className="flex items-center justify-center gap-2 w-full border border-emerald-400/50 bg-emerald-500/10 text-emerald-300 py-3 px-6 rounded-2xl font-bold text-sm hover:bg-emerald-500/20 active:scale-[0.98] transition-all"
+            className="flex items-center justify-center gap-2 w-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 py-3 px-6 rounded-2xl font-bold text-sm hover:bg-emerald-500/20 active:scale-[0.98] transition-all border-dashed"
           >
             <Download size={17} />
             Baixar aplicativo Android
