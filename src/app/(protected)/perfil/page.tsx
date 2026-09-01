@@ -74,8 +74,8 @@ export default function PerfilPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-dark-900 pb-24 font-sans text-slate-100 select-none">
-      <header className="sticky top-0 z-30 border-b border-dark-700 bg-dark-900/95 px-4 pb-3 pt-4 backdrop-blur-md">
+    <div className="min-h-screen flex flex-col justify-between bg-[color:var(--bg)] pb-24 font-sans text-[color:var(--text)] select-none">
+      <header className="sticky top-0 z-30 border-b border-white/6 bg-[color:var(--surface)]/95 dark:bg-dark-900/95 px-4 pb-3 pt-4 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-extrabold text-white">
@@ -85,7 +85,7 @@ export default function PerfilPage() {
           </div>
           <Link
             href="/ajustes"
-            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-dark-600 bg-dark-800 text-slate-200 transition hover:border-brand-500/40 hover:bg-dark-700"
+            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/6 bg-[color:var(--surface)] text-[color:var(--text)] transition hover:border-brand-500/40 hover:bg-[color:var(--surface)]/90"
             title="Ajustes"
           >
             <Settings size={18} />
@@ -94,12 +94,12 @@ export default function PerfilPage() {
       </header>
 
       <div className="flex-1 space-y-4 p-4">
-        <Card className="flex items-center gap-4 border border-dark-700 bg-dark-800 p-4 shadow-lg shadow-black/10">
+        <Card className="flex items-center gap-4 border border-white/6 bg-[color:var(--surface)] p-4 shadow-lg shadow-black/5">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-brand-500/30 bg-brand-500/15 text-2xl font-black text-brand-400 shadow-inner shadow-brand-500/20">
             {profile?.name ? String(profile.name).charAt(0).toUpperCase() : ''}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-lg font-extrabold text-white">{profile.name}</div>
+            <div className="truncate text-lg font-extrabold text-[color:var(--text)]">{profile.name}</div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
               <span className="flex items-center gap-1 font-bold text-amber-400">
                 <Star size={13} fill="currentColor" />
@@ -116,7 +116,7 @@ export default function PerfilPage() {
           </Badge>
         </Card>
 
-        <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-2.5">
           <Stat label="Hoje" value={formatBRL(todayEarnings)} accent="text-emerald-400" />
           <Stat label="Líquido" value={formatBRL(todayNet)} accent={todayNet >= 0 ? 'text-emerald-400' : 'text-red-400'} />
           <Stat label="Meta" value={`${Math.round((todayEarnings / state.goalTarget) * 100)}%`} accent="text-brand-400" />
@@ -124,7 +124,7 @@ export default function PerfilPage() {
 
         <div className="grid grid-cols-2 gap-2.5">
           <Link href="/ajustes" className="block">
-            <Card className="flex items-center justify-between border border-dark-700 bg-dark-800 p-3 transition hover:border-brand-500/40 hover:bg-dark-700">
+            <Card className="flex items-center justify-between border border-white/6 bg-[color:var(--surface)] p-3 transition hover:border-brand-500/40 hover:bg-[color:var(--surface)]/90">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-500/15 text-brand-400">
                   <Settings size={16} />
@@ -136,7 +136,7 @@ export default function PerfilPage() {
           </Link>
 
           <button onClick={() => setSupportOpen(true)} className="w-full text-left">
-            <Card className="flex items-center justify-between border border-dark-700 bg-dark-800 p-3 transition hover:border-brand-500/40 hover:bg-dark-700">
+            <Card className="flex items-center justify-between border border-white/6 bg-[color:var(--surface)] p-3 transition hover:border-brand-500/40 hover:bg-[color:var(--surface)]/90">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
                   <Headphones size={16} />
