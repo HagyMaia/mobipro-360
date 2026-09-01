@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useAuth } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 import { CalendarPlus, Menu, RefreshCw, Target, X, MapPin, Clock, Calendar as CalendarIcon, Tag } from "lucide-react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
@@ -41,6 +43,15 @@ export default function AgendadasPage() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
 
   const refreshAreas = () => {
     setLastUpdated(new Date());
