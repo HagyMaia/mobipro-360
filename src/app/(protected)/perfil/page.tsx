@@ -10,14 +10,13 @@ import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
 import { formatBRL } from '@/lib/utils';
 import { ProfileService } from '@/services/driver/ProfileService';
-import { DriverProfile } from '@/types';
 import { useEffect } from 'react';
 
 export default function PerfilPage() {
   const { state, dispatch, todayEarnings, todayNet } = useApp();
   const { signOut } = useAuth();
   const { profile: mockProfile } = state;
-  const [dbProfile, setDbProfile] = useState<DriverProfile | null>(null);
+  const [dbProfile, setDbProfile] = useState<any | null>(null);
 
   useEffect(() => {
     ProfileService.getCurrentProfile().then(setDbProfile);
@@ -33,7 +32,9 @@ export default function PerfilPage() {
         vehicle: dbProfile.vehicle ?? mockProfile.vehicle ?? { model: '—', plate: '—', color: '—', year: '—' },
         license: dbProfile.license ?? mockProfile.license ?? '—',
         city: dbProfile.city ?? mockProfile.city ?? '—',
-        status: ProfileService.normalizeDriverStatus(dbProfile.status ?? mockProfile.status),
+        status: ProfileService.normalizeDriverStatus(
+          (dbProfile?.status ?? (mockProfile as any)?.status) ?? 'Aprovado'
+        ),
       }
     : {
         ...mockProfile,
@@ -43,7 +44,7 @@ export default function PerfilPage() {
         vehicle: mockProfile.vehicle ?? { model: '—', plate: '—', color: '—', year: '—' },
         license: mockProfile.license ?? '—',
         city: mockProfile.city ?? '—',
-        status: mockProfile.status ?? 'Aprovado',
+        status: (mockProfile as any).status ?? 'Aprovado',
       };
 
   const [editing, setEditing] = useState(false);
