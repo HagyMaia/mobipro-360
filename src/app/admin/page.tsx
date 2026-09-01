@@ -86,7 +86,7 @@ export default function AdminPage() {
             <DollarSign size={20} />
             <span className="text-[11px] font-bold uppercase tracking-wider">Faturamento (Hoje)</span>
           </div>
-          <div className="text-2xl font-bold text-slate-100">R$ {todayEarnings.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-slate-100">R$ {(todayEarnings ?? 0).toFixed(2)}</div>
         </Card>
 
         <Card className="flex flex-col gap-1 border border-white/6 p-4 shadow-sm">
@@ -131,7 +131,7 @@ export default function AdminPage() {
                 return (
                   <div key={ride.id} className="flex items-center justify-between p-4">
                     <div>
-                      <div className="font-semibold text-gray-900">R$ {ride.fare.toFixed(2)}</div>
+                      <div className="font-semibold text-gray-900">R$ {(ride.fare ?? 0).toFixed(2)}</div>
                       <div className="text-xs text-gray-500">{ride.passengerName}</div>
                     </div>
                     <div className="text-right">

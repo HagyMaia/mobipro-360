@@ -115,7 +115,7 @@ export function ExpenseItem({
         <div className="text-[11px] text-slate-500">{cat.label}</div>
       </div>
       <div className="text-sm font-semibold tabular-nums text-danger">
-        -{expense.amount.toFixed(2)}
+        -{(expense.amount ?? 0).toFixed(2)}
       </div>
       <button
         onClick={() => onRemove(expense.id)}

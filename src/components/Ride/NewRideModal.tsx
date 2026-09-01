@@ -11,7 +11,7 @@ interface NewRideModalProps {
 }
 
 export default function NewRideModal({ offer, onAccept, onReject }: NewRideModalProps) {
-    const [timeLeft, setTimeLeft] = useState(offer.expiresInSeconds);
+    const [timeLeft, setTimeLeft] = useState(Number(offer.expiresInSeconds ?? 30));
 
     useEffect(() => {
         if (timeLeft <= 0) {
@@ -22,7 +22,7 @@ export default function NewRideModal({ offer, onAccept, onReject }: NewRideModal
         return () => clearInterval(timer);
     }, [timeLeft, onReject]);
 
-    const progress = (timeLeft / offer.expiresInSeconds) * 100;
+    const progress = (timeLeft / (offer.expiresInSeconds ?? 30)) * 100;
 
     return (
         <div className="absolute inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
@@ -36,8 +36,8 @@ export default function NewRideModal({ offer, onAccept, onReject }: NewRideModal
 
                 <div className="text-center mb-6">
                     <p className="text-zinc-400 text-sm mb-1">Ganhos estimados</p>
-                    <h1 className="text-5xl font-black text-white mb-2">
-                        R$ {offer.fareAmount.toFixed(2).replace('.', ',')}
+                        <h1 className="text-5xl font-black text-white mb-2">
+                        R$ {(offer.fareAmount ?? 0).toFixed(2).replace('.', ',')}
                     </h1>
                     <div className="flex justify-center gap-4 text-sm text-zinc-300 font-semibold">
                         <span className="flex items-center gap-1">

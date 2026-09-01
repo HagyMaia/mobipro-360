@@ -39,9 +39,10 @@ export function RentabilityPanel({ fare, distanceKm, minutes }: { fare: number; 
 
 export default function RideRequestCard({ ride }: { ride: RideRequest }) {
   const { dispatch } = useApp();
+  const passengerRating = typeof ride.passengerRating === 'number' ? ride.passengerRating : 0;
   const flagged =
-    ride.passengerRating < 4.5 ||
-    ride.passengerAccountMonths < 3 ||
+    passengerRating < 4.5 ||
+    (ride.passengerAccountMonths ?? 0) < 3 ||
     (ride.paymentMethod === 'cash' && false);
 
   return (
@@ -98,9 +99,9 @@ export default function RideRequestCard({ ride }: { ride: RideRequest }) {
           </div>
         </div>
         <div className="text-right">
-          <div className={`flex items-center gap-1 text-sm font-bold ${ratingColor(ride.passengerRating)}`}>
+          <div className={`flex items-center gap-1 text-sm font-bold ${ratingColor(passengerRating)}`}>
             <Star size={13} fill="currentColor" />
-            {ride.passengerRating.toFixed(1)}
+            {typeof ride.passengerRating === 'number' ? passengerRating.toFixed(1) : '--'}
           </div>
           {flagged && (
             <div className="mt-0.5 flex items-center gap-1 text-[11px] text-amber-300">

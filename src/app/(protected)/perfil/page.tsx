@@ -91,7 +91,7 @@ export default function PerfilPage() {
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
               <span className="flex items-center gap-1 font-bold text-amber-400">
                 <Star size={13} fill="currentColor" />
-                <span>{profile.rating.toFixed(2)}</span>
+                <span>{(profile.rating ?? 0).toFixed(2)}</span>
               </span>
               <span>{profile.totalRides.toLocaleString('pt-BR')} corridas</span>
               <span className="flex items-center gap-1">
