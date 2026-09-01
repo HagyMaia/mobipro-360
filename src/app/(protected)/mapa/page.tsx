@@ -131,7 +131,7 @@ export default function MapaPage() {
                             <div className="min-w-0">
                                 <div className="text-sm font-bold truncate">Nova chamada</div>
                                 <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate">{currentOffer.passengerName} · {currentOffer.estimatedMinutes} min · {currentOffer.distanceKm} km</div>
-                                <div className="mt-3 text-2xl font-extrabold text-slate-900 dark:text-white tabular-nums">R$ {(currentOffer.fareAmount ?? 0).toFixed(2)}</div>
+                                <div className="mt-3 text-2xl font-extrabold text-slate-900 dark:text-white tabular-nums">R$ {Number(currentOffer.fareAmount ?? 0).toFixed(2)}</div>
                             </div>
                             <div className="flex flex-col items-end gap-2">
                                 <Button variant="outline" className="min-w-[96px]" onClick={() => clearOffer()}>Recusar</Button>

@@ -170,7 +170,7 @@ export default function AjustesPage() {
               <div className="pt-2 border-t border-white/6">
               <div className="flex items-center justify-between mb-1.5">
                 <h4 className="text-sm font-bold text-slate-100">Nota Mínima do Passageiro</h4>
-                <span className="text-xs font-extrabold text-brand-600">★ {(minRating ?? 0).toFixed(1)}</span>
+                <span className="text-xs font-extrabold text-brand-600">★ {Number(minRating ?? 0).toFixed(1)}</span>
               </div>
               <input
                 type="range"

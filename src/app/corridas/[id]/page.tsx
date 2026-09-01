@@ -125,10 +125,10 @@ export default function DetalheCorrida() {
               Em andamento
             </div>
           </div>
-          {passengerRating && (
+          {passengerRating != null && (
             <div className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-300">
               <Star size={11} />
-              {passengerRating.toFixed(1)}
+              {typeof passengerRating === 'number' ? passengerRating.toFixed(1) : '--'}
             </div>
           )}
         </div>
@@ -146,12 +146,12 @@ export default function DetalheCorrida() {
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${paymentClass}`}>
                   {paymentLabel}
                 </span>
-                {passengerRating && (
+                {typeof passengerRating === 'number' ? (
                   <span className="flex items-center gap-0.5 text-[11px] text-amber-300">
                     <Star size={10} />
                     {passengerRating.toFixed(1)}
                   </span>
-                )}
+                ) : null}
               </div>
             </div>
             <a

@@ -37,7 +37,7 @@ export default function NewRideModal({ offer, onAccept, onReject }: NewRideModal
                 <div className="text-center mb-6">
                     <p className="text-zinc-400 text-sm mb-1">Ganhos estimados</p>
                         <h1 className="text-5xl font-black text-white mb-2">
-                        R$ {(offer.fareAmount ?? 0).toFixed(2).replace('.', ',')}
+                        R$ {Number(offer.fareAmount ?? 0).toFixed(2).replace('.', ',')}
                     </h1>
                     <div className="flex justify-center gap-4 text-sm text-zinc-300 font-semibold">
                         <span className="flex items-center gap-1">

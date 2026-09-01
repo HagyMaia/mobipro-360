@@ -95,16 +95,16 @@ export default function PerfilPage() {
       <div className="flex-1 space-y-4 p-4">
         <Card className="flex items-center gap-4 border border-dark-700 bg-dark-800 p-4 shadow-lg shadow-black/10">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-brand-500/30 bg-brand-500/15 text-2xl font-black text-brand-400 shadow-inner shadow-brand-500/20">
-            {(profile.name && profile.name.charAt ? profile.name.charAt(0) : '')}
+            {profile?.name ? String(profile.name).charAt(0).toUpperCase() : ''}
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-lg font-extrabold text-white">{profile.name}</div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
               <span className="flex items-center gap-1 font-bold text-amber-400">
                 <Star size={13} fill="currentColor" />
-                <span>{(profile.rating ?? 0).toFixed(2)}</span>
+                <span>{Number(profile.rating ?? 0).toFixed(2)}</span>
               </span>
-              <span>{profile.totalRides.toLocaleString('pt-BR')} corridas</span>
+              <span>{Number(profile.totalRides ?? 0).toLocaleString('pt-BR')} corridas</span>
               <span className="flex items-center gap-1">
                 <MapPin size={12} /> {profile.city}
               </span>
@@ -201,25 +201,25 @@ export default function PerfilPage() {
                   <span className="flex items-center gap-2 text-slate-400">
                     <CarFront size={15} className="text-brand-400" /> Modelo
                   </span>
-                  <span className="font-bold text-slate-100">{profile.vehicle.model}</span>
+                  <span className="font-bold text-slate-100">{profile.vehicle?.model ?? '—'}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-slate-400">
                     <Phone size={15} className="text-brand-400" /> Placa
                   </span>
                   <span className="rounded-lg border border-dark-600 bg-dark-700 px-2 py-0.5 font-bold tabular-nums text-slate-100">
-                    {profile.vehicle.plate}
+                    {profile.vehicle?.plate ?? '—'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">Cor / Ano</span>
                   <span className="font-medium text-slate-200">
-                    {profile.vehicle.color} · {profile.vehicle.year}
+                    {profile.vehicle?.color ?? '—'} · {profile.vehicle?.year ?? '—'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">CNH Profissional</span>
-                  <span className="font-medium tabular-nums text-slate-200">{profile.license}</span>
+                  <span className="font-medium tabular-nums text-slate-200">{profile.license ?? '—'}</span>
                 </div>
               </div>
             )}
