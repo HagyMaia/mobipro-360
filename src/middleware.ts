@@ -33,6 +33,8 @@ export async function middleware(request: NextRequest) {
   const isPublicPage = pathname === '/welcome' ||
                        pathname === '/cadastro' ||
                        pathname === '/sr-logistica.apk' ||
+                       pathname === '/manifest.webmanifest' ||
+                       pathname === '/manifest.json' ||
                        pathname.startsWith('/login') ||
                        pathname.startsWith('/recuperar-senha')
 

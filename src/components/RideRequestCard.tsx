@@ -88,7 +88,7 @@ export default function RideRequestCard({ ride }: { ride: RideRequest }) {
       <div className="mt-3 flex items-center justify-between rounded-2xl border border-dark-700 bg-dark-900/70 px-3 py-2">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/15 text-sm font-bold text-brand-300">
-            {ride.passengerName.charAt(0)}
+            {(ride.passengerName && ride.passengerName.charAt) ? ride.passengerName.charAt(0) : ''}
           </div>
           <div>
             <div className="text-sm font-medium text-slate-100">{ride.passengerName}</div>

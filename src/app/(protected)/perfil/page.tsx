@@ -84,7 +84,7 @@ export default function PerfilPage() {
       <div className="flex-1 space-y-4 p-4">
         <Card className="flex items-center gap-4 border border-dark-700 bg-dark-800 p-4 shadow-lg shadow-black/10">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-brand-500/30 bg-brand-500/15 text-2xl font-black text-brand-400 shadow-inner shadow-brand-500/20">
-            {profile.name.charAt(0)}
+            {(profile.name && profile.name.charAt ? profile.name.charAt(0) : '')}
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-lg font-extrabold text-white">{profile.name}</div>
