@@ -89,11 +89,11 @@ export default function DetalheCorrida() {
           className="w-full max-w-xs rounded-2xl bg-brand-600 py-4 text-base font-bold text-[color:var(--text)] dark:text-white transition hover:bg-brand-500 active:scale-95"
         >
           Voltar ao início
-            <button
-            onClick={() => setMessageModalOpen(true)}
-            disabled={isRideFinished}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-dark-800 py-4 text-sm font-bold text-slate-200 transition hover:bg-dark-700 hover:text-[color:var(--text)] dark:hover:text-white active:scale-95 disabled:opacity-40"
-            >
+        </button>
+      </div>
+    );
+  }
+
   if (!ride) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-dark-900 text-slate-200">
