@@ -3,6 +3,7 @@ import '@/app/globals.css';
 import { AppProvider } from '@/lib/store';
 import { AuthProvider } from '@/lib/auth';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export const metadata: Metadata = {
   title: 'SR Logística - App do Motorista',
@@ -35,6 +36,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <AppProvider>
               <div className="mx-auto min-h-dvh max-w-md w-full flex flex-col relative bg-[color:var(--surface)] dark:bg-dark-900 shadow-2xl overflow-x-hidden text-inherit">
+                <div className="absolute right-3 top-3 z-[1200]">
+                  <ThemeToggle />
+                </div>
                 {children}
               </div>
             </AppProvider>

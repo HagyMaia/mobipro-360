@@ -7,7 +7,7 @@ import { cn } from '@/lib/cn';
 import { useAuth } from '@/lib/auth';
 
 const BASE_ITEMS = [
-  { href: '/mapa', label: 'Corridas', icon: Car },
+  { href: '/corridas', label: 'Corridas', icon: Car },
   { href: '/radar', label: 'Radar', icon: Flame },
   { href: '/agendadas', label: 'Agendadas', icon: CalendarClock },
   { href: '/financeiro', label: 'Financeiro', icon: Wallet },

@@ -33,6 +33,11 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* In light mode, ensure utility class that forces white text becomes readable */
+:root:not(.dark) .text-white {
+  color: var(--text) !important;
+}
+
 /* Leaflet no tema escuro */
 .leaflet-container {
   background: #e5e7eb;
