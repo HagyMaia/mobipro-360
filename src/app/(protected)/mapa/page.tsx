@@ -91,7 +91,7 @@ export default function MapaPage() {
     return (
         <div className="relative w-full h-screen overflow-hidden bg-brand-dark">
             {/* Top header over the map */}
-            <header className="absolute left-0 right-0 top-0 z-30 px-4 pt-safe-top pb-3">
+            <header className="absolute left-0 right-0 top-0 z-[1100] px-4 pt-safe-top pb-3">
                 <div className="mx-auto max-w-4xl">
                     <div className="flex items-center justify-between">
                         <div>
@@ -125,7 +125,7 @@ export default function MapaPage() {
 
             {/* Compact preview when there's an offer */}
             {isOnline && currentOffer && (
-                <div className="absolute top-24 left-1/2 z-40 w-full max-w-lg -translate-x-1/2 px-4">
+                <div className="absolute top-24 left-1/2 z-[1101] w-full max-w-lg -translate-x-1/2 px-4">
                     <Card className={`p-3 rounded-2xl shadow-xl transition-all duration-300 ${previewMounted ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'} bg-white/95 text-slate-900 border border-slate-200 dark:bg-dark-800/85 dark:text-white dark:border-dark-700`}>
                         <div className="flex items-start justify-between gap-4">
                             <div className="min-w-0">
@@ -144,7 +144,7 @@ export default function MapaPage() {
 
             {/* ... Restante do código (Top Bar e Bottom Sheet) mantido igual à versão anterior ... */}
 
-            <div className="absolute bottom-0 w-full bg-white dark:bg-surface rounded-t-3xl shadow-2xl z-20 border-t border-slate-200 dark:border-white/10 p-6 pb-10 transition-all">
+            <div className="absolute bottom-0 w-full bg-white dark:bg-surface rounded-t-3xl shadow-2xl z-[1100] border-t border-slate-200 dark:border-white/10 p-6 pb-10 transition-all">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex flex-col">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estado Atual</span>

@@ -24,7 +24,7 @@ export default function BottomNav() {
     : BASE_ITEMS;
 
   return (
-    <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-dark-700 bg-dark-950/90 backdrop-blur-xl shadow-[0_-18px_35px_rgba(0,0,0,0.35)]">
+    <nav className="safe-bottom fixed inset-x-0 bottom-0 z-[1100] border-t border-dark-700 bg-dark-950/90 backdrop-blur-xl shadow-[0_-18px_35px_rgba(0,0,0,0.35)]">
       <div className="mx-auto flex max-w-md items-stretch justify-around px-2 py-2">
         {items.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
