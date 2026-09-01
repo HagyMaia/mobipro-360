@@ -36,10 +36,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <AppProvider>
               <div className="mx-auto min-h-dvh max-w-md w-full flex flex-col relative bg-[color:var(--surface)] dark:bg-dark-900 shadow-2xl overflow-x-hidden text-inherit">
-                <div className="absolute right-3 top-3 z-[1200]">
-                  <ThemeToggle />
-                </div>
                 {children}
+              </div>
+              <div className="fixed right-4 bottom-20 z-[1110]">
+                <ThemeToggle />
               </div>
             </AppProvider>
           </AuthProvider>
