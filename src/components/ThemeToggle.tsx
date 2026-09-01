@@ -26,7 +26,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="flex h-9 w-9 items-center justify-center rounded-full bg-black/10 dark:bg-white/10 text-white transition-colors hover:bg-black/20 dark:hover:bg-white/20"
+      className="flex h-9 w-9 items-center justify-center rounded-full bg-black/10 dark:bg-white/10 text-[color:var(--text)] dark:text-white transition-colors hover:bg-black/20 dark:hover:bg-white/20"
       aria-label="Alternar modo escuro"
     >
       {dark ? <Sun size={18} /> : <Moon size={18} />}

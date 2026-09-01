@@ -47,7 +47,7 @@ export default function StatusPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        <h1 className="text-2xl font-bold text-white mb-2 text-center">Cadastro em Análise</h1>
+                        <h1 className="text-2xl font-bold text-[color:var(--text)] dark:text-white mb-2 text-center">Cadastro em Análise</h1>
                         <p className="text-slate-400 text-center text-sm mb-8 px-4 leading-relaxed">
                             Recebemos seus documentos! Nossa equipe está analisando seus dados. Esse processo pode levar até 48 horas úteis.
                         </p>
@@ -62,13 +62,13 @@ export default function StatusPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </div>
-                        <h1 className="text-2xl font-bold text-white mb-2 text-center">Documentos Recusados</h1>
+                        <h1 className="text-2xl font-bold text-[color:var(--text)] dark:text-white mb-2 text-center">Documentos Recusados</h1>
                         <p className="text-slate-400 text-center text-sm mb-6 px-4 leading-relaxed">
                             Infelizmente, um ou mais documentos não foram aprovados. Por favor, acesse seu perfil e reenvie os documentos pendentes.
                         </p>
                         <button
                             onClick={() => router.push('/perfil/documentos')}
-                            className="w-full bg-white/10 border border-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/20 transition mb-4 backdrop-blur-sm"
+                            className="w-full bg-white/10 border border-white/10 text-[color:var(--text)] dark:text-white font-bold py-3 rounded-xl hover:bg-white/20 transition mb-4 backdrop-blur-sm"
                         >
                             Revisar Documentos
                         </button>
@@ -83,7 +83,7 @@ export default function StatusPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
                         </div>
-                        <h1 className="text-2xl font-bold text-white mb-2 text-center">Conta Suspensa</h1>
+                        <h1 className="text-2xl font-bold text-[color:var(--text)] dark:text-white mb-2 text-center">Conta Suspensa</h1>
                         <p className="text-slate-400 text-center text-sm mb-8 px-4 leading-relaxed">
                             Sua conta foi suspensa temporariamente por descumprimento dos Termos de Uso. Entre em contato com o suporte.
                         </p>
@@ -104,7 +104,7 @@ export default function StatusPage() {
             <div className="w-full max-w-sm flex flex-col gap-3">
                 <button
                     onClick={fetchStatus}
-                    className="w-full bg-brand text-white font-bold py-4 rounded-2xl hover:bg-brand-600 transition shadow-lg shadow-brand/20 active:scale-[0.98]"
+                    className="w-full bg-brand text-[color:var(--text)] dark:text-white font-bold py-4 rounded-2xl hover:bg-brand-600 transition shadow-lg shadow-brand/20 active:scale-[0.98]"
                 >
                     Atualizar Status
                 </button>

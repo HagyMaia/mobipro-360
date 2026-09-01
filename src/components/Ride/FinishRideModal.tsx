@@ -17,7 +17,7 @@ export const FinishRideModal: React.FC<FinishRideModalProps> = ({ isOpen, onClos
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
             <div className="w-full max-w-sm rounded-2xl border border-dark-700 bg-dark-800 p-5 shadow-2xl shadow-black/30">
-                <h3 className="mb-4 text-lg font-semibold text-white">Finalizar Corrida</h3>
+                <h3 className="mb-4 text-lg font-semibold text-[color:var(--text)] dark:text-white">Finalizar Corrida</h3>
 
                 <div className="mb-4">
                     <label className="mb-1 block text-sm text-slate-300">Valor do taxímetro:</label>
@@ -25,11 +25,11 @@ export const FinishRideModal: React.FC<FinishRideModalProps> = ({ isOpen, onClos
                         type="text"
                         value={valor}
                         onChange={(e) => setValor(e.target.value)}
-                        className="w-full border-b-2 border-brand-500 bg-transparent py-1 text-lg text-white outline-none"
+                        className="w-full border-b-2 border-brand-500 bg-transparent py-1 text-lg text-[color:var(--text)] dark:text-white outline-none"
                     />
                 </div>
 
-                <div className="mb-4 flex items-center justify-between text-lg font-bold text-white">
+                <div className="mb-4 flex items-center justify-between text-lg font-bold text-[color:var(--text)] dark:text-white">
                     <span>Total:</span>
                     <span>R$ {valor}</span>
                 </div>
@@ -55,7 +55,7 @@ export const FinishRideModal: React.FC<FinishRideModalProps> = ({ isOpen, onClos
                     <button onClick={onClose} className="text-sm font-semibold text-brand-400 transition hover:text-brand-300">
                         CANCELAR
                     </button>
-                    <button onClick={() => onConfirm(valor, voucher)} className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white transition hover:bg-brand-500">
+                    <button onClick={() => onConfirm(valor, voucher)} className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-[color:var(--text)] dark:text-white transition hover:bg-brand-500">
                         OK
                     </button>
                 </div>

@@ -140,7 +140,7 @@ export default function HomePage() {
       <header className="sticky top-0 z-30 border-b border-dark-700 bg-dark-900/95 px-4 pb-3 pt-safe-top pt-4 backdrop-blur-md shadow-lg shadow-black/10">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-extrabold text-white">
+            <h1 className="text-xl font-extrabold text-[color:var(--text)] dark:text-white">
               Olá, <span className="text-brand-400">{driverName}</span> 👋
             </h1>
             <p className="text-[11px] capitalize text-slate-400">{dateLabel}</p>
@@ -152,7 +152,7 @@ export default function HomePage() {
               type="button"
               aria-label="Notificações"
               onClick={() => setNotificationsOpen((open) => !open)}
-              className="relative rounded-full border border-dark-700 bg-dark-800 p-2 text-slate-300 transition hover:border-brand-500/40 hover:bg-dark-700 hover:text-white"
+              className="relative rounded-full border border-dark-700 bg-dark-800 p-2 text-slate-300 transition hover:border-brand-500/40 hover:bg-dark-700 hover:text-[color:var(--text)] dark:hover:text-white"
             >
               <Bell size={16} />
               {state.status === 'available' && state.incomingRide && (
@@ -185,7 +185,7 @@ export default function HomePage() {
               </div>
             </div>
             <div>
-              <div className="font-bold text-white">Procurando corridas...</div>
+              <div className="font-bold text-[color:var(--text)] dark:text-white">Procurando corridas...</div>
               <div className="mt-1 text-xs text-slate-400">
                 Fique atento às novas chamadas e ao filtro de rentabilidade.
               </div>
@@ -209,7 +209,7 @@ export default function HomePage() {
                 <TrendingUp size={16} className="text-emerald-400" />
               </div>
               <div className="text-[10px] uppercase tracking-wide text-slate-400">Rendimento</div>
-              <div className="text-base font-extrabold tabular-nums text-white">{formatBRL(todayEarningsTotal)}</div>
+              <div className="text-base font-extrabold tabular-nums text-[color:var(--text)] dark:text-white">{formatBRL(todayEarningsTotal)}</div>
             </Card>
 
             <Card className="flex flex-col items-center gap-1.5 border border-dark-700 bg-dark-800 p-3 text-center">
@@ -217,7 +217,7 @@ export default function HomePage() {
                 <Car size={16} className="text-brand-400" />
               </div>
               <div className="text-[10px] uppercase tracking-wide text-slate-400">Corridas</div>
-              <div className="text-base font-extrabold tabular-nums text-white">{todayRidesCount}</div>
+              <div className="text-base font-extrabold tabular-nums text-[color:var(--text)] dark:text-white">{todayRidesCount}</div>
             </Card>
 
             <Card className="flex flex-col items-center gap-1.5 border border-dark-700 bg-dark-800 p-3 text-center">
@@ -225,7 +225,7 @@ export default function HomePage() {
                 <Trophy size={16} className="text-amber-300" />
               </div>
               <div className="text-[10px] uppercase tracking-wide text-slate-400">Meta</div>
-              <div className={`text-base font-extrabold tabular-nums ${goalPct >= 100 ? 'text-emerald-400' : 'text-white'}`}>
+              <div className={`text-base font-extrabold tabular-nums ${goalPct >= 100 ? 'text-emerald-400' : 'text-[color:var(--text)] dark:text-white'}`}>
                 {goalPct}%
               </div>
             </Card>

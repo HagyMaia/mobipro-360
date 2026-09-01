@@ -43,7 +43,7 @@ export function ExpenseForm({ onAdd }: { onAdd: (e: Expense) => void }) {
             <span className="text-sm font-bold text-slate-100">Nova despesa</span>
             <button
               onClick={() => setOpen(false)}
-              className="rounded-full p-1 text-slate-400 hover:text-white"
+              className="rounded-full p-1 text-slate-400 hover:text-[color:var(--text)] dark:hover:text-white"
             >
               <X size={16} />
             </button>

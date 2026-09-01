@@ -89,12 +89,12 @@ export default function Login() {
       {/* Topo: Logo e Ajuda */}
       <header className="relative z-10 flex justify-between items-center p-6 pt-10">
         <Link href="/welcome" className="flex items-center gap-2 text-brand hover:opacity-80 transition">
-          <ArrowLeft size={22} className="text-white" />
+          <ArrowLeft size={22} className="text-[color:var(--text)] dark:text-white" />
           <CarTaxiFront size={28} strokeWidth={1.5} />
-          <span className="font-extrabold text-white text-lg tracking-wide">SR <span className="text-brand">Logística</span></span>
+          <span className="font-extrabold text-[color:var(--text)] dark:text-white text-lg tracking-wide">SR <span className="text-brand">Logística</span></span>
         </Link>
 
-        <button onClick={() => setSupportOpen(true)} className="flex items-center gap-1.5 text-white font-medium text-sm hover:text-brand-300 transition-colors">
+        <button onClick={() => setSupportOpen(true)} className="flex items-center gap-1.5 text-[color:var(--text)] dark:text-white font-medium text-sm hover:text-brand-300 transition-colors">
           Ajuda <HelpCircle size={18} className="text-slate-300" />
         </button>
       </header>
@@ -103,7 +103,7 @@ export default function Login() {
       <main className="relative z-10 flex-1 flex flex-col justify-center px-6 my-auto max-w-md w-full mx-auto">
         <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl shadow-2xl">
           <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold mb-1 text-white">Bem-vindo de volta</h1>
+            <h1 className="text-2xl font-bold mb-1 text-[color:var(--text)] dark:text-white">Bem-vindo de volta</h1>
             <p className="text-slate-400 text-sm">Insira suas credenciais para acessar o app.</p>
           </div>
 
@@ -121,7 +121,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
-                className="bg-white/5 border border-white/10 p-4 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition-all"
+                className="bg-white/5 border border-white/10 p-4 rounded-xl text-[color:var(--text)] dark:text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition-all"
                 required
               />
             </div>
@@ -138,7 +138,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••"
-                className="bg-white/5 border border-white/10 p-4 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition-all"
+                className="bg-white/5 border border-white/10 p-4 rounded-xl text-[color:var(--text)] dark:text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition-all"
                 required
               />
             </div>
@@ -146,7 +146,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-brand text-white mt-2 py-4 rounded-2xl font-extrabold text-lg hover:bg-brand-600 active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl shadow-brand/30"
+              className="w-full bg-brand text-[color:var(--text)] dark:text-white mt-2 py-4 rounded-2xl font-extrabold text-lg hover:bg-brand-600 active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl shadow-brand/30"
             >
               {loading ? 'Verificando...' : 'Entrar'}
             </button>
@@ -165,7 +165,7 @@ export default function Login() {
               <a
                 href="/sr-logistica.apk"
                 download
-                className="flex items-center gap-2 text-sm font-bold bg-white/5 hover:bg-white/10 text-slate-200 py-3 px-6 rounded-full transition-all border border-white/10 active:scale-95"
+                className="flex items-center gap-2 text-sm font-bold bg-white/5 hover:bg-white/10 text-[color:var(--text)] dark:text-white py-3 px-6 rounded-full transition-all border border-white/10 active:scale-95"
               >
                 <Download size={18} className="text-green-400" />
                 Baixar App para Android
@@ -181,11 +181,11 @@ export default function Login() {
           Versão 3.42.00
         </div>
 
-        <div className="w-full bg-[#A832A8] p-4 flex items-center gap-3 cursor-pointer hover:bg-[#962896] active:bg-[#852385] transition-colors shadow-inner">
+          <div className="w-full bg-[#A832A8] p-4 flex items-center gap-3 cursor-pointer hover:bg-[#962896] active:bg-[#852385] transition-colors shadow-inner">
           <div className="bg-white rounded-full p-0.5 shrink-0">
             <Info size={14} className="text-[#A832A8]" strokeWidth={3} />
           </div>
-          <p className="text-white text-xs font-medium leading-tight">
+          <p className="text-[color:var(--text)] dark:text-white text-xs font-medium leading-tight">
             Há uma nova atualização disponível para instalar. Clique aqui para atualizar.
           </p>
         </div>

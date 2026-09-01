@@ -66,7 +66,7 @@ export default function DetalheCorrida() {
           <CheckCircle size={48} className="text-emerald-400" />
         </div>
         <div>
-          <h2 className="text-2xl font-extrabold text-white">Corrida finalizada!</h2>
+          <h2 className="text-2xl font-extrabold text-[color:var(--text)] dark:text-white">Corrida finalizada!</h2>
           <p className="mt-1 text-slate-400">Ótimo trabalho, motorista.</p>
         </div>
         <div className="w-full max-w-xs rounded-2xl border border-dark-700 bg-dark-800 p-5 shadow-xl shadow-black/10">
@@ -86,21 +86,21 @@ export default function DetalheCorrida() {
         </div>
         <button
           onClick={() => router.push('/')}
-          className="w-full max-w-xs rounded-2xl bg-brand-600 py-4 text-base font-bold text-white transition hover:bg-brand-500 active:scale-95"
+          className="w-full max-w-xs rounded-2xl bg-brand-600 py-4 text-base font-bold text-[color:var(--text)] dark:text-white transition hover:bg-brand-500 active:scale-95"
         >
           Voltar ao início
-        </button>
-      </div>
-    );
-  }
-
+            <button
+            onClick={() => setMessageModalOpen(true)}
+            disabled={isRideFinished}
+            className="flex items-center justify-center gap-2 rounded-2xl bg-dark-800 py-4 text-sm font-bold text-slate-200 transition hover:bg-dark-700 hover:text-[color:var(--text)] dark:hover:text-white active:scale-95 disabled:opacity-40"
+            >
   if (!ride) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-dark-900 text-slate-200">
         <div className="max-w-md text-center">
           <h2 className="mb-2 text-xl font-bold">Corrida não encontrada</h2>
           <p className="text-sm text-slate-400">Nenhuma corrida ativa ou histórico disponível.</p>
-          <button onClick={() => router.push('/')} className="mt-4 rounded-2xl bg-brand-600 px-4 py-2 font-bold text-white">Voltar</button>
+          <button onClick={() => router.push('/')} className="mt-4 rounded-2xl bg-brand-600 px-4 py-2 font-bold text-[color:var(--text)] dark:text-white">Voltar</button>
         </div>
       </div>
     );
@@ -141,7 +141,7 @@ export default function DetalheCorrida() {
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="truncate text-base font-bold text-white">{passengerName}</div>
+              <div className="truncate text-base font-bold text-[color:var(--text)] dark:text-white">{passengerName}</div>
               <div className="mt-1 flex items-center gap-2">
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${paymentClass}`}>
                   {paymentLabel}
@@ -156,7 +156,7 @@ export default function DetalheCorrida() {
             </div>
             <a
               href="tel:+5592982329629"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg shadow-brand-900/40 transition hover:bg-brand-500 active:scale-95"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[color:var(--text)] dark:text-white shadow-lg shadow-brand-900/40 transition hover:bg-brand-500 active:scale-95"
             >
               <Phone size={18} />
             </a>
@@ -217,7 +217,7 @@ export default function DetalheCorrida() {
           <button
             onClick={() => setFinishModalOpen(true)}
             disabled={isRideFinished}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-red-500 py-4 text-sm font-bold text-white shadow-lg shadow-red-900/30 transition hover:bg-red-400 active:scale-95 disabled:opacity-40"
+            className="flex items-center justify-center gap-2 rounded-2xl bg-red-500 py-4 text-sm font-bold text-[color:var(--text)] dark:text-white shadow-lg shadow-red-900/30 transition hover:bg-red-400 active:scale-95 disabled:opacity-40"
           >
             <XCircle size={18} />
             Finalizar

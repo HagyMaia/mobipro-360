@@ -50,7 +50,7 @@ export default function RideRequestCard({ ride }: { ride: RideRequest }) {
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="inline-flex h-2.5 w-2.5 animate-pulse rounded-full bg-brand-400" />
-          <span className="text-sm font-bold text-white">Nova corrida</span>
+          <span className="text-sm font-bold text-[color:var(--text)] dark:text-white">Nova corrida</span>
         </div>
         <Badge className="border border-dark-600 bg-dark-900 text-slate-300">
           <Clock size={11} />
@@ -60,7 +60,7 @@ export default function RideRequestCard({ ride }: { ride: RideRequest }) {
 
       <div className="mb-3 flex items-end justify-between">
         <div>
-          <div className="text-3xl font-extrabold tabular-nums text-white">{formatBRL(ride.fare)}</div>
+          <div className="text-3xl font-extrabold tabular-nums text-[color:var(--text)] dark:text-white">{formatBRL(ride.fare)}</div>
           <div className="mt-0.5 text-xs capitalize text-slate-400">
             Pagamento via <span className="font-semibold text-slate-200">{ride.paymentMethod}</span>
           </div>
@@ -92,7 +92,7 @@ export default function RideRequestCard({ ride }: { ride: RideRequest }) {
             {(ride.passengerName && ride.passengerName.charAt) ? ride.passengerName.charAt(0) : ''}
           </div>
           <div>
-            <div className="text-sm font-medium text-slate-100">{ride.passengerName}</div>
+            <div className="text-sm font-medium text-[color:var(--text)] dark:text-white">{ride.passengerName}</div>
             <div className="text-[11px] text-slate-400">
               Conta de {ride.passengerAccountMonths} mes(es) · {ride.passengerTrips} viagens
             </div>

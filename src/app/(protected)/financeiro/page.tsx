@@ -81,10 +81,10 @@ export default function FinanceiroPage() {
             )}
 
             {/* Card de Saldo Principal */}
-            <div className="relative overflow-hidden rounded-3xl bg-brand p-6 text-white shadow-xl shadow-brand/30 transition-all active:scale-[0.98]">
+            <div className="relative overflow-hidden rounded-3xl bg-brand p-6 text-[color:var(--text)] dark:text-white shadow-xl shadow-brand/30 transition-all active:scale-[0.98]">
                 <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
                 <div className="relative z-10">
-                    <div className="flex items-center gap-2 text-white/80">
+                        <div className="flex items-center gap-2 text-[color:var(--text)] dark:text-white/80">
                         <Wallet size={16} />
                         <span className="text-xs font-bold uppercase tracking-wider">Saldo Disponível</span>
                     </div>

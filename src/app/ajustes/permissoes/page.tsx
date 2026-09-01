@@ -18,18 +18,18 @@ export default function PermissoesApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[color:var(--bg)] text-white flex flex-col justify-between font-sans select-none pb-8">
+    <div className="min-h-screen bg-[color:var(--bg)] text-[color:var(--text)] dark:text-white flex flex-col justify-between font-sans select-none pb-8">
       {/* HEADER */}
       <header className="p-4 pt-6 flex items-center justify-between border-b border-white/10 bg-[color:var(--surface)]/80 backdrop-blur-md sticky top-0 z-20">
         <div className="flex items-center gap-3">
           <Link 
             href="/ajustes" 
-            className="w-10 h-10 bg-white/10 hover:bg-white/20 text-white rounded-2xl flex items-center justify-center font-bold transition"
+            className="w-10 h-10 bg-white/10 hover:bg-white/20 text-[color:var(--text)] dark:text-white rounded-2xl flex items-center justify-center font-bold transition"
           >
             <ArrowLeft size={18} />
           </Link>
           <div>
-            <h1 className="text-lg font-black text-white">Permissões do App</h1>
+            <h1 className="text-lg font-black text-[color:var(--text)] dark:text-white">Permissões do App</h1>
             <p className="text-xs text-slate-400">Garantem o recebimento de corridas</p>
           </div>
         </div>

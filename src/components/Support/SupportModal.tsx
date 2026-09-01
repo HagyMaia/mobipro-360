@@ -21,7 +21,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
         <button 
           onClick={onClose}
           aria-label="Fechar"
-          className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition"
+          className="absolute top-4 right-4 text-slate-400 hover:text-[color:var(--text)] dark:hover:text-white p-2 rounded-full hover:bg-white/10 transition"
         >
           <X size={20} />
         </button>
@@ -30,7 +30,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
           <Headphones size={28} />
         </div>
 
-        <h3 className="text-xl font-extrabold text-white mb-1">Central de Ajuda</h3>
+        <h3 className="text-xl font-extrabold text-[color:var(--text)] dark:text-white mb-1">Central de Ajuda</h3>
         <p className="text-slate-400 text-xs mb-5">
           Suporte 24h para motoristas e parceiros SR Logística.
         </p>
@@ -47,7 +47,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
               <MessageCircle size={20} />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-white font-bold text-sm">WhatsApp de Plantão</h4>
+              <h4 className="text-[color:var(--text)] dark:text-white font-bold text-sm">WhatsApp de Plantão</h4>
               <p className="text-slate-400 text-xs truncate">Atendimento imediato via chat</p>
             </div>
             <ChevronRight size={18} className="text-slate-500 group-hover:text-white transition" />
@@ -62,7 +62,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
               <Phone size={20} />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-white font-bold text-sm">Ligar para a Central</h4>
+              <h4 className="text-[color:var(--text)] dark:text-white font-bold text-sm">Ligar para a Central</h4>
               <p className="text-slate-400 text-xs truncate">0800 000 360 (Ligação Gratuita)</p>
             </div>
             <ChevronRight size={18} className="text-slate-500 group-hover:text-white transition" />
@@ -74,10 +74,10 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
               <ShieldQuestion size={20} />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-white font-bold text-sm">Dúvidas Frequentes</h4>
+              <h4 className="text-[color:var(--text)] dark:text-white font-bold text-sm">Dúvidas Frequentes</h4>
               <p className="text-slate-400 text-xs truncate">Tarifas, repasse e cadastro</p>
             </div>
-            <ChevronRight size={18} className="text-slate-500 group-hover:text-white transition" />
+            <ChevronRight size={18} className="text-slate-500 group-hover:text-[color:var(--text)] dark:group-hover:text-white transition" />
           </a>
         </div>
 

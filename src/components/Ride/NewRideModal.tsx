@@ -29,7 +29,7 @@ export default function NewRideModal({ offer, onAccept, onReject }: NewRideModal
             <div className="bg-brand-surface w-full rounded-t-3xl shadow-sheet p-6 pt-4 border-t-4 border-brand-primary">
                 <div className="flex justify-between items-center mb-4">
                     <span className="text-brand-primary font-bold text-sm tracking-wider uppercase">Nova Solicitação</span>
-                    <span className="text-white font-mono bg-zinc-800 px-3 py-1 rounded-full text-sm">
+                    <span className="text-[color:var(--text)] dark:text-white font-mono bg-zinc-800 px-3 py-1 rounded-full text-sm">
                         00:{timeLeft.toString().padStart(2, '0')}
                     </span>
                 </div>
@@ -56,14 +56,14 @@ export default function NewRideModal({ offer, onAccept, onReject }: NewRideModal
                         <div className="w-5 h-5 rounded-full bg-status-online border-4 border-brand-surface flex-shrink-0 mt-0.5"></div>
                         <div>
                             <p className="text-xs text-zinc-500 font-bold uppercase">Embarque</p>
-                            <p className="text-white text-sm line-clamp-1">{offer.pickupAddress}</p>
+                            <p className="text-[color:var(--text)] dark:text-white text-sm line-clamp-1">{offer.pickupAddress}</p>
                         </div>
                     </div>
                     <div className="flex gap-4 relative z-10">
                         <div className="w-5 h-5 rounded-full bg-brand-primary border-4 border-brand-surface flex-shrink-0 mt-0.5"></div>
                         <div>
                             <p className="text-xs text-zinc-500 font-bold uppercase">Desembarque</p>
-                            <p className="text-white text-sm line-clamp-1">{offer.dropoffAddress}</p>
+                            <p className="text-[color:var(--text)] dark:text-white text-sm line-clamp-1">{offer.dropoffAddress}</p>
                         </div>
                     </div>
                 </div>
@@ -71,7 +71,7 @@ export default function NewRideModal({ offer, onAccept, onReject }: NewRideModal
                 <div className="flex gap-3">
                     <button
                         onClick={onReject}
-                        className="w-16 h-14 bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
+                        className="w-16 h-14 bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-400 hover:text-[color:var(--text)] dark:hover:text-white transition-colors"
                     >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>

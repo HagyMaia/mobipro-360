@@ -15,7 +15,7 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-between bg-[#070D18] text-white font-sans overflow-hidden select-none">
+    <div className="relative min-h-screen w-full flex flex-col justify-between bg-[#070D18] text-[color:var(--text)] dark:text-white font-sans overflow-hidden select-none">
       {/* IMAGEM DE FUNDO DO TÁXI BRANCO COM COMPOSIÇÃO CINEMATOGRÁFICA */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-105"
@@ -33,7 +33,7 @@ export default function WelcomeScreen() {
             <CarTaxiFront size={26} strokeWidth={2.5} />
           </div>
           <div>
-            <span className="font-black text-white text-xl tracking-tight leading-none block">
+            <span className="font-black text-[color:var(--text)] dark:text-white text-xl tracking-tight leading-none block">
               SR <span className="text-brand">Logística</span>
             </span>
             <span className="text-[10px] font-semibold text-brand/70 uppercase tracking-wider block mt-0.5">
@@ -45,7 +45,7 @@ export default function WelcomeScreen() {
         {/* Botão de Ajuda */}
           <button
             onClick={() => setSupportOpen(true)}
-            className="flex items-center gap-2 text-white/90 bg-white/6 hover:bg-white/10 active:scale-95 backdrop-blur-md px-3.5 py-2 rounded-full font-medium text-xs border border-white/15 transition-all shadow-sm"
+            className="flex items-center gap-2 text-[color:var(--text)] dark:text-white/90 bg-white/6 hover:bg-white/10 active:scale-95 backdrop-blur-md px-3.5 py-2 rounded-full font-medium text-xs border border-white/15 transition-all shadow-sm"
           >
             <span>Ajuda</span>
             <HelpCircle size={16} className="text-brand/70" />
@@ -59,7 +59,7 @@ export default function WelcomeScreen() {
             <CheckCircle2 size={18} />
           </div>
           <div className="text-xs text-slate-200">
-            <span className="font-bold text-white block">Versão 1.0.0 instalada</span>
+            <span className="font-bold text-[color:var(--text)] dark:text-white block">Versão 1.0.0 instalada</span>
             Seu aplicativo já está sincronizado com a central de despacho.
           </div>
         </div>
@@ -80,10 +80,10 @@ export default function WelcomeScreen() {
           {/* Botão Primário: Cadastrar Conta */}
           <Link
             href="/cadastro"
-            className="group flex items-center justify-between w-full bg-brand text-white py-4 px-6 rounded-2xl font-extrabold text-lg shadow-[0_10px_20px_-5px_rgba(224,184,0,0.4)] hover:bg-brand-600 active:scale-[0.98] transition-all duration-200"
+            className="group flex items-center justify-between w-full bg-brand text-[color:var(--text)] dark:text-white py-4 px-6 rounded-2xl font-extrabold text-lg shadow-[0_10px_20px_-5px_rgba(224,184,0,0.4)] hover:bg-brand-600 active:scale-[0.98] transition-all duration-200"
           >
             <span>Cadastrar Conta</span>
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white group-hover:translate-x-1 transition-transform">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-[color:var(--text)] dark:text-white group-hover:translate-x-1 transition-transform">
               <ArrowRight size={16} strokeWidth={2.5} />
             </div>
           </Link>
@@ -91,10 +91,10 @@ export default function WelcomeScreen() {
           {/* Botão Secundário: Entrar */}
           <Link
             href="/login"
-            className="group flex items-center justify-between w-full border border-white/20 bg-white/5 text-white py-4 px-6 rounded-2xl font-extrabold text-lg hover:bg-white/10 active:scale-[0.98] transition-all duration-200 shadow-xl backdrop-blur-sm"
+            className="group flex items-center justify-between w-full border border-white/20 bg-white/5 text-[color:var(--text)] dark:text-white py-4 px-6 rounded-2xl font-extrabold text-lg hover:bg-white/10 active:scale-[0.98] transition-all duration-200 shadow-xl backdrop-blur-sm"
           >
             <span>Entrar</span>
-            <ArrowRight size={20} className="text-white group-hover:translate-x-1 transition-transform" strokeWidth={3} />
+            <ArrowRight size={20} className="text-[color:var(--text)] dark:text-white group-hover:translate-x-1 transition-transform" strokeWidth={3} />
           </Link>
 
           <a
@@ -123,7 +123,7 @@ export default function WelcomeScreen() {
         <div className="bg-white rounded-full p-1 shrink-0 flex items-center justify-center shadow-sm">
           <Info size={14} className="text-[#A832A8]" strokeWidth={3.5} />
         </div>
-        <p className="text-white text-[13px] font-semibold leading-snug tracking-normal flex-1">
+        <p className="text-[color:var(--text)] dark:text-white text-[13px] font-semibold leading-snug tracking-normal flex-1">
           Há uma nova atualização disponível para instalar. Clique aqui para atualizar.
         </p>
       </div>
