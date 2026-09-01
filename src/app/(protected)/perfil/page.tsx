@@ -23,25 +23,36 @@ export default function PerfilPage() {
     ProfileService.getCurrentProfile().then(setDbProfile);
   }, []);
 
-  const profile = dbProfile ? {
-    ...mockProfile,
-    name: dbProfile.fullName,
-    phone: dbProfile.phone,
-    rating: dbProfile.rating,
-    totalRides: dbProfile.totalRides,
-    status: ProfileService.normalizeDriverStatus(dbProfile.status),
-  } : {
-    ...mockProfile,
-    status: 'Aprovado'
-  };
+  const profile = dbProfile
+    ? {
+        ...mockProfile,
+        name: dbProfile.fullName ?? mockProfile.name,
+        phone: dbProfile.phone ?? mockProfile.phone,
+        rating: typeof dbProfile.rating === 'number' ? dbProfile.rating : Number(mockProfile.rating ?? 0),
+        totalRides: Number(dbProfile.totalRides ?? mockProfile.totalRides ?? 0),
+        vehicle: dbProfile.vehicle ?? mockProfile.vehicle ?? { model: '—', plate: '—', color: '—', year: '—' },
+        license: dbProfile.license ?? mockProfile.license ?? '—',
+        city: dbProfile.city ?? mockProfile.city ?? '—',
+        status: ProfileService.normalizeDriverStatus(dbProfile.status ?? mockProfile.status),
+      }
+    : {
+        ...mockProfile,
+        name: mockProfile.name ?? 'Motorista',
+        rating: Number(mockProfile.rating ?? 0),
+        totalRides: Number(mockProfile.totalRides ?? 0),
+        vehicle: mockProfile.vehicle ?? { model: '—', plate: '—', color: '—', year: '—' },
+        license: mockProfile.license ?? '—',
+        city: mockProfile.city ?? '—',
+        status: mockProfile.status ?? 'Aprovado',
+      };
 
   const [editing, setEditing] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
-  const [name, setName] = useState(profile.name);
-  const [phone, setPhone] = useState(profile.phone);
-  const [model, setModel] = useState(profile.vehicle.model);
-  const [plate, setPlate] = useState(profile.vehicle.plate);
-  const [color, setColor] = useState(profile.vehicle.color);
+  const [name, setName] = useState(profile.name ?? '');
+  const [phone, setPhone] = useState(profile.phone ?? '');
+  const [model, setModel] = useState(profile.vehicle?.model ?? '');
+  const [plate, setPlate] = useState(profile.vehicle?.plate ?? '');
+  const [color, setColor] = useState(profile.vehicle?.color ?? '');
 
   function save() {
     dispatch({

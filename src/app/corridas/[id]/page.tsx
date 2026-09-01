@@ -26,25 +26,20 @@ export default function DetalheCorrida() {
   const [isRideFinished, setRideFinished] = useState(false);
   const [finishFeedback, setFinishFeedback] = useState<{ valor: string; voucher: string } | null>(null);
 
-  const activeRide = state.activeRide;
-  const fallbackRide = state.rideHistory[state.rideHistory.length - 1];
-  const ride = activeRide ?? fallbackRide;
+  const activeRide = state?.activeRide ?? null;
+  const fallbackRide = (Array.isArray(state?.rideHistory) && state.rideHistory.length > 0)
+    ? state.rideHistory[state.rideHistory.length - 1]
+    : null;
+  const ride = activeRide ?? fallbackRide ?? null;
 
-  const passengerName = ride?.passengerName ?? 'Passageiro';
-  const origin = ride?.pickup ?? '—';
-  const destination = ride?.dropoff ?? '—';
-  const paymentMethod = ride?.paymentMethod;
-  const passengerRating = ride?.passengerRating;
+  const passengerName = String(ride?.passengerName ?? 'Passageiro');
+  const origin = String(ride?.pickup ?? '—');
+  const destination = String(ride?.dropoff ?? '—');
+  const paymentMethod = String(ride?.paymentMethod ?? '');
+  const passengerRating = typeof ride?.passengerRating === 'number' ? ride?.passengerRating : null;
   const rideId = ride?.id ?? '—';
 
-  const paymentLabel =
-    paymentMethod === 'cash'
-      ? 'Dinheiro'
-      : paymentMethod === 'card'
-        ? 'Cartão'
-        : paymentMethod === 'pix'
-          ? 'Pix'
-          : '—';
+  const paymentLabel = paymentMethod === 'cash' ? 'Dinheiro' : paymentMethod === 'card' ? 'Cartão' : paymentMethod === 'pix' ? 'Pix' : '—';
 
   const paymentClass =
     paymentMethod === 'cash'
@@ -95,6 +90,18 @@ export default function DetalheCorrida() {
         >
           Voltar ao início
         </button>
+      </div>
+    );
+  }
+
+  if (!ride) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-dark-900 text-slate-200">
+        <div className="max-w-md text-center">
+          <h2 className="mb-2 text-xl font-bold">Corrida não encontrada</h2>
+          <p className="text-sm text-slate-400">Nenhuma corrida ativa ou histórico disponível.</p>
+          <button onClick={() => router.push('/')} className="mt-4 rounded-2xl bg-brand-600 px-4 py-2 font-bold text-white">Voltar</button>
+        </div>
       </div>
     );
   }
