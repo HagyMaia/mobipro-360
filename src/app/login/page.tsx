@@ -4,6 +4,7 @@ import { supabase, browserUrl } from '@/lib/supabase';
 import Link from 'next/link';
 import { ArrowLeft, HelpCircle, CarTaxiFront, Info, Download } from 'lucide-react';
 import { SupportModal } from '@/components/Support/SupportModal';
+import { ProfileService } from '@/services/driver/ProfileService';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -55,12 +56,14 @@ export default function Login() {
         return;
       }
 
-      if (motorista.status === 'Aprovado') {
+      const normalizedStatus = ProfileService.normalizeDriverStatus(motorista.status);
+
+      if (normalizedStatus === 'Aprovado') {
         window.location.href = '/';
-      } else if (motorista.status === 'Pendente') {
+      } else if (normalizedStatus === 'Pendente') {
         await supabase.auth.signOut();
         setError('Seu cadastro está em análise pela base. Aguarde a aprovação.');
-      } else if (motorista.status === 'Reprovado') {
+      } else if (normalizedStatus === 'Reprovado') {
         await supabase.auth.signOut();
         setError('Seu cadastro foi reprovado. Entre em contato com o suporte.');
       }

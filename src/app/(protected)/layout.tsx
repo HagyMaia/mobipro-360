@@ -24,13 +24,14 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                     return;
                 }
 
-                setStatus(profile.status);
+                const normalizedStatus = ProfileService.normalizeDriverStatus(profile.status);
+                setStatus(normalizedStatus);
 
                 // Se o status não for Aprovado, ele é travado e enviado para a tela de status
                 // (Evita loop infinito se ele já estiver na tela de status)
-                if (profile.status !== 'Aprovado' && pathname !== '/status') {
+                if (normalizedStatus !== 'Aprovado' && pathname !== '/status') {
                     window.location.href = '/status';
-                } else if (profile.status === 'Aprovado' && pathname === '/status') {
+                } else if (normalizedStatus === 'Aprovado' && pathname === '/status') {
                     // Se foi aprovado e tentou acessar a tela de status, joga pro mapa
                     window.location.href = '/mapa';
                 }

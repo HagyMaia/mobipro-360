@@ -27,7 +27,6 @@ export default function HomePage() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const counter = useRef(0);
 
-  // Verificação de Autenticação e Carregamento do Perfil
   useEffect(() => {
     async function checkAuthAndLoadProfile() {
       try {
@@ -39,13 +38,11 @@ export default function HomePage() {
           console.error('[App] Erro ao buscar usuário no Supabase:', authErr);
         }
 
-        // Se NÃO houver usuário logado, força o envio para a tela de login
         if (!user) {
           router.replace('/welcome');
           return;
         }
 
-        // Se houver usuário, busca as informações do perfil
         try {
           const { data: motorista, error: dbError } = await supabase
             .from('motoristas')
@@ -66,9 +63,7 @@ export default function HomePage() {
           console.error('[App] Erro inesperado ao buscar motorista:', dbErr);
         }
 
-        // Apenas definimos loading como false se não formos redirecionar
         setLoading(false);
-
       } catch (err) {
         console.error('[App] Falha crítica na verificação de auth:', err);
         router.replace('/welcome');
@@ -113,7 +108,6 @@ export default function HomePage() {
     }
   }, [state.incomingRide, state.filters, dispatch]);
 
-  // Se estiver validando o token do usuário, exibe a tela de carregamento
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-dark-900 text-slate-100">
@@ -143,13 +137,13 @@ export default function HomePage() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-slate-200 dark:border-dark-700 bg-white/95 dark:bg-dark-800/95 px-4 pb-3 pt-safe-top pt-4 backdrop-blur-md shadow-lg">
-        <div className="flex items-center justify-between">
+      <header className="sticky top-0 z-30 border-b border-dark-700 bg-dark-900/95 px-4 pb-3 pt-safe-top pt-4 backdrop-blur-md shadow-lg shadow-black/10">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-50">
-              Olá, <span className="text-brand-500 dark:text-brand-400">{driverName}</span> 👋
+            <h1 className="text-xl font-extrabold text-white">
+              Olá, <span className="text-brand-400">{driverName}</span> 👋
             </h1>
-            <p className="text-[11px] capitalize text-slate-500 dark:text-slate-400">{dateLabel}</p>
+            <p className="text-[11px] capitalize text-slate-400">{dateLabel}</p>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -158,7 +152,7 @@ export default function HomePage() {
               type="button"
               aria-label="Notificações"
               onClick={() => setNotificationsOpen((open) => !open)}
-              className="relative rounded-full bg-slate-100 dark:bg-dark-700 p-2 text-slate-600 dark:text-slate-300 transition hover:bg-slate-200 dark:hover:bg-dark-600 hover:text-slate-900 dark:hover:text-white"
+              className="relative rounded-full border border-dark-700 bg-dark-800 p-2 text-slate-300 transition hover:border-brand-500/40 hover:bg-dark-700 hover:text-white"
             >
               <Bell size={16} />
               {state.status === 'available' && state.incomingRide && (
@@ -168,7 +162,7 @@ export default function HomePage() {
           </div>
         </div>
         {notificationsOpen && (
-          <div className="mt-3 rounded-xl border border-slate-200 dark:border-dark-600 bg-white dark:bg-dark-900 px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
+          <div className="mt-3 rounded-2xl border border-dark-700 bg-dark-800 px-3 py-2 text-xs text-slate-300 shadow-lg shadow-black/10">
             {state.incomingRide ? 'Você tem uma nova solicitação de corrida.' : 'Nenhuma notificação nova.'}
           </div>
         )}
@@ -182,67 +176,56 @@ export default function HomePage() {
         ) : state.activeRide ? (
           <ActiveRideCard />
         ) : state.status === 'available' ? (
-          <Card className="flex flex-col items-center gap-4 border border-brand-500/20 bg-brand-900/10 py-10 text-center">
+          <Card className="flex flex-col items-center gap-4 border border-brand-500/20 bg-brand-500/10 py-10 text-center shadow-lg shadow-brand-900/10">
             <div className="relative">
               <span className="absolute inset-0 animate-ping rounded-full bg-brand-500/20" />
               <span className="absolute inset-0 animate-ping rounded-full bg-brand-500/10 delay-500" />
-              <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-brand-600/20 ring-2 ring-brand-500/30">
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-brand-500/15 ring-2 ring-brand-500/30">
                 <Navigation size={32} className="text-brand-400" />
               </div>
             </div>
             <div>
-              <div className="font-bold text-slate-900 dark:text-slate-100">Procurando corridas...</div>
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <div className="font-bold text-white">Procurando corridas...</div>
+              <div className="mt-1 text-xs text-slate-400">
                 Fique atento às novas chamadas e ao filtro de rentabilidade.
               </div>
             </div>
           </Card>
         ) : (
-          <Card className="py-10 text-center">
+          <Card className="border border-dark-700 bg-dark-800 py-10 text-center">
             <EmptyState
               icon={<MapPin size={28} className="text-slate-500" />}
-              title={
-                state.status === 'break' ? 'Você está em pausa' : 'Você está offline'
-              }
+              title={state.status === 'break' ? 'Você está em pausa' : 'Você está offline'}
               description="Ative o modo Disponível para receber corridas."
             />
           </Card>
         )}
 
-        {/* KPI Cards */}
         <div>
-          <SectionTitle className="mb-3 text-slate-600 dark:text-slate-400">Resumo do dia</SectionTitle>
+          <SectionTitle className="mb-3 text-slate-400">Resumo do dia</SectionTitle>
           <div className="grid grid-cols-3 gap-3">
-            <Card className="flex flex-col items-center gap-1.5 p-3 text-center">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-success/15">
-                <TrendingUp size={16} className="text-success" />
+            <Card className="flex flex-col items-center gap-1.5 border border-dark-700 bg-dark-800 p-3 text-center">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15">
+                <TrendingUp size={16} className="text-emerald-400" />
               </div>
-              <div className="text-[10px] uppercase tracking-wide text-slate-500">Rendimento</div>
-              <div className="text-base font-extrabold tabular-nums text-slate-50">
-                {formatBRL(todayEarningsTotal)}
-              </div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-400">Rendimento</div>
+              <div className="text-base font-extrabold tabular-nums text-white">{formatBRL(todayEarningsTotal)}</div>
             </Card>
 
-            <Card className="flex flex-col items-center gap-1.5 p-3 text-center">
+            <Card className="flex flex-col items-center gap-1.5 border border-dark-700 bg-dark-800 p-3 text-center">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500/15">
                 <Car size={16} className="text-brand-400" />
               </div>
-              <div className="text-[10px] uppercase tracking-wide text-slate-500">Corridas</div>
-              <div className="text-base font-extrabold tabular-nums text-slate-50">
-                {todayRidesCount}
-              </div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-400">Corridas</div>
+              <div className="text-base font-extrabold tabular-nums text-white">{todayRidesCount}</div>
             </Card>
 
-            <Card className="flex flex-col items-center gap-1.5 p-3 text-center">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-warn/15">
-                <Trophy size={16} className="text-warn" />
+            <Card className="flex flex-col items-center gap-1.5 border border-dark-700 bg-dark-800 p-3 text-center">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500/15">
+                <Trophy size={16} className="text-amber-300" />
               </div>
-              <div className="text-[10px] uppercase tracking-wide text-slate-500">Meta</div>
-              <div
-                className={`text-base font-extrabold tabular-nums ${
-                  goalPct >= 100 ? 'text-success' : 'text-slate-50'
-                }`}
-              >
+              <div className="text-[10px] uppercase tracking-wide text-slate-400">Meta</div>
+              <div className={`text-base font-extrabold tabular-nums ${goalPct >= 100 ? 'text-emerald-400' : 'text-white'}`}>
                 {goalPct}%
               </div>
             </Card>

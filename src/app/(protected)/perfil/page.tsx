@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Award, CarFront, MapPin, Phone, ShieldCheck, Star, Settings, Headphones, LogOut, ChevronRight, Edit3 } from 'lucide-react';
+import { CarFront, MapPin, Phone, ShieldCheck, Star, Settings, Headphones, LogOut, ChevronRight, Edit3 } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import { Badge, Button, Card, Field, SectionTitle, Stat, inputClass } from '@/components/ui';
 import { SupportModal } from '@/components/Support/SupportModal';
 import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
-import { formatBRL, todayKey } from '@/lib/utils';
+import { formatBRL } from '@/lib/utils';
 import { ProfileService } from '@/services/driver/ProfileService';
 import { DriverProfile } from '@/types';
 import { useEffect } from 'react';
@@ -18,7 +18,7 @@ export default function PerfilPage() {
   const { signOut } = useAuth();
   const { profile: mockProfile } = state;
   const [dbProfile, setDbProfile] = useState<DriverProfile | null>(null);
-  
+
   useEffect(() => {
     ProfileService.getCurrentProfile().then(setDbProfile);
   }, []);
@@ -29,10 +29,10 @@ export default function PerfilPage() {
     phone: dbProfile.phone,
     rating: dbProfile.rating,
     totalRides: dbProfile.totalRides,
-    status: dbProfile.status,
+    status: ProfileService.normalizeDriverStatus(dbProfile.status),
   } : {
     ...mockProfile,
-    status: 'APPROVED'
+    status: 'Aprovado'
   };
 
   const [editing, setEditing] = useState(false);
@@ -62,19 +62,18 @@ export default function PerfilPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-between pb-24 font-sans select-none">
-      {/* HEADER */}
-      <header className="sticky top-0 z-30 border-b border-white/6 bg-[color:var(--surface)]/90 dark:bg-dark-800/95 px-4 pb-3 pt-4 backdrop-blur-md">
+    <div className="min-h-screen flex flex-col justify-between bg-dark-900 pb-24 font-sans text-slate-100 select-none">
+      <header className="sticky top-0 z-30 border-b border-dark-700 bg-dark-900/95 px-4 pb-3 pt-4 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-extrabold text-slate-100">
-              Perfil do <span className="text-brand">Motorista</span>
+            <h1 className="text-xl font-extrabold text-white">
+              Perfil do <span className="text-brand-400">Motorista</span>
             </h1>
-            <p className="text-xs text-gray-500 dark:text-slate-400">Informações da conta e do veículo</p>
+            <p className="text-xs text-slate-400">Informações da conta e do veículo</p>
           </div>
           <Link
             href="/ajustes"
-            className="w-9 h-9 rounded-2xl bg-white/6 flex items-center justify-center text-slate-200 hover:bg-white/10 transition"
+            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-dark-600 bg-dark-800 text-slate-200 transition hover:border-brand-500/40 hover:bg-dark-700"
             title="Ajustes"
           >
             <Settings size={18} />
@@ -82,16 +81,15 @@ export default function PerfilPage() {
         </div>
       </header>
 
-      <div className="space-y-4 p-4 flex-1">
-        {/* CARD PRINCIPAL DO MOTORISTA */}
-        <Card className="flex items-center gap-4 p-4 border">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand/20 text-2xl font-black text-brand border border-brand/30 shadow-inner">
+      <div className="flex-1 space-y-4 p-4">
+        <Card className="flex items-center gap-4 border border-dark-700 bg-dark-800 p-4 shadow-lg shadow-black/10">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-brand-500/30 bg-brand-500/15 text-2xl font-black text-brand-400 shadow-inner shadow-brand-500/20">
             {profile.name.charAt(0)}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-lg font-extrabold text-gray-900 dark:text-slate-50">{profile.name}</div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-              <span className="flex items-center gap-1 font-bold text-amber-500">
+            <div className="truncate text-lg font-extrabold text-white">{profile.name}</div>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
+              <span className="flex items-center gap-1 font-bold text-amber-400">
                 <Star size={13} fill="currentColor" />
                 <span>{profile.rating.toFixed(2)}</span>
               </span>
@@ -101,62 +99,59 @@ export default function PerfilPage() {
               </span>
             </div>
           </div>
-          <Badge className={`font-bold ${profile.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border-amber-500/30'}`}>
-            <ShieldCheck size={13} /> {profile.status === 'APPROVED' ? 'Ativo' : profile.status}
+          <Badge className={`font-bold ${profile.status === 'Aprovado' ? 'border border-emerald-500/30 bg-emerald-500/15 text-emerald-400' : 'border border-amber-500/30 bg-amber-500/15 text-amber-300'}`}>
+            <ShieldCheck size={13} /> {profile.status === 'Aprovado' ? 'Ativo' : profile.status}
           </Badge>
         </Card>
 
-        {/* ESTATÍSTICAS RÁPIDAS */}
         <div className="grid grid-cols-3 gap-2.5">
-          <Stat label="Hoje" value={formatBRL(todayEarnings)} accent="text-emerald-500" />
-          <Stat label="Líquido" value={formatBRL(todayNet)} accent={todayNet >= 0 ? 'text-emerald-500' : 'text-red-500'} />
-          <Stat label="Meta" value={`${Math.round((todayEarnings / state.goalTarget) * 100)}%`} accent="text-brand" />
+          <Stat label="Hoje" value={formatBRL(todayEarnings)} accent="text-emerald-400" />
+          <Stat label="Líquido" value={formatBRL(todayNet)} accent={todayNet >= 0 ? 'text-emerald-400' : 'text-red-400'} />
+          <Stat label="Meta" value={`${Math.round((todayEarnings / state.goalTarget) * 100)}%`} accent="text-brand-400" />
         </div>
 
-        {/* ATALHOS RÁPIDOS */}
         <div className="grid grid-cols-2 gap-2.5">
           <Link href="/ajustes" className="block">
-            <Card className="p-3 flex items-center justify-between hover:border-brand/40 transition border">
+            <Card className="flex items-center justify-between border border-dark-700 bg-dark-800 p-3 transition hover:border-brand-500/40 hover:bg-dark-700">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-brand/15 text-brand flex items-center justify-center">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-500/15 text-brand-400">
                   <Settings size={16} />
                 </div>
-                <div className="text-xs font-bold text-gray-900 dark:text-slate-100">Ajustes & GPS</div>
+                <div className="text-xs font-bold text-slate-100">Ajustes & GPS</div>
               </div>
-              <ChevronRight size={16} className="text-slate-400" />
+              <ChevronRight size={16} className="text-slate-500" />
             </Card>
           </Link>
 
           <button onClick={() => setSupportOpen(true)} className="w-full text-left">
-            <Card className="p-3 flex items-center justify-between hover:border-brand/40 transition border">
+            <Card className="flex items-center justify-between border border-dark-700 bg-dark-800 p-3 transition hover:border-brand-500/40 hover:bg-dark-700">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
                   <Headphones size={16} />
                 </div>
-                <div className="text-xs font-bold text-gray-900 dark:text-slate-100">Central Ajuda</div>
+                <div className="text-xs font-bold text-slate-100">Central Ajuda</div>
               </div>
-              <ChevronRight size={16} className="text-slate-400" />
+              <ChevronRight size={16} className="text-slate-500" />
             </Card>
           </button>
         </div>
 
-        {/* DADOS DO VEÍCULO */}
         <div>
-                  <div className="flex items-center justify-between mb-2">
-            <SectionTitle className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-              <CarFront size={14} className="text-brand" /> Veículo Cadastrado
+          <div className="mb-2 flex items-center justify-between">
+            <SectionTitle className="flex items-center gap-1.5 text-xs font-bold uppercase text-slate-300">
+              <CarFront size={14} className="text-brand-400" /> Veículo Cadastrado
             </SectionTitle>
             {!editing && (
               <button
                 onClick={() => setEditing(true)}
-                className="text-xs text-brand hover:text-brand-70 font-bold flex items-center gap-1"
+                className="flex items-center gap-1 text-xs font-bold text-brand-400 transition hover:text-brand-300"
               >
                 <Edit3 size={13} /> Editar
               </button>
             )}
           </div>
 
-          <Card className="border">
+          <Card className="border border-dark-700 bg-dark-800">
             {editing ? (
               <div className="space-y-3">
                 <Field label="Nome do Condutor">
@@ -190,44 +185,41 @@ export default function PerfilPage() {
                 </div>
               </div>
             ) : (
-              <div>
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
-                      <CarFront size={15} className="text-brand" /> Modelo
-                    </span>
-                    <span className="font-bold text-gray-900 dark:text-slate-100">{profile.vehicle.model}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
-                      <Phone size={15} className="text-brand" /> Placa
-                    </span>
-                    <span className="font-bold tabular-nums text-gray-900 dark:text-slate-100 bg-gray-100 dark:bg-dark-700 px-2 py-0.5 rounded-lg border border-gray-300 dark:border-dark-600">
-                      {profile.vehicle.plate}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-slate-400">Cor / Ano</span>
-                    <span className="font-medium text-gray-900 dark:text-slate-200">
-                      {profile.vehicle.color} · {profile.vehicle.year}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-slate-400">CNH Profissional</span>
-                    <span className="font-medium tabular-nums text-gray-900 dark:text-slate-200">{profile.license}</span>
-                  </div>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-slate-400">
+                    <CarFront size={15} className="text-brand-400" /> Modelo
+                  </span>
+                  <span className="font-bold text-slate-100">{profile.vehicle.model}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-slate-400">
+                    <Phone size={15} className="text-brand-400" /> Placa
+                  </span>
+                  <span className="rounded-lg border border-dark-600 bg-dark-700 px-2 py-0.5 font-bold tabular-nums text-slate-100">
+                    {profile.vehicle.plate}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-400">Cor / Ano</span>
+                  <span className="font-medium text-slate-200">
+                    {profile.vehicle.color} · {profile.vehicle.year}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-400">CNH Profissional</span>
+                  <span className="font-medium tabular-nums text-slate-200">{profile.license}</span>
                 </div>
               </div>
             )}
           </Card>
         </div>
 
-        {/* LOGOUT */}
         <Button
           variant="outline"
           full
           onClick={signOut}
-          className="border-red-500/30 text-red-500 hover:bg-red-500/10 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold"
+          className="flex items-center justify-center gap-2 rounded-2xl border-red-500/30 bg-red-500/5 py-3.5 font-bold text-red-400 transition hover:bg-red-500/10"
         >
           <LogOut size={16} /> Desconectar da Conta
         </Button>

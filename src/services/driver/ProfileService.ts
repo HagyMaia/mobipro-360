@@ -1,9 +1,26 @@
 // src/services/driver/ProfileService.ts
 
 import { createClient } from '@/lib/supabase';
-import { DriverProfile } from '@/types';
+import { DriverProfile, DriverStatus } from '@/types';
 
 export class ProfileService {
+    public static normalizeDriverStatus(value: unknown): DriverStatus {
+        const raw = String(value ?? '').trim().toLowerCase();
+
+        const map: Record<string, DriverStatus> = {
+            pendente: 'Pendente',
+            pending: 'Pendente',
+            aprovado: 'Aprovado',
+            approved: 'Aprovado',
+            reprovado: 'Reprovado',
+            rejected: 'Reprovado',
+            bloqueado: 'Bloqueado',
+            blocked: 'Bloqueado',
+        };
+
+        return map[raw] ?? 'Pendente';
+    }
+
     /**
      * Obtém o perfil completo do motorista autenticado
      */
@@ -33,7 +50,7 @@ export class ProfileService {
             phone: profile.phone,
             email: profile.email,
             avatarUrl: profile.avatar_url,
-            status: profile.status,
+            status: this.normalizeDriverStatus(profile.status),
             workStatus: profile.work_status,
             rating: profile.rating,
             totalRides: profile.total_rides,

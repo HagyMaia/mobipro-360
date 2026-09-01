@@ -16,28 +16,30 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
   const canChange = state.activeRide === null && state.incomingRide === null;
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-3 gap-2.5">
       {OPTIONS.map(({ status, label, icon: Icon }) => {
         const active = state.status === status;
+
+        const stateStyles =
+          status === 'available'
+            ? 'border-emerald-500/40 bg-emerald-500/12 text-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.1)]'
+            : status === 'break'
+              ? 'border-amber-500/40 bg-amber-500/12 text-amber-300 shadow-[0_0_0_1px_rgba(251,191,36,0.1)]'
+              : 'border-slate-600 bg-slate-700/80 text-slate-200 shadow-[0_0_0_1px_rgba(148,163,184,0.1)]';
+
         return (
           <button
             key={status}
             disabled={disabled || !canChange}
             onClick={() => dispatch({ type: 'SET_STATUS', status })}
             className={cn(
-              'flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-xs font-semibold transition-all',
-              active
-                ? status === 'available'
-                  ? 'border-green-500 bg-green-500 text-white shadow-md'
-                  : status === 'break'
-                    ? 'border-yellow-500 bg-yellow-500 text-white shadow-md'
-                    : 'border-gray-500 bg-gray-500 text-white shadow-md'
-                : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 shadow-sm dark:border-dark-700 dark:bg-dark-800/60 dark:text-slate-400 dark:hover:bg-dark-700/50',
+              'flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 text-xs font-semibold transition-all duration-200',
+              active ? stateStyles : 'border-dark-700 bg-dark-800/80 text-slate-400 hover:border-dark-600 hover:bg-dark-700/80',
               (!canChange || disabled) && 'pointer-events-none opacity-50'
             )}
           >
-            <Icon size={20} />
-            {label}
+            <Icon size={18} />
+            <span>{label}</span>
           </button>
         );
       })}
@@ -48,11 +50,11 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
 export function StatusPill() {
   const { state } = useApp();
   const map: Record<WorkStatus, { label: string; dot: string; text: string }> = {
-    offline: { label: 'Offline', dot: 'bg-danger', text: 'text-danger' },
-    available: { label: 'Disponível', dot: 'bg-success', text: 'text-success' },
-    'en-route': { label: 'A caminho do passageiro', dot: 'bg-warn', text: 'text-warn' },
-    'on-ride': { label: 'Em corrida', dot: 'bg-brand-600', text: 'text-brand-600' },
-    break: { label: 'Em pausa', dot: 'bg-slate-500', text: 'text-slate-400' }
+    offline: { label: 'Offline', dot: 'bg-red-400', text: 'text-red-300' },
+    available: { label: 'Disponível', dot: 'bg-emerald-400', text: 'text-emerald-300' },
+    'en-route': { label: 'A caminho do passageiro', dot: 'bg-amber-400', text: 'text-amber-300' },
+    'on-ride': { label: 'Em corrida', dot: 'bg-brand-400', text: 'text-brand-300' },
+    break: { label: 'Em pausa', dot: 'bg-slate-400', text: 'text-slate-300' }
   };
   const info = map[state.status];
   return (

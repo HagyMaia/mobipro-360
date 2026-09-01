@@ -16,9 +16,10 @@ export default function StatusPage() {
     const fetchStatus = useCallback(async () => {
         setLoading(true);
         const data = await ProfileService.getCurrentProfile();
-        setProfile(data);
+        const normalizedProfile = data ? { ...data, status: ProfileService.normalizeDriverStatus(data.status) } : data;
+        setProfile(normalizedProfile);
 
-        if (data?.status === 'Aprovado') {
+        if (normalizedProfile?.status === 'Aprovado') {
             router.replace('/mapa');
         }
         setLoading(false);

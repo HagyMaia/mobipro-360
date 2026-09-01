@@ -15,45 +15,49 @@ export const FinishRideModal: React.FC<FinishRideModalProps> = ({ isOpen, onClos
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-[color:var(--surface)] rounded-lg w-full max-w-sm p-5 shadow-xl border border-white/6">
-                <h3 className="text-lg font-medium text-slate-100 mb-4">Finalizar Corrida</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className="w-full max-w-sm rounded-2xl border border-dark-700 bg-dark-800 p-5 shadow-2xl shadow-black/30">
+                <h3 className="mb-4 text-lg font-semibold text-white">Finalizar Corrida</h3>
 
                 <div className="mb-4">
-                    <label className="block text-sm text-slate-300 mb-1">Valor do taxímetro:</label>
+                    <label className="mb-1 block text-sm text-slate-300">Valor do taxímetro:</label>
                     <input
                         type="text"
                         value={valor}
                         onChange={(e) => setValor(e.target.value)}
-                        className="w-full border-b-2 border-brand outline-none py-1 text-lg bg-transparent text-slate-100"
+                        className="w-full border-b-2 border-brand-500 bg-transparent py-1 text-lg text-white outline-none"
                     />
                 </div>
 
-                <div className="mb-4 flex justify-between items-center font-bold text-lg text-slate-100">
+                <div className="mb-4 flex items-center justify-between text-lg font-bold text-white">
                     <span>Total:</span>
                     <span>R$ {valor}</span>
                 </div>
 
                 <div className="mb-6">
-                    <label className="block text-sm text-slate-300 mb-1">Pagamento: VOU</label>
+                    <label className="mb-1 block text-sm text-slate-300">Pagamento: VOU</label>
                     <div className="flex gap-2">
                         <input
                             type="text"
                             placeholder="Voucher"
                             value={voucher}
                             onChange={(e) => setVoucher(e.target.value)}
-                            className="flex-1 border-b border-white/10 outline-none py-1 bg-transparent text-slate-100"
+                            className="flex-1 border-b border-dark-600 bg-transparent py-1 text-slate-100 outline-none placeholder:text-slate-500"
                         />
                         <input ref={voucherInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => setVoucher(event.target.files?.[0]?.name || '')} />
-                        <button type="button" aria-label="Fotografar voucher" onClick={() => voucherInputRef.current?.click()} className="bg-white/6 p-2 rounded text-slate-200">
+                        <button type="button" aria-label="Fotografar voucher" onClick={() => voucherInputRef.current?.click()} className="rounded-lg bg-dark-700 p-2 text-slate-200 transition hover:bg-dark-600">
                             <Camera size={18} />
                         </button>
                     </div>
                 </div>
 
                 <div className="flex justify-end gap-4">
-                    <button onClick={onClose} className="text-brand-600 font-semibold text-sm">CANCELAR</button>
-                    <button onClick={() => onConfirm(valor, voucher)} className="bg-brand text-white px-4 py-2 rounded-lg font-semibold">OK</button>
+                    <button onClick={onClose} className="text-sm font-semibold text-brand-400 transition hover:text-brand-300">
+                        CANCELAR
+                    </button>
+                    <button onClick={() => onConfirm(valor, voucher)} className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white transition hover:bg-brand-500">
+                        OK
+                    </button>
                 </div>
             </div>
         </div>
