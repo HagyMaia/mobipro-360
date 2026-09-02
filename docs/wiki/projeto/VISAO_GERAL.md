@@ -1,29 +1,35 @@
-# Visao Geral
+# Visão Geral — SR Logística
 
-## O que e o Mobipro 360?
+## O que é a SR Logística?
 
-O Mobipro 360 e uma plataforma de mobilidade urbana para conectar passageiros e motoristas de taxi ou transporte local.
+A SR Logística é uma plataforma de mobilidade urbana voltada para conectar passageiros e motoristas parceiros com segurança, transparência e eficiência operacional.
 
-A plataforma deve permitir solicitacao, aceite, acompanhamento, inicio, finalizacao e pagamento de corridas, com atualizacao de localizacao em tempo real.
+A plataforma é composta por:
+
+- Aplicativo do Passageiro;
+- Aplicativo do Motorista;
+- Painel Administrativo;
+- Backend de corridas, geolocalização, despacho e pagamentos;
+- Integrações com mapas, PIX, notificações, documentos e suporte.
 
 ---
 
 ## Produtos da plataforma
 
-| Produto | Publico | Objetivo |
+| Produto | Público | Objetivo |
 |---|---|---|
-| Aplicativo do Passageiro | Clientes | Solicitar, acompanhar e pagar corridas |
-| Aplicativo do Motorista | Motoristas parceiros | Receber corridas, navegar e acompanhar ganhos |
-| Painel Administrativo | Equipe Mobipro | Gerenciar operacao, suporte e financeiro |
+| App do Passageiro | Clientes | Solicitar, acompanhar e pagar corridas |
+| App do Motorista | Motoristas parceiros | Receber corridas, navegar, acompanhar ganhos e acessar suporte |
+| Painel Administrativo | Equipe SR Logística | Gerenciar motoristas, corridas, pagamentos, suporte e operação |
 
 ---
 
-## Principios
+## Princípios
 
-- Seguranca em primeiro lugar;
-- Transparencia de valores;
-- Interface simples;
-- Boa experiencia para motoristas;
-- Operacao confiavel;
-- Protecao de dados;
-- Conformidade com LGPD.
+- Segurança em primeiro lugar;
+- Transparência de valores;
+- Boa experiência para o motorista;
+- Atendimento humanizado;
+- Proteção de dados;
+- Conformidade com LGPD;
+- Crescimento sustentável por cidade e região.
