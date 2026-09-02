@@ -153,6 +153,10 @@ export default function Login() {
           </form>
 
           <div className="mt-6 text-center space-y-5">
+            <div className="rounded-xl border border-brand/30 bg-brand/5 px-3 py-2 text-[11px] text-slate-300">
+              Modo local: <span className="font-semibold text-brand">motorista@demo.local</span> / <span className="font-semibold text-brand">demo123</span>
+            </div>
+
             <p className="text-slate-400 text-xs">
               Ainda não tem conta?{' '}
               <Link href="/cadastro" className="text-brand font-bold hover:text-brand-300 transition">

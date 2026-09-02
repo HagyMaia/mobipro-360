@@ -2,7 +2,8 @@
 
 ## Principios
 
-O Mobipro 360 trata dados pessoais, geolocalizacao, documentos, corridas e pagamentos. Seguranca e requisito fundamental do produto.
+O SR Logística
+ trata dados pessoais, geolocalizacao, documentos, corridas e pagamentos. Seguranca e requisito fundamental do produto.
 
 ---
 

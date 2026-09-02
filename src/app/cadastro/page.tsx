@@ -116,7 +116,8 @@ export default function RegisterWizard() {
       <header className="py-4">
         <div className="flex justify-between items-center mb-2">
           <span className="text-xs text-zinc-400">Passo {step} de 5</span>
-          <span className="text-xs text-brand-primary font-semibold">MobiPro 360</span>
+          <span className="text-xs text-brand-primary font-semibold">SR Logística
+</span>
         </div>
         <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
           <div

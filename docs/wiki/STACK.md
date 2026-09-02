@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Registrar as tecnologias utilizadas no Mobipro 360.
+Registrar as tecnologias utilizadas no SR Logística.
 
 ---
 

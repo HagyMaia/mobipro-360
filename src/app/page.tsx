@@ -15,6 +15,9 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { buildMockRequest } from '@/lib/mock-data';
 import { formatBRL, isToday } from '@/lib/utils';
+import { TripOfferCard } from "@/features/trips/components/TripOfferCard";
+import { useTripStore } from "@/features/trips/store/useTripStore";
+import type { Trip } from "@/features/trips/domain/trip.types";
 
 export default function HomePage() {
   const router = useRouter();

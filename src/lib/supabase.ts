@@ -54,6 +54,8 @@ const browserKey = supabaseAnonKey || 'placeholder-anon-key'
 const DEMO_DRIVERS_KEY = 'mobipro-demo-drivers'
 const DEMO_ACCOUNTS_KEY = 'mobipro-demo-accounts'
 const DEMO_SESSION_KEY = 'mobipro-demo-session'
+const DEFAULT_DEMO_EMAIL = 'motorista@demo.local'
+const DEFAULT_DEMO_PASSWORD = 'demo123'
 
 function readStorage<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback
@@ -125,6 +127,53 @@ function buildDemoUser(id: string, email: string): DemoUser {
   }
 }
 
+function ensureDemoDriverRecord(userId: string, email: string, password: string, status: DemoDriver['status'] = 'Aprovado') {
+  const records = getDemoDrivers()
+  const normalizedEmail = email.trim().toLowerCase()
+
+  if (!records.some((record) => record.id === userId || record.email === normalizedEmail)) {
+    setDemoDrivers([
+      ...records,
+      {
+        id: userId,
+        email: normalizedEmail,
+        password,
+        nome: 'Motorista Demo',
+        cpf: '000.000.000-00',
+        cnh: '00000000000',
+        telefone: '(00) 00000-0000',
+        marca_veiculo: 'Chevrolet',
+        modelo_veiculo: 'Onix',
+        ano_veiculo: '2024',
+        placa_veiculo: 'ABC1D23',
+        categoria: 'POPULAR',
+        status,
+        created_at: new Date().toISOString(),
+      },
+    ])
+  }
+}
+
+function ensureDefaultDemoAccount() {
+  const accounts = getDemoAccounts()
+  const existing = accounts.find((account) => account.email === DEFAULT_DEMO_EMAIL)
+
+  if (existing) {
+    ensureDemoDriverRecord(existing.userId, existing.email, existing.password, 'Aprovado')
+    return
+  }
+
+  const userId = 'demo-driver-default'
+  const nextAccounts = [...accounts, {
+    email: DEFAULT_DEMO_EMAIL,
+    password: DEFAULT_DEMO_PASSWORD,
+    userId,
+  }]
+
+  setDemoAccounts(nextAccounts)
+  ensureDemoDriverRecord(userId, DEFAULT_DEMO_EMAIL, DEFAULT_DEMO_PASSWORD, 'Aprovado')
+}
+
 function createMockSupabase() {
   return {
     auth: {
@@ -143,6 +192,7 @@ function createMockSupabase() {
         const userId = `demo-driver-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
         const nextAccounts = [...accounts, { email: normalizedEmail, password, userId }]
         setDemoAccounts(nextAccounts)
+        ensureDemoDriverRecord(userId, normalizedEmail, password, 'Pendente')
 
         const user = buildDemoUser(userId, normalizedEmail)
         const session = createDemoSession(user)
@@ -157,13 +207,36 @@ function createMockSupabase() {
         )
 
         if (!account) {
+          if (normalizedEmail === DEFAULT_DEMO_EMAIL && password === DEFAULT_DEMO_PASSWORD) {
+            ensureDefaultDemoAccount()
+          }
+
+          const fallbackAccount = getDemoAccounts().find(
+            (entry) => entry.email === normalizedEmail && entry.password === password,
+          )
+
+          if (!fallbackAccount) {
+            return {
+              data: { user: null, session: null },
+              error: { message: 'E-mail ou senha incorretos.' },
+            }
+          }
+        }
+
+        const authenticatedAccount = getDemoAccounts().find(
+          (entry) => entry.email === normalizedEmail && entry.password === password,
+        )
+
+        if (!authenticatedAccount) {
           return {
             data: { user: null, session: null },
             error: { message: 'E-mail ou senha incorretos.' },
           }
         }
 
-        const user = buildDemoUser(account.userId, normalizedEmail)
+        ensureDemoDriverRecord(authenticatedAccount.userId, normalizedEmail, authenticatedAccount.password, 'Aprovado')
+
+        const user = buildDemoUser(authenticatedAccount.userId, normalizedEmail)
         const session = createDemoSession(user)
 
         return {
@@ -293,7 +366,12 @@ function createMockSupabase() {
   }
 }
 
-const browserClient = isSupabaseConfigured ? createBrowserClient(browserUrl, browserKey) : createMockSupabase()
+const browserClient = isSupabaseConfigured
+  ? createBrowserClient(browserUrl, browserKey)
+  : (() => {
+      ensureDefaultDemoAccount()
+      return createMockSupabase()
+    })()
 
 export const supabase = browserClient as any
 export const createClient = () => supabase;

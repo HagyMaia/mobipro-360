@@ -52,7 +52,8 @@ function Obter-Titulo {
 
 Write-Host ""
 Write-Host "==============================================" -ForegroundColor Cyan
-Write-Host "Preenchendo a Wiki do Mobipro 360" -ForegroundColor Cyan
+Write-Host "Preenchendo a Wiki do SR Logística
+" -ForegroundColor Cyan
 Write-Host "==============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -63,13 +64,16 @@ Write-Host ""
 $readmePath = Join-Path $wikiPath "README.md"
 
 $readmeLinhas = @(
-    "# Wiki - Mobipro 360",
+    "# Wiki - SR Logística
+",
     "",
-    "> Documentacao tecnica, funcional, operacional e estrategica do projeto Mobipro 360.",
+    "> Documentacao tecnica, funcional, operacional e estrategica do projeto SR Logística
+.",
     "",
     "## Sobre o projeto",
     "",
-    "O Mobipro 360 e uma plataforma de mobilidade urbana composta por:",
+    "O SR Logística
+ e uma plataforma de mobilidade urbana composta por:",
     "",
     "- Aplicativo do Passageiro;",
     "- Aplicativo do Motorista;",
@@ -130,7 +134,8 @@ $stackLinhas = @(
     "",
     "## Objetivo",
     "",
-    "Registrar as tecnologias utilizadas no Mobipro 360.",
+    "Registrar as tecnologias utilizadas no SR Logística
+.",
     "",
     "---",
     "",
@@ -159,9 +164,11 @@ $visaoGeralPath = Join-Path $wikiPath "projeto\VISAO_GERAL.md"
 $visaoGeralLinhas = @(
     "# Visao Geral",
     "",
-    "## O que e o Mobipro 360?",
+    "## O que e o SR Logística
+?",
     "",
-    "O Mobipro 360 e uma plataforma de mobilidade urbana para conectar passageiros e motoristas de taxi ou transporte local.",
+    "O SR Logística
+ e uma plataforma de mobilidade urbana para conectar passageiros e motoristas de taxi ou transporte local.",
     "",
     "A plataforma deve permitir solicitacao, aceite, acompanhamento, inicio, finalizacao e pagamento de corridas, com atualizacao de localizacao em tempo real.",
     "",
@@ -387,7 +394,8 @@ $segurancaLinhas = @(
     "",
     "## Principios",
     "",
-    "O Mobipro 360 trata dados pessoais, geolocalizacao, documentos, corridas e pagamentos. Seguranca e requisito fundamental do produto.",
+    "O SR Logística
+ trata dados pessoais, geolocalizacao, documentos, corridas e pagamentos. Seguranca e requisito fundamental do produto.",
     "",
     "---",
     "",
@@ -428,7 +436,8 @@ foreach ($arquivo in $arquivosMarkdown) {
     $linhasPadrao = @(
         "# $titulo",
         "",
-        "> Documento da Wiki do projeto Mobipro 360.",
+        "> Documento da Wiki do projeto SR Logística
+.",
         "",
         "## Objetivo",
         "",

@@ -1,10 +1,10 @@
 # Wiki — SR Logística
 
-> Documentacao tecnica, funcional, operacional e estrategica do projeto Mobipro 360.
+> Documentacao tecnica, funcional, operacional e estrategica do projeto SR Logística.
 
 ## Sobre o projeto
 
-O Mobipro 360 e uma plataforma de mobilidade urbana composta por:
+O SR Logística e uma plataforma de mobilidade urbana composta por:
 
 - Aplicativo do Passageiro;
 - Aplicativo do Motorista;

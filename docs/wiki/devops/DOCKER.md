@@ -1,6 +1,7 @@
 # DOCKER
 
-> Documento da Wiki do projeto Mobipro 360.
+> Documento da Wiki do projeto SR Logística
+.
 
 ## Objetivo
 
