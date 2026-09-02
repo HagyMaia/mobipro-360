@@ -175,3 +175,11 @@
 *.lz
 *.lzma
 *.iso
+
+# Relatorios gerados para analise
+RELATORIO_CODIGO_MOBIPRO.md
+RELATORIO_ANALISE_PROJETO.md
+
+# Arquivos Android de distribuicao
+*.apk
+*.aab
