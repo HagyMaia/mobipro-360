@@ -1,74 +1,197 @@
-// src/app/(protected)/mapa/page.tsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
-import { useDriverLocation } from '@/hooks/useDriverLocation';
-import { useRideRequests } from '@/hooks/useRideRequests';
-import { ProfileService } from '@/services/driver/ProfileService';
-import { RideService } from '@/services/ride/RideService';
-import { createClient } from '@/lib/supabase';
-import NewRideModal from '@/components/Ride/NewRideModal';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import StatusControl, { StatusPill } from '@/components/StatusControl';
-import { Card, Button } from '@/components/ui';
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 
+import { DriverStatusButton } from "@/features/driver-status/components/DriverStatusButton";
+import { useDriverLocation } from "@/hooks/useDriverLocation";
+import { useRideRequests } from "@/hooks/useRideRequests";
+import { ProfileService } from "@/services/driver/ProfileService";
+import { RideService } from "@/services/ride/RideService";
+import { createClient } from "@/lib/supabase";
+import NewRideModal from "@/components/Ride/NewRideModal";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { StatusPill } from "@/components/StatusControl";
+import { Card, Button } from "@/components/ui";
+import type { DriverWorkStatus } from "@/types";
 
-const DriverMap = dynamic(() => import('@/components/map/DriverMap'), { ssr: false });
+const DriverMap = dynamic(
+    () => import("@/components/map/DriverMap"),
+    { ssr: false },
+);
 
 export default function MapaPage() {
     const [isOnline, setIsOnline] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
     const [isLoadingToggle, setIsLoadingToggle] = useState(false);
-    const [driverName, setDriverName] = useState('Motorista');
+    const [driverName, setDriverName] = useState("Motorista");
+    const [isApproved, setIsApproved] = useState(false);
+    const [statusError, setStatusError] = useState<string | null>(null);
 
     const { location, error } = useDriverLocation(isOnline);
-    // Adicionamos o hook de escuta aqui
-    const { currentOffer, clearOffer } = useRideRequests(isOnline);
-    const [previewMounted, setPreviewMounted] = useState(false);
 
+    const {
+        currentOffer,
+        clearOffer,
+    } = useRideRequests(isOnline);
+
+    const [previewMounted, setPreviewMounted] = useState(false);
     useEffect(() => {
-        const fetchUser = async () => {
-            const supabase = createClient();
-            const { data } = await supabase.auth.getUser();
-            if (data?.user) setUserId(data.user.id);
-            try {
-                if (data?.user) {
-                    const { data: motorista } = await supabase
-                        .from('motoristas')
-                        .select('nome')
-                        .eq('id', data.user.id)
-                        .maybeSingle();
-                    if (motorista?.nome) setDriverName(motorista.nome.split(' ')[0]);
-                }
-            } catch (err) {
-                // ignore
-            }
+        console.info(
+            "[Mapa] Página do mapa foi montada.",
+            {
+                currentUrl: window.location.href,
+            },
+        );
+
+        return () => {
+            console.info(
+                "[Mapa] Página do mapa foi desmontada.",
+            );
         };
-        fetchUser();
+    }, []);
+    useEffect(() => {
+        let isComponentMounted = true;
+
+        const loadDriverData = async () => {
+            const supabase = createClient();
+
+            const {
+                data: authData,
+                error: authError,
+            } = await supabase.auth.getUser();
+
+            if (authError || !authData.user) {
+                if (isComponentMounted) {
+                    setStatusError(
+                        "Não foi possível identificar o motorista autenticado.",
+                    );
+                }
+
+                return;
+            }
+
+            if (isComponentMounted) {
+                setUserId(authData.user.id);
+            }
+
+            const {
+                data: motorista,
+                error: motoristaError,
+            } = await supabase
+                .from("motoristas")
+                .select("nome, status, work_status")
+                .eq("id", authData.user.id)
+                .maybeSingle();
+
+            if (motoristaError || !motorista) {
+                console.error(
+                    "Erro ao carregar dados do motorista:",
+                    motoristaError,
+                );
+
+                if (isComponentMounted) {
+                    setStatusError(
+                        "Não foi possível carregar seu perfil de motorista.",
+                    );
+                }
+
+                return;
+            }
+
+            const normalizedApprovalStatus =
+                ProfileService.normalizeDriverStatus(
+                    motorista.status,
+                );
+
+            const driverIsApproved =
+                normalizedApprovalStatus === "Aprovado";
+
+            if (!isComponentMounted) {
+                return;
+            }
+
+            if (motorista.nome) {
+                setDriverName(
+                    motorista.nome.split(" ")[0],
+                );
+            }
+
+            setIsApproved(driverIsApproved);
+
+            setIsOnline(
+                driverIsApproved &&
+                motorista.work_status === "ONLINE",
+            );
+        };
+
+        loadDriverData();
+
+        return () => {
+            isComponentMounted = false;
+        };
     }, []);
 
-    // trigger mount animation for preview
     useEffect(() => {
         if (currentOffer) {
             setPreviewMounted(false);
-            // next frame to allow transition
-            requestAnimationFrame(() => setPreviewMounted(true));
+
+            requestAnimationFrame(() => {
+                setPreviewMounted(true);
+            });
         } else {
             setPreviewMounted(false);
         }
     }, [currentOffer]);
 
     const handleToggleStatus = async () => {
-        if (!userId) return;
+        if (!userId) {
+            setStatusError(
+                "Não foi possível identificar o motorista autenticado.",
+            );
+
+            return;
+        }
+
+        if (!isApproved) {
+            setStatusError(
+                "Seu cadastro ainda não está aprovado para receber corridas.",
+            );
+
+            return;
+        }
+
+        setStatusError(null);
         setIsLoadingToggle(true);
+
         try {
-            const newStatus = isOnline ? 'OFFLINE' : 'ONLINE';
-            await ProfileService.toggleWorkStatus(userId, newStatus);
-            setIsOnline(!isOnline);
-            if (isOnline) clearOffer(); // Limpa ofertas pendentes se ficar offline
-        } catch (err) {
-            console.error('Erro ao alterar status', err);
+            const newStatus: DriverWorkStatus = isOnline
+                ? "OFFLINE"
+                : "ONLINE";
+
+            const updatedDriver =
+                await ProfileService.toggleWorkStatus(
+                    newStatus,
+                );
+
+            setIsOnline(
+                updatedDriver.work_status === "ONLINE",
+            );
+
+            if (newStatus === "OFFLINE") {
+                clearOffer();
+            }
+        } catch (error) {
+            console.error(
+                "Erro ao alterar status de trabalho:",
+                error,
+            );
+
+            setStatusError(
+                error instanceof Error
+                    ? error.message
+                    : "Não foi possível alterar seu status. Tente novamente.",
+            );
         } finally {
             setIsLoadingToggle(false);
         }
@@ -145,6 +268,11 @@ export default function MapaPage() {
             {/* ... Restante do código (Top Bar e Bottom Sheet) mantido igual à versão anterior ... */}
 
             <div className="absolute bottom-0 w-full bg-white dark:bg-surface rounded-t-3xl shadow-2xl z-[1100] border-t border-slate-200 dark:border-white/10 p-6 pb-10 transition-all">
+                {statusError && (
+                    <div className="mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-300">
+                        {statusError}
+                    </div>
+                )}
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex flex-col">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estado Atual</span>
@@ -154,24 +282,13 @@ export default function MapaPage() {
                     </div>
                     <div className={`h-3 w-3 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
                 </div>
-                <button
-                    onClick={handleToggleStatus}
-                    disabled={isLoadingToggle}
-                    className={`w-full py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg ${
-                        isOnline 
-                        ? 'bg-red-500 text-white shadow-red-500/30 hover:bg-red-600' 
-                        : 'bg-brand text-white shadow-brand/30 hover:bg-brand-600'
-                    }`}
-                >
-                    {isLoadingToggle ? (
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    ) : (
-                        <>
-                            {isOnline ? 'Encerrar Turno' : 'Iniciar Turno'}
-                        </>
-                    )}
-                </button>
+                <DriverStatusButton
+                    status={isOnline ? "ONLINE" : "OFFLINE"}
+                    isLoading={isLoadingToggle}
+                    onToggle={handleToggleStatus}
+                />
             </div>
         </div>
     );
 }
+

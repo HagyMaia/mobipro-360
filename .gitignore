@@ -191,3 +191,24 @@ RELATORIO_ANALISE_PROJETO.md
 # Relatorios gerados para analise
 RELATORIO_CODIGO_MOBIPRO.md
 RELATORIO_ANALISE_PROJETO.md
+
+# IDEs
+.idea/
+.vscode/
+
+# Logs
+logs/
+*.log
+
+# Relatorios temporarios de analise
+RELATORIO_CODIGO_MOBIPRO.md
+RELATORIO_ANALISE_PROJETO.md
+
+# Arquivos de distribuicao Android
+*.apk
+*.aab
+
+# Variaveis de ambiente e segredos
+.env
+.env.*
+!.env.example

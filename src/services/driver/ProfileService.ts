@@ -1,7 +1,13 @@
 // src/services/driver/ProfileService.ts
 
-import { createClient } from '@/lib/supabase';
-import { DriverProfile, DriverStatus } from '@/types';
+import { createClient } from "@/lib/supabase";
+
+import type {
+    DriverProfile,
+    DriverStatus,
+    DriverWorkStatus,
+} from "@/types";
+
 
 export class ProfileService {
     public static normalizeDriverStatus(value: unknown): DriverStatus {
@@ -45,31 +51,58 @@ export class ProfileService {
 
         return {
             id: profile.id,
-            fullName: profile.full_name,
-            cpf: profile.cpf,
-            phone: profile.phone,
-            email: profile.email,
-            avatarUrl: profile.avatar_url,
+            fullName: profile.nome ?? "Motorista",
+            cpf: profile.cpf ?? "",
+            phone: profile.phone ?? "",
+            email: profile.email ?? "",
+            avatarUrl: profile.avatar_url ?? null,
             status: this.normalizeDriverStatus(profile.status),
-            workStatus: profile.work_status,
-            rating: profile.rating,
-            totalRides: profile.total_rides,
+            workStatus: profile.work_status ?? "OFFLINE",
+            rating: Number(profile.rating ?? 0),
+            totalRides: Number(profile.total_rides ?? 0),
             createdAt: profile.created_at,
         };
     }
 
     /**
-     * Altera o status de trabalho do motorista (ONLINE / OFFLINE)
-     */
-    public static async toggleWorkStatus(userId: string, newStatus: 'ONLINE' | 'OFFLINE'): Promise<void> {
+ * Atualiza o status operacional do motorista autenticado.
+ *
+ * OFFLINE: não recebe ofertas.
+ * ONLINE: pode receber ofertas.
+ * BUSY: possui corrida ativa.
+ */
+    public static async toggleWorkStatus(
+        newStatus: DriverWorkStatus,
+    ) {
         const supabase = createClient();
-        const { error } = await supabase
-            .from('drivers')
-            .update({ work_status: newStatus })
-            .eq('id', userId);
+
+        const {
+            data: authData,
+            error: authError,
+        } = await supabase.auth.getUser();
+
+        if (authError || !authData.user) {
+            throw new Error(
+                authError?.message ??
+                "Usuário não autenticado.",
+            );
+        }
+
+        const { data, error } = await supabase
+            .from("motoristas")
+            .update({
+                work_status: newStatus,
+            })
+            .eq("id", authData.user.id)
+            .select("id, work_status")
+            .single();
 
         if (error) {
-            throw new Error(`Erro ao atualizar status: ${error.message}`);
+            throw new Error(
+                `Não foi possível atualizar o status de trabalho: ${error.message}`,
+            );
         }
+
+        return data;
     }
 }

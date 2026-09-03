@@ -1,68 +1,99 @@
-// src/app/(protected)/layout.tsx
+"use client";
 
-'use client';
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { ProfileService } from '@/services/driver/ProfileService';
-import { DriverStatus } from '@/types';
+import { createClient } from "@/lib/supabase";
+import { ProfileService } from "@/services/driver/ProfileService";
 
-export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
-    const router = useRouter();
-    const pathname = usePathname();
-    const [loading, setLoading] = useState(true);
-    const [status, setStatus] = useState<DriverStatus | null>(null);
+type ProtectedLayoutProps = {
+  children: React.ReactNode;
+};
 
-    useEffect(() => {
-        async function checkAccess() {
-            try {
-                const profile = await ProfileService.getCurrentProfile();
+export default function ProtectedLayout({
+  children,
+}: ProtectedLayoutProps) {
+  const router = useRouter();
+  const pathname = usePathname();
 
-                if (!profile) {
-                    // Se não tem perfil, joga para o login
-                    window.location.href = '/login';
-                    return;
-                }
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
 
-                const normalizedStatus = ProfileService.normalizeDriverStatus(profile.status);
-                setStatus(normalizedStatus);
+  useEffect(() => {
+    let isMounted = true;
 
-                // Se o status não for Aprovado, ele é travado e enviado para a tela de status
-                // (Evita loop infinito se ele já estiver na tela de status)
-                if (normalizedStatus !== 'Aprovado' && pathname !== '/status') {
-                    window.location.href = '/status';
-                } else if (normalizedStatus === 'Aprovado' && pathname === '/status') {
-                    // Se foi aprovado e tentou acessar a tela de status, joga pro mapa
-                    window.location.href = '/mapa';
-                }
-            } catch (error) {
-                console.error('Erro ao verificar acesso:', error);
-            } finally {
-                setLoading(false);
-            }
-        }
+    const validateAccess = async () => {
+      const supabase = createClient();
 
-        checkAccess();
-    }, [pathname, router]);
+      const {
+        data: authData,
+        error: authError,
+      } = await supabase.auth.getUser();
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center">
-                <div className="w-12 h-12 border-4 border-zinc-700 border-t-brand-primary rounded-full animate-spin"></div>
-                <p className="text-zinc-400 mt-4 font-medium text-sm">Carregando MobiPro...</p>
-            </div>
+      if (authError || !authData.user) {
+        router.replace("/login");
+        return;
+      }
+
+      const {
+        data: motorista,
+        error: motoristaError,
+      } = await supabase
+        .from("motoristas")
+        .select("id, status, work_status")
+        .eq("id", authData.user.id)
+        .maybeSingle();
+
+      if (motoristaError || !motorista) {
+        console.error(
+          "[ProtectedLayout] Motorista não encontrado:",
+          motoristaError,
         );
-    }
 
-    // Se o usuário não for aprovado e esta não é a página de status, não renderiza nada (aguarda redirect)
-    if (status !== 'Aprovado' && pathname !== '/status') {
-        return (
-            <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center">
-                <div className="w-12 h-12 border-4 border-zinc-700 border-t-brand-primary rounded-full animate-spin"></div>
-                <p className="text-zinc-400 mt-4 font-medium text-sm">Redirecionando...</p>
-            </div>
+        await supabase.auth.signOut();
+
+        router.replace("/welcome");
+        return;
+      }
+
+      const normalizedStatus =
+        ProfileService.normalizeDriverStatus(
+          motorista.status,
         );
-    }
 
-    return <>{children}</>;
+      if (normalizedStatus !== "Aprovado") {
+        await supabase.auth.signOut();
+
+        router.replace("/welcome");
+        return;
+      }
+
+      if (isMounted) {
+        setIsCheckingAccess(false);
+      }
+    };
+
+    validateAccess();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pathname, router]);
+
+  if (isCheckingAccess) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#070D18] text-white">
+        <div className="text-center">
+          <p className="text-sm font-semibold text-brand">
+            Verificando acesso...
+          </p>
+
+          <p className="mt-2 text-xs text-slate-400">
+            SR Logística
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 }

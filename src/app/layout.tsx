@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import '@/app/globals.css';
+import './globals.css';
 import { AppProvider } from '@/lib/store';
 import { AuthProvider } from '@/lib/auth';
 import { ThemeProvider } from '@/components/ThemeProvider';

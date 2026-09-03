@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import { useRouter } from "next/navigation";
 import { supabase, browserUrl } from '@/lib/supabase';
 import Link from 'next/link';
 import { ArrowLeft, HelpCircle, CarTaxiFront, Info, Download } from 'lucide-react';
@@ -7,6 +8,7 @@ import { SupportModal } from '@/components/Support/SupportModal';
 import { ProfileService } from '@/services/driver/ProfileService';
 
 export default function Login() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -58,8 +60,15 @@ export default function Login() {
 
       const normalizedStatus = ProfileService.normalizeDriverStatus(motorista.status);
 
-      if (normalizedStatus === 'Aprovado') {
-        window.location.href = '/';
+      if (normalizedStatus === "Aprovado") {
+        console.info(
+          "[Login] Motorista aprovado. Redirecionando para /mapa...",
+        );
+
+        router.replace("/mapa");
+        router.refresh();
+
+        return;
       } else if (normalizedStatus === 'Pendente') {
         await supabase.auth.signOut();
         setError('Seu cadastro está em análise pela base. Aguarde a aprovação.');
@@ -185,7 +194,7 @@ export default function Login() {
           Versão 3.42.00
         </div>
 
-          <div className="w-full bg-[#A832A8] p-4 flex items-center gap-3 cursor-pointer hover:bg-[#962896] active:bg-[#852385] transition-colors shadow-inner">
+        <div className="w-full bg-[#A832A8] p-4 flex items-center gap-3 cursor-pointer hover:bg-[#962896] active:bg-[#852385] transition-colors shadow-inner">
           <div className="bg-white rounded-full p-0.5 shrink-0">
             <Info size={14} className="text-[#A832A8]" strokeWidth={3} />
           </div>

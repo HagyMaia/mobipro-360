@@ -11,6 +11,7 @@ import { useRideRequests } from '@/hooks/useRideRequests';
 import NewRideModal from '@/components/Ride/NewRideModal';
 import { RideService } from '@/services/ride/RideService';
 
+
 const DriverMap = dynamic(() => import('@/components/map/DriverMap'), { ssr: false });
 
 export default function CorridasPage() {
