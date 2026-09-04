@@ -3,9 +3,8 @@
 
 CREATE OR REPLACE FUNCTION public.handle_delete_motorista_user()
 RETURNS TRIGGER
-LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, auth
+LANGUAGE plpgsql
 AS $$
 BEGIN
   -- Deleta o usuário da tabela de autenticação do Supabase
@@ -13,7 +12,7 @@ BEGIN
   DELETE FROM auth.users WHERE id = OLD.id;
   RETURN OLD;
 EXCEPTION
-  WHEN others THEN
+  WHEN OTHERS THEN
     -- Garante que se o usuário já não existir em auth.users, a exclusão em motoristas não falhe
     RETURN OLD;
 END;
