@@ -5,7 +5,7 @@ import { useApp } from '@/lib/store';
 import { formatBRLShort } from '@/lib/utils';
 
 export default function RentabilityOverlay() {
-  const { todayEarnings, todayNet, goalProgress, todayRides } = useApp();
+  const { todayEarnings, goalProgress, todayRides } = useApp();
 
   return (
     <div className="pointer-events-none fixed bottom-24 right-4 z-30 w-max max-w-[calc(100vw-2rem)]">
@@ -14,21 +14,11 @@ export default function RentabilityOverlay() {
           <TrendingUp size={12} className="text-brand-600" />
           Hoje · {todayRides} corridas
         </div>
-        <div className="flex items-baseline gap-3">
-          <div>
-            <span className="text-lg font-extrabold tabular-nums text-slate-50">
-              {formatBRLShort(todayEarnings)}
-            </span>
-            <span className="text-[10px] text-slate-500"> bruto</span>
-          </div>
-          <div
-            className={`text-sm font-bold tabular-nums ${
-              todayNet >= 0 ? 'text-success' : 'text-danger'
-            }`}
-          >
-            {todayNet >= 0 ? '+' : ''}
-            {formatBRLShort(todayNet)} liquido
-          </div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-lg font-extrabold tabular-nums text-slate-50">
+            {formatBRLShort(todayEarnings)}
+          </span>
+          <span className="text-xs font-semibold text-emerald-400">bruto</span>
         </div>
         <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-dark-700">
           <div
