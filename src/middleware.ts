@@ -74,6 +74,23 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
+    if (user && !isPublicPage && user.email !== 'motorista@demo.local') {
+      const { data: motorista } = await supabase
+        .from('motoristas')
+        .select('id, status')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (!motorista) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        const redirectRes = NextResponse.redirect(url)
+        redirectRes.cookies.set('sb-demo-token', '', { maxAge: 0, path: '/' })
+        redirectRes.cookies.set('mobipro-demo-session', '', { maxAge: 0, path: '/' })
+        return redirectRes
+      }
+    }
+
     if (user && (pathname === '/welcome' || pathname === '/login' || pathname === '/cadastro')) {
       const url = request.nextUrl.clone()
       url.pathname = '/'

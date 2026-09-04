@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 
 type DemoUser = Pick<User, 'id' | 'email'> & { [key: string]: unknown };
@@ -27,24 +27,90 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }: { data: { session: any } }) => {
-        if (!mounted) return;
-        setUser(session?.user ?? null);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setUser(null);
-      })
-      .finally(() => {
-        if (!mounted) return;
-        setLoading(false);
-      });
+    const verifyActiveSession = async () => {
+      try {
+        const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
 
-    const subRes = supabase.auth.onAuthStateChange((_: unknown, session: any) => {
+        if (authError || !currentUser) {
+          if (mounted) {
+            setUser(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // Se Supabase configurado e não for demo local, validar se motorista existe no banco
+        if (isSupabaseConfigured && currentUser.email !== 'motorista@demo.local') {
+          const { data: motorista } = await supabase
+            .from('motoristas')
+            .select('id, status')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+
+          if (!motorista) {
+            console.warn('[Auth] Motorista foi excluído ou não existe no banco de dados. Encerrando sessão...');
+            await supabase.auth.signOut();
+            if (typeof document !== 'undefined') {
+              document.cookie = 'sb-demo-token=; path=/; max-age=0';
+              document.cookie = 'mobipro-demo-session=; path=/; max-age=0';
+            }
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.clear();
+                sessionStorage.clear();
+              } catch (_) {}
+            }
+            if (mounted) {
+              setUser(null);
+              setLoading(false);
+            }
+            return;
+          }
+        }
+
+        if (mounted) {
+          setUser(currentUser);
+          setLoading(false);
+        }
+      } catch {
+        if (mounted) {
+          setUser(null);
+          setLoading(false);
+        }
+      }
+    };
+
+    verifyActiveSession();
+
+    const subRes = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
       if (!mounted) return;
-      setUser(session?.user ?? null);
+      if (!session?.user) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (isSupabaseConfigured && session.user.email !== 'motorista@demo.local') {
+          const { data: motorista } = await supabase
+            .from('motoristas')
+            .select('id, status')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          if (!motorista) {
+            await supabase.auth.signOut();
+            if (typeof document !== 'undefined') {
+              document.cookie = 'sb-demo-token=; path=/; max-age=0';
+            }
+            setUser(null);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      setUser(session.user);
       setLoading(false);
     });
 
@@ -61,8 +127,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/login';
+    try {
+      await supabase.auth.signOut();
+    } catch (_) {}
+    if (typeof document !== 'undefined') {
+      document.cookie = 'sb-demo-token=; path=/; max-age=0';
+      document.cookie = 'mobipro-demo-session=; path=/; max-age=0';
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (_) {}
+      window.location.href = '/login';
+    }
   };
 
   return (

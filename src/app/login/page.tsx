@@ -75,37 +75,55 @@ export default function Login() {
         throw new Error('Não foi possível autenticar o usuário.');
       }
 
-      // Garantir cookie de sessão
-      if (typeof document !== 'undefined') {
-        document.cookie = `sb-demo-token=${authUser.id}; path=/; max-age=86400; SameSite=Lax`;
-      }
-
-      // 2. Verificar ou criar cadastro de motorista
-      try {
+      // 2. Verificar cadastro ativo na tabela de motoristas
+      if (isSupabaseConfigured && trimmedEmail !== 'motorista@demo.local') {
         const { data: motorista, error: dbError } = await supabase
           .from('motoristas')
-          .select('status')
+          .select('id, status, nome')
           .eq('id', authUser.id)
           .maybeSingle();
 
         if (dbError) {
-          console.warn('[Login] Tabela motoristas não acessível:', dbError);
+          console.warn('[Login] Erro ao consultar tabela motoristas:', dbError);
         }
 
-        if (!motorista && isSupabaseConfigured) {
-          // Auto-criar registro se ainda não existir no Supabase
-          await supabase.from('motoristas').insert([
-            {
-              id: authUser.id,
-              email: trimmedEmail,
-              nome: trimmedEmail.split('@')[0] || 'Motorista',
-              status: 'Aprovado',
-              work_status: 'OFFLINE',
-            },
-          ]);
+        if (!motorista) {
+          // Usuário não existe na tabela motoristas (foi excluído)
+          await supabase.auth.signOut();
+          if (typeof document !== 'undefined') {
+            document.cookie = 'sb-demo-token=; path=/; max-age=0';
+            document.cookie = 'mobipro-demo-session=; path=/; max-age=0';
+          }
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.clear();
+              sessionStorage.clear();
+            } catch (_) {}
+          }
+          throw new Error('Conta de motorista não encontrada ou excluída do sistema. Entre em contato com a central da SR Logística.');
         }
-      } catch (dbEx) {
-        console.warn('[Login] Erro ao sincronizar motorista:', dbEx);
+
+        const normalizedStatus = String(motorista.status || '').trim().toLowerCase();
+        if (normalizedStatus === 'bloqueado' || normalizedStatus === 'blocked') {
+          await supabase.auth.signOut();
+          if (typeof document !== 'undefined') {
+            document.cookie = 'sb-demo-token=; path=/; max-age=0';
+          }
+          throw new Error('Sua conta de motorista está temporariamente bloqueada pela central.');
+        }
+
+        if (normalizedStatus === 'reprovado' || normalizedStatus === 'rejected') {
+          await supabase.auth.signOut();
+          if (typeof document !== 'undefined') {
+            document.cookie = 'sb-demo-token=; path=/; max-age=0';
+          }
+          throw new Error('Seu cadastro de motorista foi reprovado pela análise da SR Logística.');
+        }
+      }
+
+      // Garantir cookie de sessão
+      if (typeof document !== 'undefined') {
+        document.cookie = `sb-demo-token=${authUser.id}; path=/; max-age=86400; SameSite=Lax`;
       }
 
       // 3. Redirecionar com sucesso para o painel principal
