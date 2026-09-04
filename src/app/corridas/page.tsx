@@ -20,6 +20,7 @@ import { useAuth } from '@/lib/auth';
 import { useDriverLocation } from '@/hooks/useDriverLocation';
 import { useRideRequests } from '@/hooks/useRideRequests';
 import { RideService } from '@/services/ride/RideService';
+import { ProfileService } from '@/services/driver/ProfileService';
 import { formatBRL } from '@/lib/utils';
 
 const DriverMap = dynamic(() => import('@/components/map/DriverMap'), { ssr: false });
@@ -30,6 +31,7 @@ export default function CorridasPage() {
   const { user, loading: authLoading } = useAuth();
 
   const [isOnline, setIsOnline] = useState(false);
+  const [isLoadingTurno, setIsLoadingTurno] = useState(false);
   const { location } = useDriverLocation(isOnline);
   const { currentOffer, clearOffer } = useRideRequests(isOnline);
 
@@ -38,6 +40,36 @@ export default function CorridasPage() {
       router.replace('/login');
     }
   }, [authLoading, user, router]);
+
+  useEffect(() => {
+    async function syncStatus() {
+      try {
+        const profile = await ProfileService.getCurrentProfile();
+        if (profile) {
+          setIsOnline(profile.workStatus === 'ONLINE');
+        }
+      } catch (err) {
+        console.warn('[Corridas] Erro ao sincronizar status:', err);
+      }
+    }
+    if (user) {
+      syncStatus();
+    }
+  }, [user]);
+
+  const handleToggleTurno = async () => {
+    setIsLoadingTurno(true);
+    try {
+      const nextStatus = !isOnline;
+      await ProfileService.toggleWorkStatus(nextStatus ? 'ONLINE' : 'OFFLINE');
+      setIsOnline(nextStatus);
+    } catch (err) {
+      console.warn('[Corridas] Falha ao atualizar status no banco:', err);
+      setIsOnline((v) => !v);
+    } finally {
+      setIsLoadingTurno(false);
+    }
+  };
 
   if (authLoading || !user) {
     return (
@@ -113,8 +145,14 @@ export default function CorridasPage() {
             <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
               <Navigation size={15} className="text-brand-600 dark:text-brand" /> Mapa em tempo real
             </div>
-            <Button size="sm" variant={isOnline ? 'outline' : 'primary'} onClick={() => setIsOnline((v) => !v)}>
-              {isOnline ? 'Encerrar turno' : 'Iniciar turno'}
+            <Button
+              size="sm"
+              variant={isOnline ? 'outline' : 'primary'}
+              disabled={isLoadingTurno}
+              onClick={handleToggleTurno}
+              className={!isOnline ? 'bg-brand text-slate-950 font-black hover:brightness-105' : ''}
+            >
+              {isLoadingTurno ? 'Atualizando...' : isOnline ? 'Encerrar turno' : 'Iniciar turno'}
             </Button>
           </div>
           <div className="h-64 overflow-hidden border-b border-slate-200/80 dark:border-dark-700/80">

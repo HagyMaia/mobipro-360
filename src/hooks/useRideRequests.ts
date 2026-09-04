@@ -12,40 +12,58 @@ export function useRideRequests(isOnline: boolean) {
             return;
         }
 
-        const supabase = createClient();
+        let channel: any = null;
+        try {
+            const supabase = createClient();
 
-        // Escuta novos registros na tabela de corridas com status SEARCHING
-        const channel = supabase
-            .channel('public:rides')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'rides',
-                    filter: "status=eq.'SEARCHING'",
-                },
-                (payload: any) => {
-                    const newRide = payload.new;
-                    setCurrentOffer({
-                        id: newRide.id,
-                        passengerName: 'Passageiro',
-                        passengerRating: 5.0,
-                        pickupAddress: newRide.pickup_address,
-                        pickupLocation: { latitude: newRide.pickup_lat, longitude: newRide.pickup_lng },
-                        dropoffAddress: newRide.dropoff_address,
-                        dropoffLocation: { latitude: newRide.dropoff_lat, longitude: newRide.dropoff_lng },
-                        fareAmount: newRide.fare_amount,
-                        distanceKm: newRide.distance_km,
-                        estimatedMinutes: Math.round(newRide.distance_km * 2), // Estimativa simples
-                        expiresInSeconds: 15, // Motorista tem 15s para aceitar
-                    });
-                }
-            )
-            .subscribe();
+            // Escuta novos registros na tabela de corridas com status SEARCHING
+            if (supabase?.channel) {
+                channel = supabase
+                    .channel('public:rides')
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: 'INSERT',
+                            schema: 'public',
+                            table: 'rides',
+                            filter: "status=eq.'SEARCHING'",
+                        },
+                        (payload: any) => {
+                            const newRide = payload.new;
+                            if (newRide) {
+                                setCurrentOffer({
+                                    id: newRide.id,
+                                    passengerName: newRide.passenger_name || 'Passageiro',
+                                    passengerRating: 5.0,
+                                    pickupAddress: newRide.pickup_address || 'Av. Djalma Batista, 1000 - Manaus',
+                                    pickupLocation: { latitude: newRide.pickup_lat || -3.1190, longitude: newRide.pickup_lng || -60.0217 },
+                                    dropoffAddress: newRide.dropoff_address || 'Shopping Manauara - Adrianópolis',
+                                    dropoffLocation: { latitude: newRide.dropoff_lat || -3.1072, longitude: newRide.dropoff_lng || -60.0125 },
+                                    fareAmount: Number(newRide.fare_amount || 28.50),
+                                    distanceKm: Number(newRide.distance_km || 5.2),
+                                    estimatedMinutes: Math.round(Number(newRide.distance_km || 5.2) * 2.5),
+                                    expiresInSeconds: 15,
+                                });
+                            }
+                        }
+                    )
+                    .subscribe();
+            }
+        } catch (err) {
+            console.warn('[useRideRequests] Erro ao conectar realtime:', err);
+        }
 
         return () => {
-            supabase.removeChannel(channel);
+            try {
+                if (channel) {
+                    const supabase = createClient();
+                    if (supabase?.removeChannel) {
+                        supabase.removeChannel(channel);
+                    }
+                }
+            } catch (err) {
+                console.warn('[useRideRequests] Erro ao remover channel:', err);
+            }
         };
     }, [isOnline]);
 

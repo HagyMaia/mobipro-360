@@ -201,6 +201,65 @@ function ensureDefaultDemoAccount() {
   ensureDemoDriverRecord(userId, DEFAULT_DEMO_EMAIL, DEFAULT_DEMO_PASSWORD, 'Aprovado')
 }
 
+const MOCK_TABLES_KEY = 'mobipro-mock-tables'
+
+function getMockTablesData(): Record<string, any[]> {
+  if (typeof window === 'undefined') {
+    return { motoristas: getDemoDrivers(), rides: [], vehicles: [], 'driver-documents': [] }
+  }
+
+  try {
+    const raw = window.localStorage.getItem(MOCK_TABLES_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return {
+        motoristas: parsed.motoristas || getDemoDrivers(),
+        rides: parsed.rides || [],
+        vehicles: parsed.vehicles || [],
+        'driver-documents': parsed['driver-documents'] || [],
+      }
+    }
+  } catch {
+    // fallback
+  }
+
+  return { motoristas: getDemoDrivers(), rides: [], vehicles: [], 'driver-documents': [] }
+}
+
+function setMockTableData(tableName: string, records: any[]) {
+  if (tableName === 'motoristas') {
+    setDemoDrivers(records)
+  }
+
+  if (typeof window === 'undefined') return
+
+  try {
+    const current = getMockTablesData()
+    current[tableName] = records
+    window.localStorage.setItem(MOCK_TABLES_KEY, JSON.stringify(current))
+  } catch {
+    // fallback
+  }
+}
+
+function loadTableData(tableName: string): any[] {
+  if (tableName === 'motoristas') {
+    const drivers = getDemoDrivers()
+    if (drivers.length === 0) {
+      ensureDefaultDemoAccount()
+      return getDemoDrivers()
+    }
+    return drivers
+  }
+
+  const tables = getMockTablesData()
+  return tables[tableName] || []
+}
+
+function persistTableData(tableName: string, records: any[]) {
+  setMockTableData(tableName, records)
+}
+
 export function createMockSupabase() {
   ensureDefaultDemoAccount()
 
@@ -291,134 +350,189 @@ export function createMockSupabase() {
       },
     },
 
-    from(table: string) {
-      const loadTable = (): DemoDriver[] => {
-        if (table === 'motoristas') {
-          const drivers = getDemoDrivers()
-          if (drivers.length === 0) {
-            ensureDefaultDemoAccount()
-            return getDemoDrivers()
-          }
-          return drivers
+    storage: {
+      from(bucket: string) {
+        return {
+          async upload(path: string, file: any, options?: any) {
+            return { data: { path }, error: null }
+          },
+          getPublicUrl(path: string) {
+            return { data: { publicUrl: `https://placeholder-storage.local/${bucket}/${path}` } }
+          },
+          async download(path: string) {
+            return { data: new Blob([]), error: null }
+          },
+          async remove(paths: string[]) {
+            return { data: paths, error: null }
+          },
         }
-        return []
+      },
+    },
+
+    channel(name: string) {
+      const channelObj = {
+        on(event: string, filter: any, callback: (payload: any) => void) {
+          return channelObj
+        },
+        subscribe(callback?: (status: string) => void) {
+          if (callback) {
+            setTimeout(() => callback('SUBSCRIBED'), 0)
+          }
+          return channelObj
+        },
+        unsubscribe() {
+          return Promise.resolve()
+        },
+      }
+      return channelObj
+    },
+
+    removeChannel(channel: any) {
+      return Promise.resolve()
+    },
+
+    from(table: string) {
+      const executeOperation = (
+        filters: Array<(row: any) => boolean>,
+        pendingUpdate: Record<string, any> | null,
+        pendingDelete: boolean,
+        orderCol: string | null,
+        orderAsc: boolean,
+        limitCount: number | null
+      ) => {
+        let current = loadTableData(table)
+        let filtered = current.filter((row) => filters.every((fn) => fn(row)))
+
+        if (pendingUpdate) {
+          current = current.map((row) => {
+            const matches = filters.every((fn) => fn(row))
+            if (matches) {
+              return { ...row, ...pendingUpdate }
+            }
+            return row
+          })
+          persistTableData(table, current)
+          filtered = current.filter((row) => filters.every((fn) => fn(row)))
+        } else if (pendingDelete) {
+          current = current.filter((row) => !filters.every((fn) => fn(row)))
+          persistTableData(table, current)
+        }
+
+        if (orderCol) {
+          filtered = [...filtered].sort((a, b) => {
+            const valA = a[orderCol!] ?? ''
+            const valB = b[orderCol!] ?? ''
+            const comp = String(valA).localeCompare(String(valB), undefined, { numeric: true })
+            return orderAsc ? comp : -comp
+          })
+        }
+
+        if (limitCount !== null) {
+          filtered = filtered.slice(0, limitCount)
+        }
+
+        return filtered
       }
 
-      const persistTable = (records: DemoDriver[]) => {
-        if (table === 'motoristas') {
-          setDemoDrivers(records)
+      const createQueryBuilder = (initialFilters: Array<(row: any) => boolean> = []) => {
+        const filters = [...initialFilters]
+        let pendingUpdate: Record<string, any> | null = null
+        let pendingDelete = false
+        let orderCol: string | null = null
+        let orderAsc = true
+        let limitCount: number | null = null
+
+        const builder: any = {
+          select(columns?: string) {
+            return builder
+          },
+          update(values: Record<string, any>) {
+            pendingUpdate = values
+            return builder
+          },
+          delete() {
+            pendingDelete = true
+            return builder
+          },
+          eq(column: string, value: any) {
+            filters.push((row) => String(row[column] ?? '') === String(value ?? ''))
+            return builder
+          },
+          neq(column: string, value: any) {
+            filters.push((row) => String(row[column] ?? '') !== String(value ?? ''))
+            return builder
+          },
+          in(column: string, values: any[]) {
+            filters.push((row) => values.map(String).includes(String(row[column] ?? '')))
+            return builder
+          },
+          order(column: string, options?: { ascending?: boolean }) {
+            orderCol = column
+            orderAsc = options?.ascending !== false
+            return builder
+          },
+          limit(count: number) {
+            limitCount = count
+            return builder
+          },
+          single() {
+            const results = executeOperation(filters, pendingUpdate, pendingDelete, orderCol, orderAsc, limitCount)
+            const row = results[0] || (table === 'motoristas' ? getDemoDrivers()[0] : null) || {
+              id: 'demo-driver-default',
+              email: DEFAULT_DEMO_EMAIL,
+              nome: 'Motorista SR',
+              status: 'Aprovado',
+              work_status: 'ONLINE',
+            }
+            return Promise.resolve({ data: row, error: null })
+          },
+          maybeSingle() {
+            const results = executeOperation(filters, pendingUpdate, pendingDelete, orderCol, orderAsc, limitCount)
+            const row = results[0] || (table === 'motoristas' ? getDemoDrivers()[0] : null) || {
+              id: 'demo-driver-default',
+              email: DEFAULT_DEMO_EMAIL,
+              nome: 'Motorista SR',
+              status: 'Aprovado',
+              work_status: 'ONLINE',
+            }
+            return Promise.resolve({ data: row, error: null })
+          },
+          then(onfulfilled?: any, onrejected?: any) {
+            const results = executeOperation(filters, pendingUpdate, pendingDelete, orderCol, orderAsc, limitCount)
+            return Promise.resolve({ data: results, error: null }).then(onfulfilled, onrejected)
+          },
         }
+
+        return builder
       }
 
       return {
-        async insert(values: Array<Record<string, unknown>>) {
-          const records = loadTable()
-          const nextRecords = values.map((item) => ({
-            ...(item as DemoDriver),
-            id: String((item as DemoDriver).id || `demo-driver-${Date.now()}`),
-            email: String((item as DemoDriver).email || ''),
-            password: String((item as DemoDriver).password || 'demo123'),
-            status: ((item as DemoDriver).status as 'Pendente' | 'Aprovado' | 'Reprovado') || 'Aprovado',
-            work_status: ((item as DemoDriver).work_status as 'ONLINE' | 'OFFLINE') || 'OFFLINE',
-            created_at: new Date().toISOString(),
+        async insert(values: any) {
+          const records = loadTableData(table)
+          const itemsToInsert = Array.isArray(values) ? values : [values]
+
+          const nextRecords = itemsToInsert.map((item) => ({
+            ...item,
+            id: String(item.id || `demo-${table}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`),
+            status: item.status || (table === 'motoristas' ? 'Aprovado' : 'PENDING'),
+            work_status: item.work_status || 'OFFLINE',
+            created_at: item.created_at || new Date().toISOString(),
           }))
 
-          persistTable([...records, ...nextRecords])
+          persistTableData(table, [...records, ...nextRecords])
           return { error: null, data: nextRecords }
         },
 
         select(columns?: string) {
-          const baseFilters: Array<(record: DemoDriver) => boolean> = []
-
-          const queryChain: any = {
-            eq(column: string, value: string) {
-              baseFilters.push((record) => String((record as Record<string, unknown>)[column] ?? '') === String(value))
-              return queryChain
-            },
-            order(column: string) {
-              return queryChain
-            },
-            single() {
-              const records = loadTable().filter((record) => baseFilters.every((predicate) => predicate(record)))
-              const record = records[0] || getDemoDrivers()[0] || {
-                id: 'demo-driver-default',
-                email: DEFAULT_DEMO_EMAIL,
-                nome: 'Motorista SR',
-                status: 'Aprovado',
-                work_status: 'OFFLINE'
-              }
-              return Promise.resolve({ data: record, error: null })
-            },
-            maybeSingle() {
-              const records = loadTable().filter((record) => baseFilters.every((predicate) => predicate(record)))
-              const record = records[0] || getDemoDrivers()[0] || {
-                id: 'demo-driver-default',
-                email: DEFAULT_DEMO_EMAIL,
-                nome: 'Motorista SR',
-                status: 'Aprovado',
-                work_status: 'OFFLINE'
-              }
-              return Promise.resolve({ data: record, error: null })
-            },
-            then(onfulfilled?: any, onrejected?: any) {
-              const records = loadTable().filter((record) => baseFilters.every((predicate) => predicate(record)))
-              return Promise.resolve({ data: records, error: null }).then(onfulfilled, onrejected)
-            }
-          }
-
-          return queryChain
+          return createQueryBuilder().select(columns)
         },
 
-        update(values: Record<string, unknown>) {
-          const baseFilters: Array<(record: DemoDriver) => boolean> = []
+        update(values: Record<string, any>) {
+          return createQueryBuilder().update(values)
+        },
 
-          const updateChain: any = {
-            eq(column: string, value: string) {
-              baseFilters.push((record) => String((record as Record<string, unknown>)[column] ?? '') === String(value))
-
-              const records = loadTable().map((record) => {
-                if (String((record as Record<string, unknown>)[column] ?? '') === String(value)) {
-                  return { ...record, ...values }
-                }
-                return record
-              })
-              persistTable(records)
-
-              const updatedRecord = records.find((r) => String((r as Record<string, unknown>)[column] ?? '') === String(value)) || null
-
-              const chainedResult: any = {
-                select(cols?: string) {
-                  return {
-                    single() {
-                      return Promise.resolve({ data: updatedRecord, error: null })
-                    },
-                    maybeSingle() {
-                      return Promise.resolve({ data: updatedRecord, error: null })
-                    },
-                    then(onfulfilled?: any, onrejected?: any) {
-                      return Promise.resolve({ data: updatedRecord ? [updatedRecord] : [], error: null }).then(onfulfilled, onrejected)
-                    }
-                  }
-                },
-                single() {
-                  return Promise.resolve({ data: updatedRecord, error: null })
-                },
-                maybeSingle() {
-                  return Promise.resolve({ data: updatedRecord, error: null })
-                },
-                then(onfulfilled?: any, onrejected?: any) {
-                  return Promise.resolve({ data: updatedRecord, error: null }).then(onfulfilled, onrejected)
-                }
-              }
-
-              return chainedResult
-            },
-            then(onfulfilled?: any, onrejected?: any) {
-              return Promise.resolve({ data: null, error: null }).then(onfulfilled, onrejected)
-            }
-          }
-
-          return updateChain
+        delete() {
+          return createQueryBuilder().delete()
         },
       }
     },
