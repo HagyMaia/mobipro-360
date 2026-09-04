@@ -139,14 +139,14 @@ export default function HomePage() {
   const goalPct = Math.round((todayEarningsTotal / state.goalTarget) * 100);
 
   return (
-    <>
-      <header className="sticky top-0 z-30 border-b border-dark-700 bg-dark-900/95 px-4 pb-3 pt-safe-top pt-4 backdrop-blur-md shadow-lg shadow-black/10">
+    <div className="min-h-screen flex flex-col justify-between bg-[color:var(--bg)] text-slate-900 dark:text-slate-100 transition-colors">
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-950/90 px-4 pb-3 pt-4 backdrop-blur-xl shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-extrabold text-[color:var(--text)] dark:text-white">
-              Olá, <span className="text-brand-400">{driverName}</span> 👋
+            <h1 className="text-xl font-black text-slate-900 dark:text-white">
+              Olá, <span className="text-brand-600 dark:text-brand">{driverName}</span> 👋
             </h1>
-            <p className="text-[11px] capitalize text-slate-400">{dateLabel}</p>
+            <p className="text-[11px] capitalize text-slate-500 dark:text-slate-400">{dateLabel}</p>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -155,7 +155,7 @@ export default function HomePage() {
               type="button"
               aria-label="Notificações"
               onClick={() => setNotificationsOpen((open) => !open)}
-              className="relative rounded-full border border-dark-700 bg-dark-800 p-2 text-slate-300 transition hover:border-brand-500/40 hover:bg-dark-700 hover:text-[color:var(--text)] dark:hover:text-white"
+              className="relative rounded-2xl border border-slate-200 dark:border-dark-700 bg-slate-100 dark:bg-dark-800 p-2 text-slate-700 dark:text-slate-300 transition hover:border-brand hover:text-slate-900 dark:hover:text-white"
             >
               <Bell size={16} />
               {state.status === 'available' && state.incomingRide && (
@@ -165,13 +165,13 @@ export default function HomePage() {
           </div>
         </div>
         {notificationsOpen && (
-          <div className="mt-3 rounded-2xl border border-dark-700 bg-dark-800 px-3 py-2 text-xs text-slate-300 shadow-lg shadow-black/10">
+          <div className="mt-3 rounded-2xl border border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 shadow-lg">
             {state.incomingRide ? 'Você tem uma nova solicitação de corrida.' : 'Nenhuma notificação nova.'}
           </div>
         )}
       </header>
 
-      <div className="space-y-4 p-4 pb-28">
+      <div className="flex-1 space-y-4 p-4 pb-28">
         <StatusControl />
 
         {state.incomingRide ? (
@@ -179,25 +179,25 @@ export default function HomePage() {
         ) : state.activeRide ? (
           <ActiveRideCard />
         ) : state.status === 'available' ? (
-          <Card className="flex flex-col items-center gap-4 border border-brand-500/20 bg-brand-500/10 py-10 text-center shadow-lg shadow-brand-900/10">
+          <Card className="flex flex-col items-center gap-4 border border-brand/30 bg-brand/10 py-10 text-center shadow-lg shadow-brand/10">
             <div className="relative">
-              <span className="absolute inset-0 animate-ping rounded-full bg-brand-500/20" />
-              <span className="absolute inset-0 animate-ping rounded-full bg-brand-500/10 delay-500" />
-              <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-brand-500/15 ring-2 ring-brand-500/30">
-                <Navigation size={32} className="text-brand-400" />
+              <span className="absolute inset-0 animate-ping rounded-full bg-brand/20" />
+              <span className="absolute inset-0 animate-ping rounded-full bg-brand/10 delay-500" />
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-brand/20 ring-2 ring-brand/40">
+                <Navigation size={32} className="text-brand-700 dark:text-brand" />
               </div>
             </div>
             <div>
-              <div className="font-bold text-[color:var(--text)] dark:text-white">Procurando corridas...</div>
-              <div className="mt-1 text-xs text-slate-400">
+              <div className="font-black text-slate-900 dark:text-white">Procurando corridas...</div>
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Fique atento às novas chamadas e ao filtro de rentabilidade.
               </div>
             </div>
           </Card>
         ) : (
-          <Card className="border border-dark-700 bg-dark-800 py-10 text-center">
+          <Card className="py-10 text-center">
             <EmptyState
-              icon={<MapPin size={28} className="text-slate-500" />}
+              icon={<MapPin size={28} className="text-slate-400" />}
               title={state.status === 'break' ? 'Você está em pausa' : 'Você está offline'}
               description="Ative o modo Disponível para receber corridas."
             />
@@ -205,30 +205,30 @@ export default function HomePage() {
         )}
 
         <div>
-          <SectionTitle className="mb-3 text-slate-400">Resumo do dia</SectionTitle>
+          <SectionTitle className="mb-3">Resumo do dia</SectionTitle>
           <div className="grid grid-cols-3 gap-3">
-            <Card className="flex flex-col items-center gap-1.5 border border-dark-700 bg-dark-800 p-3 text-center">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15">
-                <TrendingUp size={16} className="text-emerald-400" />
+            <Card className="flex flex-col items-center gap-1.5 p-3 text-center">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-500/15">
+                <TrendingUp size={16} className="text-emerald-600 dark:text-emerald-400" />
               </div>
-              <div className="text-[10px] uppercase tracking-wide text-slate-400">Rendimento</div>
-              <div className="text-base font-extrabold tabular-nums text-[color:var(--text)] dark:text-white">{formatBRL(todayEarningsTotal)}</div>
+              <div className="text-[10px] uppercase tracking-wide font-bold text-slate-500 dark:text-slate-400">Rendimento</div>
+              <div className="text-base font-black tabular-nums text-slate-900 dark:text-white">{formatBRL(todayEarningsTotal)}</div>
             </Card>
 
-            <Card className="flex flex-col items-center gap-1.5 border border-dark-700 bg-dark-800 p-3 text-center">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500/15">
-                <Car size={16} className="text-brand-400" />
+            <Card className="flex flex-col items-center gap-1.5 p-3 text-center">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand/15">
+                <Car size={16} className="text-brand-700 dark:text-brand" />
               </div>
-              <div className="text-[10px] uppercase tracking-wide text-slate-400">Corridas</div>
-              <div className="text-base font-extrabold tabular-nums text-[color:var(--text)] dark:text-white">{todayRidesCount}</div>
+              <div className="text-[10px] uppercase tracking-wide font-bold text-slate-500 dark:text-slate-400">Corridas</div>
+              <div className="text-base font-black tabular-nums text-slate-900 dark:text-white">{todayRidesCount}</div>
             </Card>
 
-            <Card className="flex flex-col items-center gap-1.5 border border-dark-700 bg-dark-800 p-3 text-center">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500/15">
-                <Trophy size={16} className="text-amber-300" />
+            <Card className="flex flex-col items-center gap-1.5 p-3 text-center">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-amber-500/15">
+                <Trophy size={16} className="text-amber-600 dark:text-amber-400" />
               </div>
-              <div className="text-[10px] uppercase tracking-wide text-slate-400">Meta</div>
-              <div className={`text-base font-extrabold tabular-nums ${goalPct >= 100 ? 'text-emerald-400' : 'text-[color:var(--text)] dark:text-white'}`}>
+              <div className="text-[10px] uppercase tracking-wide font-bold text-slate-500 dark:text-slate-400">Meta</div>
+              <div className={`text-base font-black tabular-nums ${goalPct >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
                 {goalPct}%
               </div>
             </Card>
@@ -238,6 +238,6 @@ export default function HomePage() {
 
       <RentabilityOverlay />
       <BottomNav />
-    </>
+    </div>
   );
 }

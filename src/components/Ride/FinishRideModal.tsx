@@ -15,51 +15,54 @@ export const FinishRideModal: React.FC<FinishRideModalProps> = ({ isOpen, onClos
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="w-full max-w-sm rounded-2xl border border-dark-700 bg-dark-800 p-5 shadow-2xl shadow-black/30">
-                <h3 className="mb-4 text-lg font-semibold text-[color:var(--text)] dark:text-white">Finalizar Corrida</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="w-full max-w-sm rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 p-5 shadow-2xl">
+                <h3 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">Finalizar Corrida</h3>
 
                 <div className="mb-4">
-                    <label className="mb-1 block text-sm text-slate-300">Valor do taxímetro:</label>
-                    <input
-                        type="text"
-                        value={valor}
-                        onChange={(e) => setValor(e.target.value)}
-                        className="w-full border-b-2 border-brand-500 bg-transparent py-1 text-lg text-[color:var(--text)] dark:text-white outline-none"
-                    />
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Valor do taxímetro / Corrida:</label>
+                    <div className="flex items-center gap-2 border-b-2 border-brand pb-1">
+                        <span className="text-lg font-bold text-slate-500">R$</span>
+                        <input
+                            type="text"
+                            value={valor}
+                            onChange={(e) => setValor(e.target.value)}
+                            className="w-full bg-transparent text-xl font-black text-slate-900 dark:text-white outline-none"
+                        />
+                    </div>
                 </div>
 
-                <div className="mb-4 flex items-center justify-between text-lg font-bold text-[color:var(--text)] dark:text-white">
-                    <span>Total:</span>
-                    <span>R$ {valor}</span>
+                <div className="mb-4 flex items-center justify-between rounded-2xl bg-slate-50 dark:bg-dark-800 p-3 text-base font-bold text-slate-900 dark:text-white">
+                    <span className="text-sm text-slate-500 dark:text-slate-400">Total a registrar:</span>
+                    <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">R$ {valor}</span>
                 </div>
 
                 <div className="mb-6">
-                    <label className="mb-1 block text-sm text-slate-300">Pagamento: VOU</label>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Comprovante / Voucher (opcional):</label>
                     <div className="flex gap-2">
                         <input
                             type="text"
-                            placeholder="Voucher"
+                            placeholder="Número do voucher ou cupom"
                             value={voucher}
                             onChange={(e) => setVoucher(e.target.value)}
-                            className="flex-1 border-b border-dark-600 bg-transparent py-1 text-slate-100 outline-none placeholder:text-slate-500"
+                            className="flex-1 rounded-xl border border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none placeholder:text-slate-400"
                         />
                         <input ref={voucherInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => setVoucher(event.target.files?.[0]?.name || '')} />
-                        <button type="button" aria-label="Fotografar voucher" onClick={() => voucherInputRef.current?.click()} className="rounded-lg bg-dark-700 p-2 text-slate-200 transition hover:bg-dark-600">
+                        <button type="button" aria-label="Fotografar voucher" onClick={() => voucherInputRef.current?.click()} className="flex items-center justify-center rounded-xl bg-slate-100 dark:bg-dark-700 px-3 text-slate-700 dark:text-slate-200 transition hover:bg-slate-200 dark:hover:bg-dark-600">
                             <Camera size={18} />
                         </button>
                     </div>
                 </div>
 
-                <div className="flex justify-end gap-4">
-                    <button onClick={onClose} className="text-sm font-semibold text-brand-400 transition hover:text-brand-300">
-                        CANCELAR
+                <div className="flex justify-end gap-3">
+                    <button onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
+                        Cancelar
                     </button>
-                    <button onClick={() => onConfirm(valor, voucher)} className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-[color:var(--text)] dark:text-white transition hover:bg-brand-500">
-                        OK
+                    <button onClick={() => onConfirm(valor, voucher)} className="rounded-xl bg-brand px-6 py-2.5 font-bold text-slate-950 shadow-md shadow-brand/20 transition hover:bg-brand-hover active:scale-95">
+                        Confirmar
                     </button>
                 </div>
             </div>
         </div>
     );
-};
+};

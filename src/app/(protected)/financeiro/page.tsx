@@ -66,32 +66,32 @@ export default function FinanceiroPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-dark p-4 pb-24 transition-colors">
+        <div className="min-h-screen bg-[color:var(--bg)] text-slate-900 dark:text-slate-100 p-4 pb-24 transition-colors">
             <header className="mb-6 pt-4">
                 <h1 className="text-2xl font-black text-slate-900 dark:text-white">Financeiro</h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Acompanhe seus ganhos e rentabilidade</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Acompanhe seus ganhos e rentabilidade diária</p>
             </header>
 
             {/* 3. Feedback visual em caso de erro na requisição */}
             {error && (
-                <div className="mb-6 flex items-center gap-2 rounded-xl bg-red-50 p-4 text-red-600 dark:bg-red-500/10 dark:text-red-400 border border-red-100 dark:border-red-500/20">
+                <div className="mb-6 flex items-center gap-2 rounded-2xl bg-red-500/10 p-4 text-red-600 dark:text-red-400 border border-red-500/20">
                     <AlertCircle size={18} />
                     <p className="text-sm font-medium">{error}</p>
                 </div>
             )}
 
             {/* Card de Saldo Principal */}
-            <div className="relative overflow-hidden rounded-3xl bg-brand p-6 text-[color:var(--text)] dark:text-white shadow-xl shadow-brand/30 transition-all active:scale-[0.98]">
-                <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+            <div className="relative overflow-hidden rounded-3xl bg-brand p-6 text-slate-950 shadow-xl shadow-brand/25 transition-all active:scale-[0.98]">
+                <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/20 blur-2xl" />
                 <div className="relative z-10">
-                        <div className="flex items-center gap-2 text-[color:var(--text)] dark:text-white/80">
+                    <div className="flex items-center gap-2 text-slate-950/80 font-bold">
                         <Wallet size={16} />
-                        <span className="text-xs font-bold uppercase tracking-wider">Saldo Disponível</span>
+                        <span className="text-xs uppercase tracking-wider">Saldo Disponível</span>
                     </div>
-                    <h2 className="mt-1 text-4xl font-black tracking-tight">
+                    <h2 className="mt-1 text-4xl font-black tracking-tight text-slate-950">
                         {formatCurrency(earnings.totalEarned)}
                     </h2>
-                    <div className="mt-4 flex items-center gap-2 text-xs font-medium bg-white/20 w-fit px-2 py-1 rounded-lg">
+                    <div className="mt-4 flex items-center gap-2 text-xs font-black bg-black/10 w-fit px-3 py-1 rounded-full text-slate-950">
                         <TrendingUp size={14} />
                         <span>Ganhos acumulados</span>
                     </div>
@@ -100,8 +100,8 @@ export default function FinanceiroPage() {
 
             <section className="mt-8">
                 <div className="flex items-center justify-between mb-4">
-                    <SectionTitle className="text-slate-900 dark:text-white flex items-center gap-2">
-                        <History size={18} className="text-brand" /> Histórico de Corridas
+                    <SectionTitle className="flex items-center gap-2">
+                        <History size={18} className="text-brand-600 dark:text-brand" /> Histórico de Corridas
                     </SectionTitle>
                 </div>
 
@@ -110,16 +110,15 @@ export default function FinanceiroPage() {
                         <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 mb-3">
                             <History size={24} />
                         </div>
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Nenhuma corrida registrada</p>
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Nenhuma corrida registrada</p>
                         <p className="text-xs text-slate-400 dark:text-slate-500">Suas corridas aparecerão aqui após a conclusão.</p>
                     </Card>
                 ) : (
                     <div className="grid gap-3">
-                        {/* O tipo 'ride' agora é inferido automaticamente pelo TypeScript */}
                         {earnings.rides.map((ride) => (
-                            <Card key={ride.id} className="p-4 flex justify-between items-center hover:border-brand/30 transition-all active:scale-[0.98] border">
+                            <Card key={ride.id} className="p-4 flex justify-between items-center hover:border-brand/40 transition-all active:scale-[0.98]">
                                 <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-brand">
+                                    <div className="h-10 w-10 rounded-2xl bg-brand/15 flex items-center justify-center text-brand-700 dark:text-brand">
                                         <ArrowUpRight size={18} />
                                     </div>
                                     <div>
@@ -132,7 +131,7 @@ export default function FinanceiroPage() {
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-lg font-black text-emerald-500 dark:text-emerald-400">
+                                    <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
                                         {formatCurrency(ride.fare_amount)}
                                     </p>
                                     <span className="text-[10px] font-bold uppercase text-slate-400">Recebido</span>
@@ -146,4 +145,4 @@ export default function FinanceiroPage() {
             <BottomNav />
         </div>
     );
-}
+}

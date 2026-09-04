@@ -46,22 +46,22 @@ export default function AjustesPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between pb-24 font-sans select-none">
+    <div className="min-h-screen flex flex-col justify-between bg-[color:var(--bg)] pb-24 font-sans text-slate-900 dark:text-slate-100 select-none transition-colors">
       {/* HEADER */}
-      <header className="sticky top-0 z-30 border-b border-white/6 bg-[color:var(--surface)]/80 px-4 pb-3 pt-4 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-950/90 px-4 pb-3 pt-4 backdrop-blur-xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/perfil"
-              className="w-8 h-8 rounded-xl bg-white/6 flex items-center justify-center text-slate-200 hover:bg-white/10 transition"
+              className="w-9 h-9 rounded-2xl border border-slate-200 dark:border-dark-700 bg-slate-100 dark:bg-dark-800 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition"
             >
               <ArrowLeft size={16} />
             </Link>
             <div>
-              <h1 className="text-xl font-extrabold text-slate-100">
-                Ajustes e <span className="text-brand-600">Preferências</span>
+              <h1 className="text-xl font-black text-slate-900 dark:text-white">
+                Ajustes e <span className="text-brand-600 dark:text-brand">Preferências</span>
               </h1>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Personalize o comportamento do aplicativo
               </p>
             </div>
@@ -74,26 +74,26 @@ export default function AjustesPage() {
       <main className="p-4 space-y-4 flex-1">
         {/* PERMISSÕES DO SISTEMA */}
         <div>
-          <SectionTitle className="mb-2 text-xs font-bold text-gray-500 dark:text-slate-400">
+          <SectionTitle className="mb-2.5 text-xs font-bold text-slate-500 dark:text-slate-400">
             Acesso e Dispositivo
           </SectionTitle>
           <Link href="/ajustes/permissoes">
-            <Card className="flex items-center justify-between p-4 hover:border-brand/40 transition border group">
+            <Card className="flex items-center justify-between p-4 hover:border-brand/40 transition group">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-brand/15 text-brand-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-brand/15 text-brand-700 dark:text-brand flex items-center justify-center">
                   <Smartphone size={20} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-100 group-hover:text-brand-600 transition">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-brand-700 dark:group-hover:text-brand transition">
                     Permissões do App
                   </h3>
-                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     GPS 2º plano, Notificações e Sobreposição
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge className="bg-emerald-500/15 text-emerald-400">
+                <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                   <Check size={11} /> Todas Ativas
                 </Badge>
                 <ChevronRight size={18} className="text-slate-400" />
@@ -104,26 +104,26 @@ export default function AjustesPage() {
 
         {/* NAVEGAÇÃO GPS PREFERIDA */}
         <div>
-          <SectionTitle className="mb-2 text-xs font-bold text-gray-500 dark:text-slate-400">
+          <SectionTitle className="mb-2.5 text-xs font-bold text-slate-500 dark:text-slate-400">
             Navegador GPS Padrão
           </SectionTitle>
-            <Card className="p-2 grid grid-cols-2 gap-2">
+          <Card className="p-2 grid grid-cols-2 gap-2">
             <button
               onClick={() => dispatch({ type: 'SET_NAV_APP', navApp: 'waze' })}
-              className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-bold transition ${
+              className={`flex items-center justify-center gap-2 p-3 rounded-2xl text-xs font-black transition ${
                 navApp === 'waze'
-                  ? 'bg-brand text-white shadow-md'
-                  : 'bg-white/4 text-slate-200'
+                  ? 'bg-brand text-slate-950 shadow-md shadow-brand/20'
+                  : 'bg-slate-100 dark:bg-dark-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-dark-700'
               }`}
             >
               <Navigation size={16} /> Waze GPS
             </button>
             <button
               onClick={() => dispatch({ type: 'SET_NAV_APP', navApp: 'gmaps' })}
-              className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-bold transition ${
+              className={`flex items-center justify-center gap-2 p-3 rounded-2xl text-xs font-black transition ${
                 navApp === 'gmaps'
-                  ? 'bg-brand text-white shadow-md'
-                  : 'bg-white/4 text-slate-200'
+                  ? 'bg-brand text-slate-950 shadow-md shadow-brand/20'
+                  : 'bg-slate-100 dark:bg-dark-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-dark-700'
               }`}
             >
               <Navigation size={16} /> Google Maps
@@ -133,14 +133,14 @@ export default function AjustesPage() {
 
         {/* FILTROS DE RENTABILIDADE E CORRIDAS */}
         <div>
-          <SectionTitle className="mb-2 text-xs font-bold text-gray-500 dark:text-slate-400">
+          <SectionTitle className="mb-2.5 text-xs font-bold text-slate-500 dark:text-slate-400">
             Filtros Automáticos de Rentabilidade
           </SectionTitle>
-            <Card className="space-y-4 p-4 bg-[color:var(--surface)]/60">
+          <Card className="space-y-4 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-bold text-slate-100">Auto-Recusar Baixa Rentabilidade</h4>
-                <p className="text-xs text-slate-300">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Auto-Recusar Baixa Rentabilidade</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Descarta chamadas com R$/km abaixo do limite mínimo
                 </p>
               </div>
@@ -152,10 +152,10 @@ export default function AjustesPage() {
               />
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-dark-700">
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-dark-700">
               <div>
-                <h4 className="text-sm font-bold text-gray-900 dark:text-slate-100">Recusar Pagamento em Dinheiro</h4>
-                <p className="text-xs text-gray-500 dark:text-slate-400">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Recusar Pagamento em Dinheiro</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Aceitar apenas PIX, Cartão e Voucher da Empresa
                 </p>
               </div>
@@ -167,10 +167,10 @@ export default function AjustesPage() {
               />
             </div>
 
-              <div className="pt-2 border-t border-white/6">
+            <div className="pt-3 border-t border-slate-100 dark:border-dark-700">
               <div className="flex items-center justify-between mb-1.5">
-                <h4 className="text-sm font-bold text-slate-100">Nota Mínima do Passageiro</h4>
-                <span className="text-xs font-extrabold text-brand-600">★ {Number(minRating ?? 0).toFixed(1)}</span>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Nota Mínima do Passageiro</h4>
+                <span className="text-xs font-black text-brand-700 dark:text-brand">★ {Number(minRating ?? 0).toFixed(1)}</span>
               </div>
               <input
                 type="range"
@@ -187,17 +187,17 @@ export default function AjustesPage() {
 
         {/* ALERTA SONORO */}
         <div>
-          <SectionTitle className="mb-2 text-xs font-bold text-gray-500 dark:text-slate-400">
+          <SectionTitle className="mb-2.5 text-xs font-bold text-slate-500 dark:text-slate-400">
             Alertas Sonoros
           </SectionTitle>
           <Card className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                 <Volume2 size={20} />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-gray-900 dark:text-slate-100">Alarme de Nova Corrida</h4>
-                <p className="text-xs text-gray-500 dark:text-slate-400">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Alarme de Nova Corrida</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Toque com volume máximo ao receber chamadas
                 </p>
               </div>
@@ -212,10 +212,10 @@ export default function AjustesPage() {
         </div>
 
         {/* INFORMAÇÕES DE BUILD */}
-        <Card className="p-4 bg-gray-50 dark:bg-dark-800/40 border text-center text-xs text-gray-500 dark:text-slate-400">
-          <p className="font-bold text-gray-900 dark:text-slate-200">SR Logística - App do Motorista</p>
+        <Card className="p-4 bg-slate-100 dark:bg-dark-800/60 text-center text-xs text-slate-500 dark:text-slate-400">
+          <p className="font-bold text-slate-900 dark:text-slate-200">SR Logística - App do Motorista</p>
           <p className="mt-0.5">Versão 1.0.0 (Build 342) · Pronto para produção</p>
-          <p className="text-[10px] text-slate-500 mt-1">Compatível com PWA, Capacitor e React Native Webview</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Compatível com PWA, Capacitor e React Native Webview</p>
         </Card>
       </main>
 

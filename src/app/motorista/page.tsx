@@ -1,3 +1,5 @@
+'use client';
+
 import { TripOfferCard } from "@/features/trips/components/TripOfferCard";
 import { useTripStore } from "@/features/trips/store/useTripStore";
 import type { Trip } from "@/features/trips/domain/trip.types";

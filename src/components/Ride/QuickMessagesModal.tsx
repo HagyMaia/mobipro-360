@@ -10,22 +10,21 @@ export const QuickMessagesModal: React.FC<QuickMessagesModalProps> = ({ isOpen, 
     if (!isOpen) return null;
 
     const messages = [
-        'Digitar Mensagem ao Cliente APP',
-        'Digitar Mensagem ao Monitor - GRL...',
-        'QRL já foi embora',
+        'Digitar Mensagem ao Passageiro',
+        'Mensagem ao Monitor / Central - SR Logística',
+        'Passageiro não estava no local',
         'Preso no trânsito - atraso de 5 a 10 minutos',
-        'Impossível parar, dando a volta',
-        'O Cliente não quer meu taxi...',
-        'Estou a Caminho, logo chegarei',
-        'Número não Confere',
-        'O Cliente quer mais um taxi'
+        'Impossível parar no ponto exato, dando a volta',
+        'Estou a caminho, previsão de 3 minutos',
+        'Número / Endereço não confere',
+        'Passageiro solicita mais um veículo'
     ];
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-dark-700 bg-dark-800 shadow-2xl shadow-black/30">
-                <div className="border-b border-dark-700 p-4">
-                    <h3 className="text-lg font-semibold text-white">Mensagem para Base</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 shadow-2xl">
+                <div className="border-b border-slate-200/80 dark:border-dark-700/80 p-4">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Mensagens Rápidas</h3>
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                     <ul className="flex flex-col">
@@ -33,7 +32,7 @@ export const QuickMessagesModal: React.FC<QuickMessagesModalProps> = ({ isOpen, 
                             <li key={index}>
                                 <button
                                     onClick={() => onSendMessage(msg)}
-                                    className="w-full border-b border-dark-700 px-4 py-3 text-left text-sm text-slate-200 transition hover:bg-dark-700/80"
+                                    className="w-full border-b border-slate-100 dark:border-dark-800/80 px-4 py-3.5 text-left text-sm font-medium text-slate-800 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-dark-800"
                                 >
                                     {msg}
                                 </button>
@@ -41,12 +40,12 @@ export const QuickMessagesModal: React.FC<QuickMessagesModalProps> = ({ isOpen, 
                         ))}
                     </ul>
                 </div>
-                <div className="flex justify-end p-4">
-                    <button onClick={onClose} className="text-sm font-semibold text-brand-400 transition hover:text-brand-300">
-                        CANCELAR
+                <div className="flex justify-end p-4 bg-slate-50/50 dark:bg-dark-950/50">
+                    <button onClick={onClose} className="text-sm font-bold text-brand-700 dark:text-brand transition hover:underline">
+                        Fechar
                     </button>
                 </div>
             </div>
         </div>
     );
-};
+};

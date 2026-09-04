@@ -3,21 +3,33 @@
 @tailwind utilities;
 
 :root {
-  --bg: #F4F7FA;          /* Um branco ligeiramente acinzentado */
-  --surface: #FFFFFF;     /* Branco puro para os cards */
-  --brand: #E0B800;
-  --muted: #8E98A8;
-  --text: #0B1224;        /* Escuro bem forte */
+  --bg: #F4F7FA;
+  --surface: #FFFFFF;
+  --surface-card: #FFFFFF;
+  --surface-muted: #F1F5F9;
+  --border: #E2E8F0;
+  --brand: #FFC800;
+  --brand-hover: #E5B400;
+  --brand-dark: #1A1A1A;
+  --muted: #64748B;
+  --text: #0B1224;
+  --text-muted: #64748B;
   --login-gradient-opacity: 0.75;
   color-scheme: light;
 }
 
 .dark {
-  --bg: #0B1220;          /* Fundo escuro profundo */
-  --surface: #161E31;     /* Fundo de card um pouco mais claro */
+  --bg: #070D18;
+  --surface: #0B1220;
+  --surface-card: #0F172A;
+  --surface-muted: #1E293B;
+  --border: #1E293B;
   --brand: #FFC800;
-  --muted: #64748B;
-  --text: #F1F5F9;        /* Quase branco */
+  --brand-hover: #E5B400;
+  --brand-dark: #1A1A1A;
+  --muted: #94A3B8;
+  --text: #F8FAFC;
+  --text-muted: #94A3B8;
   color-scheme: dark;
 }
 
@@ -28,14 +40,17 @@ body {
 
 body {
   overscroll-behavior-y: none;
-  background-color: var(--bg);
+  background:
+    radial-gradient(circle at top, rgba(255, 200, 0, 0.08), transparent 30%),
+    linear-gradient(180deg, var(--bg) 0%, #E2E8F0 100%);
   color: var(--text);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* In light mode, ensure utility class that forces white text becomes readable */
-:root:not(.dark) .text-white {
-  color: var(--text) !important;
+.dark body {
+  background:
+    radial-gradient(circle at top, rgba(255, 200, 0, 0.12), transparent 30%),
+    linear-gradient(180deg, #070D18 0%, #0B1220 100%);
 }
 
 /* Leaflet no tema escuro */
