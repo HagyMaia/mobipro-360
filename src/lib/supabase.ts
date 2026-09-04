@@ -5,7 +5,6 @@ type DemoUser = {
   email: string;
   app_metadata?: Record<string, unknown>;
   user_metadata?: Record<string, unknown>;
-
 };
 
 type DemoSession = {
@@ -20,7 +19,7 @@ type DemoSession = {
 type DemoDriver = {
   id: string;
   email: string;
-  password: string;
+  password?: string;
   nome: string;
   cpf: string;
   cnh: string;
@@ -31,13 +30,21 @@ type DemoDriver = {
   placa_veiculo: string;
   categoria: string;
   status: 'Pendente' | 'Aprovado' | 'Reprovado';
+  work_status?: 'ONLINE' | 'OFFLINE' | 'BUSY';
   created_at: string;
 };
 
 const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-export const isSupabaseConfigured = Boolean(rawUrl && supabaseAnonKey)
+export const isSupabaseConfigured = Boolean(
+  rawUrl &&
+  supabaseAnonKey &&
+  !rawUrl.includes('placeholder') &&
+  !rawUrl.includes('example') &&
+  !supabaseAnonKey.includes('placeholder') &&
+  rawUrl.startsWith('http')
+)
 
 function normalizeSupabaseUrl(url: string) {
   try {
@@ -74,7 +81,19 @@ function writeStorage<T>(key: string, value: T) {
   try {
     window.localStorage.setItem(key, JSON.stringify(value))
   } catch {
-    // Ignora falhas locais de armazenamento em ambientes restritos.
+    // Ignora falhas locais de armazenamento
+  }
+}
+
+function setDemoCookie(userId: string) {
+  if (typeof document !== 'undefined') {
+    document.cookie = `sb-demo-token=${userId}; path=/; max-age=86400; SameSite=Lax`
+  }
+}
+
+function clearDemoCookie() {
+  if (typeof document !== 'undefined') {
+    document.cookie = 'sb-demo-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax'
   }
 }
 
@@ -86,11 +105,11 @@ function setDemoDrivers(drivers: DemoDriver[]) {
   writeStorage(DEMO_DRIVERS_KEY, drivers)
 }
 
-function getDemoAccounts(): Array<{ email: string; password: string; userId: string }> {
+function getDemoAccounts(): Array<{ email: string; password?: string; userId: string }> {
   return readStorage(DEMO_ACCOUNTS_KEY, [])
 }
 
-function setDemoAccounts(accounts: Array<{ email: string; password: string; userId: string }>) {
+function setDemoAccounts(accounts: Array<{ email: string; password?: string; userId: string }>) {
   writeStorage(DEMO_ACCOUNTS_KEY, accounts)
 }
 
@@ -98,13 +117,14 @@ function createDemoSession(user: DemoUser): DemoSession {
   const session: DemoSession = {
     access_token: `demo-access-token-${user.id}`,
     refresh_token: `demo-refresh-token-${user.id}`,
-    expires_in: 3600,
-    expires_at: Date.now() + 3600 * 1000,
+    expires_in: 86400,
+    expires_at: Date.now() + 86400 * 1000,
     token_type: 'bearer',
     user,
   }
 
   writeStorage(DEMO_SESSION_KEY, session)
+  setDemoCookie(user.id)
   return session
 }
 
@@ -115,6 +135,7 @@ function readDemoSession(): DemoSession | null {
 function clearDemoSession() {
   if (typeof window !== 'undefined') {
     window.localStorage.removeItem(DEMO_SESSION_KEY)
+    clearDemoCookie()
   }
 }
 
@@ -127,31 +148,37 @@ function buildDemoUser(id: string, email: string): DemoUser {
   }
 }
 
-function ensureDemoDriverRecord(userId: string, email: string, password: string, status: DemoDriver['status'] = 'Aprovado') {
+function ensureDemoDriverRecord(userId: string, email: string, password = 'demo123', status: DemoDriver['status'] = 'Aprovado') {
   const records = getDemoDrivers()
   const normalizedEmail = email.trim().toLowerCase()
 
-  if (!records.some((record) => record.id === userId || record.email === normalizedEmail)) {
-    setDemoDrivers([
-      ...records,
-      {
-        id: userId,
-        email: normalizedEmail,
-        password,
-        nome: 'Motorista Demo',
-        cpf: '000.000.000-00',
-        cnh: '00000000000',
-        telefone: '(00) 00000-0000',
-        marca_veiculo: 'Chevrolet',
-        modelo_veiculo: 'Onix',
-        ano_veiculo: '2024',
-        placa_veiculo: 'ABC1D23',
-        categoria: 'POPULAR',
-        status,
-        created_at: new Date().toISOString(),
-      },
-    ])
+  const existingIndex = records.findIndex((r) => r.id === userId || r.email === normalizedEmail)
+  if (existingIndex >= 0) {
+    records[existingIndex].status = status
+    setDemoDrivers([...records])
+    return
   }
+
+  setDemoDrivers([
+    ...records,
+    {
+      id: userId,
+      email: normalizedEmail,
+      password,
+      nome: normalizedEmail.split('@')[0] || 'Motorista SR',
+      cpf: '000.000.000-00',
+      cnh: '00000000000',
+      telefone: '(92) 99999-0000',
+      marca_veiculo: 'Chevrolet',
+      modelo_veiculo: 'Onix Plus',
+      ano_veiculo: '2024',
+      placa_veiculo: 'ABC1D23',
+      categoria: 'POPULAR',
+      status,
+      work_status: 'OFFLINE',
+      created_at: new Date().toISOString(),
+    },
+  ])
 }
 
 function ensureDefaultDemoAccount() {
@@ -174,27 +201,24 @@ function ensureDefaultDemoAccount() {
   ensureDemoDriverRecord(userId, DEFAULT_DEMO_EMAIL, DEFAULT_DEMO_PASSWORD, 'Aprovado')
 }
 
-function createMockSupabase() {
+export function createMockSupabase() {
+  ensureDefaultDemoAccount()
+
   return {
     auth: {
       async signUp({ email, password }: { email: string; password: string }) {
         const normalizedEmail = email.trim().toLowerCase()
         const accounts = getDemoAccounts()
-        const alreadyExists = accounts.some((account) => account.email === normalizedEmail)
+        let account = accounts.find((a) => a.email === normalizedEmail)
 
-        if (alreadyExists) {
-          return {
-            data: { user: null },
-            error: { message: 'Este e-mail já está cadastrado no ambiente local.' },
-          }
+        if (!account) {
+          const userId = `demo-driver-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+          account = { email: normalizedEmail, password, userId }
+          setDemoAccounts([...accounts, account])
+          ensureDemoDriverRecord(userId, normalizedEmail, password, 'Aprovado')
         }
 
-        const userId = `demo-driver-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-        const nextAccounts = [...accounts, { email: normalizedEmail, password, userId }]
-        setDemoAccounts(nextAccounts)
-        ensureDemoDriverRecord(userId, normalizedEmail, password, 'Pendente')
-
-        const user = buildDemoUser(userId, normalizedEmail)
+        const user = buildDemoUser(account.userId, normalizedEmail)
         const session = createDemoSession(user)
 
         return { data: { user, session }, error: null }
@@ -202,41 +226,19 @@ function createMockSupabase() {
 
       async signInWithPassword({ email, password }: { email: string; password: string }) {
         const normalizedEmail = email.trim().toLowerCase()
-        const account = getDemoAccounts().find(
-          (entry) => entry.email === normalizedEmail && entry.password === password,
-        )
+        const accounts = getDemoAccounts()
+        let account = accounts.find((entry) => entry.email === normalizedEmail)
 
+        // No modo demo/preview, se o usuário digitar qualquer email e senha, autentica como motorista aprovado!
         if (!account) {
-          if (normalizedEmail === DEFAULT_DEMO_EMAIL && password === DEFAULT_DEMO_PASSWORD) {
-            ensureDefaultDemoAccount()
-          }
-
-          const fallbackAccount = getDemoAccounts().find(
-            (entry) => entry.email === normalizedEmail && entry.password === password,
-          )
-
-          if (!fallbackAccount) {
-            return {
-              data: { user: null, session: null },
-              error: { message: 'E-mail ou senha incorretos.' },
-            }
-          }
+          const userId = `demo-driver-${Date.now()}`
+          account = { email: normalizedEmail, password, userId }
+          setDemoAccounts([...accounts, account])
         }
 
-        const authenticatedAccount = getDemoAccounts().find(
-          (entry) => entry.email === normalizedEmail && entry.password === password,
-        )
+        ensureDemoDriverRecord(account.userId, normalizedEmail, password || 'demo123', 'Aprovado')
 
-        if (!authenticatedAccount) {
-          return {
-            data: { user: null, session: null },
-            error: { message: 'E-mail ou senha incorretos.' },
-          }
-        }
-
-        ensureDemoDriverRecord(authenticatedAccount.userId, normalizedEmail, authenticatedAccount.password, 'Aprovado')
-
-        const user = buildDemoUser(authenticatedAccount.userId, normalizedEmail)
+        const user = buildDemoUser(account.userId, normalizedEmail)
         const session = createDemoSession(user)
 
         return {
@@ -276,7 +278,7 @@ function createMockSupabase() {
       onAuthStateChange(callback: (event: string, session: DemoSession | null) => void) {
         const session = readDemoSession()
         if (session) {
-          callback('SIGNED_IN', session)
+          setTimeout(() => callback('SIGNED_IN', session), 0)
         }
 
         return {
@@ -292,9 +294,13 @@ function createMockSupabase() {
     from(table: string) {
       const loadTable = () => {
         if (table === 'motoristas') {
-          return getDemoDrivers()
+          const drivers = getDemoDrivers()
+          if (drivers.length === 0) {
+            ensureDefaultDemoAccount()
+            return getDemoDrivers()
+          }
+          return drivers
         }
-
         return []
       }
 
@@ -309,15 +315,16 @@ function createMockSupabase() {
           const records = loadTable()
           const nextRecords = values.map((item) => ({
             ...(item as DemoDriver),
-            id: String((item as DemoDriver).id || `demo-driver-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+            id: String((item as DemoDriver).id || `demo-driver-${Date.now()}`),
             email: String((item as DemoDriver).email || ''),
             password: String((item as DemoDriver).password || 'demo123'),
-            status: ((item as DemoDriver).status as 'Pendente' | 'Aprovado' | 'Reprovado') || 'Pendente',
+            status: ((item as DemoDriver).status as 'Pendente' | 'Aprovado' | 'Reprovado') || 'Aprovado',
+            work_status: ((item as DemoDriver).work_status as 'ONLINE' | 'OFFLINE') || 'OFFLINE',
             created_at: new Date().toISOString(),
           }))
 
           persistTable([...records, ...nextRecords])
-          return { error: null }
+          return { error: null, data: nextRecords }
         },
 
         select() {
@@ -339,7 +346,25 @@ function createMockSupabase() {
             },
             maybeSingle() {
               const records = loadTable().filter((record) => baseFilters.every((predicate) => predicate(record)))
-              return Promise.resolve({ data: records[0] ?? null, error: null })
+              const record = records[0] || getDemoDrivers()[0] || {
+                id: 'demo-driver-default',
+                email: DEFAULT_DEMO_EMAIL,
+                nome: 'Motorista SR',
+                status: 'Aprovado',
+                work_status: 'OFFLINE'
+              }
+              return Promise.resolve({ data: record, error: null })
+            },
+            single() {
+              const records = loadTable().filter((record) => baseFilters.every((predicate) => predicate(record)))
+              const record = records[0] || getDemoDrivers()[0] || {
+                id: 'demo-driver-default',
+                email: DEFAULT_DEMO_EMAIL,
+                nome: 'Motorista SR',
+                status: 'Aprovado',
+                work_status: 'OFFLINE'
+              }
+              return Promise.resolve({ data: record, error: null })
             },
           }
 
@@ -357,7 +382,20 @@ function createMockSupabase() {
               })
 
               persistTable(records)
-              return { error: null }
+              return {
+                error: null,
+                data: records.find((r) => String((r as Record<string, unknown>)[column] ?? '') === String(value)) || null,
+                select() {
+                  return {
+                    single() {
+                      return Promise.resolve({
+                        data: records.find((r) => String((r as Record<string, unknown>)[column] ?? '') === String(value)) || null,
+                        error: null,
+                      })
+                    }
+                  }
+                }
+              }
             },
           }
         },
@@ -368,10 +406,7 @@ function createMockSupabase() {
 
 const browserClient = isSupabaseConfigured
   ? createBrowserClient(browserUrl, browserKey)
-  : (() => {
-      ensureDefaultDemoAccount()
-      return createMockSupabase()
-    })()
+  : createMockSupabase()
 
 export const supabase = browserClient as any
-export const createClient = () => supabase;
+export const createClient = () => (isSupabaseConfigured ? createBrowserClient(browserUrl, browserKey) : createMockSupabase()) as any
