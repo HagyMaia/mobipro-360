@@ -31,7 +31,7 @@ import { ProfileService } from '@/services/driver/ProfileService';
 import type { DriverProfile } from '@/types';
 
 export default function PerfilPage() {
-  const { state, dispatch, todayEarnings, todayNet } = useApp();
+  const { state, dispatch, todayEarnings } = useApp();
   const { signOut } = useAuth();
   const { profile: mockProfile } = state;
   const [dbProfile, setDbProfile] = useState<DriverProfile | null>(null);
@@ -270,11 +270,7 @@ export default function PerfilPage() {
         </Card>
 
         {/* Estatísticas Rápidas */}
-        <div className="grid grid-cols-3 gap-2.5">
-          <Stat label="Hoje" value={formatBRL(todayEarnings)} accent="text-emerald-600 dark:text-emerald-400" />
-          <Stat label="Líquido" value={formatBRL(todayNet)} accent={todayNet >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'} />
-          <Stat label="Meta" value={`${Math.round((todayEarnings / state.goalTarget) * 100)}%`} accent="text-brand-700 dark:text-brand" />
-        </div>
+        <Stat label="Ganhos de Hoje" value={formatBRL(todayEarnings)} accent="text-emerald-600 dark:text-emerald-400" />
 
         {/* Atalhos: Ajustes & Suporte */}
         <div className="grid grid-cols-2 gap-2.5">
