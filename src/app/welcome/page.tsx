@@ -98,11 +98,11 @@ export default function WelcomeScreen() {
 
           <a
             href="/sr-logistica.apk"
-            download
-            className="flex items-center justify-center gap-2 w-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 py-3 px-6 rounded-2xl font-bold text-sm hover:bg-emerald-500/20 active:scale-[0.98] transition-all border-dashed"
+            download="sr-logistica.apk"
+            className="flex items-center justify-center gap-2 w-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 py-3.5 px-6 rounded-2xl font-bold text-sm hover:bg-emerald-500/20 active:scale-[0.98] transition-all border-dashed"
           >
-            <Download size={17} />
-            Baixar aplicativo Android
+            <Download size={18} />
+            Baixar aplicativo Android (APK)
           </a>
         </div>
 
@@ -113,19 +113,18 @@ export default function WelcomeScreen() {
       </main>
 
       {/* BANNER DE NOTIFICAÇÃO ROXO/MAGENTA */}
-      <div
-        onClick={handleUpdateClick}
-        role="button"
-        tabIndex={0}
+      <a
+        href="/sr-logistica.apk"
+        download="sr-logistica.apk"
         className="relative z-20 w-full bg-[#A832A8] hover:bg-[#962896] active:bg-[#852385] px-5 py-3.5 flex items-center gap-3 cursor-pointer transition-colors shadow-lg"
       >
         <div className="bg-white rounded-full p-1 shrink-0 flex items-center justify-center shadow-sm">
           <Info size={14} className="text-[#A832A8]" strokeWidth={3.5} />
         </div>
         <p className="text-white text-[13px] font-semibold leading-snug tracking-normal flex-1">
-          Há uma nova atualização disponível para instalar. Clique aqui para atualizar.
+          Há uma nova versão do aplicativo Android disponível. Toque para baixar.
         </p>
-      </div>
+      </a>
 
       {/* MODAL DE SUPORTE */}
       <SupportModal isOpen={supportOpen} onClose={() => setSupportOpen(false)} />

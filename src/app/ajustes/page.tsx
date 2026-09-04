@@ -15,7 +15,8 @@ import {
   Smartphone, 
   Check, 
   Info,
-  CarFront
+  CarFront,
+  Download
 } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import { Card, SectionTitle, Badge } from '@/components/ui';
@@ -209,6 +210,33 @@ export default function AjustesPage() {
               className="w-5 h-5 accent-brand rounded cursor-pointer"
             />
           </Card>
+        </div>
+
+        {/* INSTALAÇÃO DO APK ANDROID */}
+        <div>
+          <SectionTitle className="mb-2.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+            Aplicativo Nativo
+          </SectionTitle>
+          <a
+            href="/sr-logistica.apk"
+            download="sr-logistica.apk"
+            className="flex items-center justify-between p-4 rounded-2xl bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 hover:border-brand/40 transition group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <Download size={20} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand transition">
+                  Baixar Aplicativo Android (APK)
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Instalar versão mais recente no celular
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand transition" />
+          </a>
         </div>
 
         {/* INFORMAÇÕES DE BUILD */}

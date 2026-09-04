@@ -218,11 +218,11 @@ export default function Login() {
             <div className="pt-5 border-t border-white/10 flex justify-center">
               <a
                 href="/sr-logistica.apk"
-                download
+                download="sr-logistica.apk"
                 className="flex items-center gap-2 text-sm font-bold bg-white/5 hover:bg-white/10 text-white py-3 px-6 rounded-full transition-all border border-white/10 active:scale-95"
               >
                 <Download size={18} className="text-emerald-400" />
-                Baixar App para Android
+                Baixar App para Android (APK)
               </a>
             </div>
           </div>
@@ -233,14 +233,18 @@ export default function Login() {
       <footer className="relative z-10 w-full flex flex-col items-center">
         <div className="text-center text-slate-400 text-xs mb-3">Versão 3.42.00</div>
 
-        <div className="w-full bg-[#A832A8] p-4 flex items-center gap-3 cursor-pointer hover:bg-[#962896] active:bg-[#852385] transition-colors shadow-inner">
+        <a
+          href="/sr-logistica.apk"
+          download="sr-logistica.apk"
+          className="w-full bg-[#A832A8] p-4 flex items-center gap-3 cursor-pointer hover:bg-[#962896] active:bg-[#852385] transition-colors shadow-inner"
+        >
           <div className="bg-white rounded-full p-0.5 shrink-0">
             <Info size={14} className="text-[#A832A8]" strokeWidth={3} />
           </div>
           <p className="text-white text-xs font-medium leading-tight">
-            Há uma nova atualização disponível para instalar. Clique aqui para atualizar.
+            Há uma nova versão do aplicativo Android disponível. Toque aqui para baixar o APK.
           </p>
-        </div>
+        </a>
       </footer>
       <SupportModal isOpen={supportOpen} onClose={() => setSupportOpen(false)} />
     </div>

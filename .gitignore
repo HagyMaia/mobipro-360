@@ -180,33 +180,11 @@
 RELATORIO_CODIGO_MOBIPRO.md
 RELATORIO_ANALISE_PROJETO.md
 
-# Arquivos Android de distribuicao
-*.apk
-*.aab
-
 # Arquivos de distribuicao Android
 *.apk
 *.aab
-
-# Relatorios gerados para analise
-RELATORIO_CODIGO_MOBIPRO.md
-RELATORIO_ANALISE_PROJETO.md
-
-# IDEs
-.idea/
-.vscode/
-
-# Logs
-logs/
-*.log
-
-# Relatorios temporarios de analise
-RELATORIO_CODIGO_MOBIPRO.md
-RELATORIO_ANALISE_PROJETO.md
-
-# Arquivos de distribuicao Android
-*.apk
-*.aab
+!public/*.apk
+!releases/*.apk
 
 # Variaveis de ambiente e segredos
 .env
