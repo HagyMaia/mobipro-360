@@ -4,8 +4,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { LocationCoordinates } from '@/types';
 import { LocationService } from '@/services/location/LocationService';
 
+export const DEFAULT_MANAUS_LOCATION: LocationCoordinates = {
+    latitude: -3.119028,
+    longitude: -60.021731,
+    heading: 0,
+    speed: 0,
+    accuracy: 10,
+    timestamp: Date.now(),
+};
+
 export function useDriverLocation(isOnline: boolean = false) {
-    const [location, setLocation] = useState<LocationCoordinates | null>(null);
+    const [location, setLocation] = useState<LocationCoordinates | null>(DEFAULT_MANAUS_LOCATION);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -16,7 +25,9 @@ export function useDriverLocation(isOnline: boolean = false) {
             setLocation(coords);
             setError(null);
         } catch (err: any) {
-            setError(err?.message || 'Erro ao obter localização');
+            console.warn('[useDriverLocation] GPS não disponível, usando Manaus-AM:', err?.message);
+            setLocation(DEFAULT_MANAUS_LOCATION);
+            setError(null);
         } finally {
             setIsLoading(false);
         }

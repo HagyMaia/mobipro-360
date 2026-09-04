@@ -30,8 +30,8 @@ interface DriverMapProps {
 }
 
 export default function DriverMap({ location }: DriverMapProps) {
-    // Posição padrão (Ex: Centro de SP ou Brasília) caso o GPS ainda esteja carregando
-    const defaultPosition: [number, number] = [-23.55052, -46.633308];
+    // Posição padrão: Manaus - AM (Centro / Adrianópolis / Djalma Batista)
+    const defaultPosition: [number, number] = [-3.119028, -60.021731];
     const center: [number, number] = location
         ? [location.latitude, location.longitude]
         : defaultPosition;
