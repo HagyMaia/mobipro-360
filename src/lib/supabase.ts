@@ -292,7 +292,7 @@ export function createMockSupabase() {
     },
 
     from(table: string) {
-      const loadTable = () => {
+      const loadTable = (): DemoDriver[] => {
         if (table === 'motoristas') {
           const drivers = getDemoDrivers()
           if (drivers.length === 0) {
@@ -327,33 +327,16 @@ export function createMockSupabase() {
           return { error: null, data: nextRecords }
         },
 
-        select() {
+        select(columns?: string) {
           const baseFilters: Array<(record: DemoDriver) => boolean> = []
 
-          const methods = {
+          const queryChain: any = {
             eq(column: string, value: string) {
               baseFilters.push((record) => String((record as Record<string, unknown>)[column] ?? '') === String(value))
-              return methods
+              return queryChain
             },
             order(column: string) {
-              const records = loadTable().filter((record) => baseFilters.every((predicate) => predicate(record)))
-              const sorted = [...records].sort((a, b) => {
-                const left = String((a as Record<string, unknown>)[column] ?? '')
-                const right = String((b as Record<string, unknown>)[column] ?? '')
-                return left.localeCompare(right)
-              })
-              return Promise.resolve({ data: sorted, error: null })
-            },
-            maybeSingle() {
-              const records = loadTable().filter((record) => baseFilters.every((predicate) => predicate(record)))
-              const record = records[0] || getDemoDrivers()[0] || {
-                id: 'demo-driver-default',
-                email: DEFAULT_DEMO_EMAIL,
-                nome: 'Motorista SR',
-                status: 'Aprovado',
-                work_status: 'OFFLINE'
-              }
-              return Promise.resolve({ data: record, error: null })
+              return queryChain
             },
             single() {
               const records = loadTable().filter((record) => baseFilters.every((predicate) => predicate(record)))
@@ -366,38 +349,76 @@ export function createMockSupabase() {
               }
               return Promise.resolve({ data: record, error: null })
             },
+            maybeSingle() {
+              const records = loadTable().filter((record) => baseFilters.every((predicate) => predicate(record)))
+              const record = records[0] || getDemoDrivers()[0] || {
+                id: 'demo-driver-default',
+                email: DEFAULT_DEMO_EMAIL,
+                nome: 'Motorista SR',
+                status: 'Aprovado',
+                work_status: 'OFFLINE'
+              }
+              return Promise.resolve({ data: record, error: null })
+            },
+            then(onfulfilled?: any, onrejected?: any) {
+              const records = loadTable().filter((record) => baseFilters.every((predicate) => predicate(record)))
+              return Promise.resolve({ data: records, error: null }).then(onfulfilled, onrejected)
+            }
           }
 
-          return methods
+          return queryChain
         },
 
         update(values: Record<string, unknown>) {
-          return {
-            async eq(column: string, value: string) {
+          const baseFilters: Array<(record: DemoDriver) => boolean> = []
+
+          const updateChain: any = {
+            eq(column: string, value: string) {
+              baseFilters.push((record) => String((record as Record<string, unknown>)[column] ?? '') === String(value))
+
               const records = loadTable().map((record) => {
                 if (String((record as Record<string, unknown>)[column] ?? '') === String(value)) {
                   return { ...record, ...values }
                 }
                 return record
               })
-
               persistTable(records)
-              return {
-                error: null,
-                data: records.find((r) => String((r as Record<string, unknown>)[column] ?? '') === String(value)) || null,
-                select() {
+
+              const updatedRecord = records.find((r) => String((r as Record<string, unknown>)[column] ?? '') === String(value)) || null
+
+              const chainedResult: any = {
+                select(cols?: string) {
                   return {
                     single() {
-                      return Promise.resolve({
-                        data: records.find((r) => String((r as Record<string, unknown>)[column] ?? '') === String(value)) || null,
-                        error: null,
-                      })
+                      return Promise.resolve({ data: updatedRecord, error: null })
+                    },
+                    maybeSingle() {
+                      return Promise.resolve({ data: updatedRecord, error: null })
+                    },
+                    then(onfulfilled?: any, onrejected?: any) {
+                      return Promise.resolve({ data: updatedRecord ? [updatedRecord] : [], error: null }).then(onfulfilled, onrejected)
                     }
                   }
+                },
+                single() {
+                  return Promise.resolve({ data: updatedRecord, error: null })
+                },
+                maybeSingle() {
+                  return Promise.resolve({ data: updatedRecord, error: null })
+                },
+                then(onfulfilled?: any, onrejected?: any) {
+                  return Promise.resolve({ data: updatedRecord, error: null }).then(onfulfilled, onrejected)
                 }
               }
+
+              return chainedResult
             },
+            then(onfulfilled?: any, onrejected?: any) {
+              return Promise.resolve({ data: null, error: null }).then(onfulfilled, onrejected)
+            }
           }
+
+          return updateChain
         },
       }
     },

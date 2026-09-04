@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
 
     if (hasDemoAuth && (pathname === '/welcome' || pathname === '/login' || pathname === '/cadastro')) {
       const url = request.nextUrl.clone()
-      url.pathname = '/mapa'
+      url.pathname = '/'
       return NextResponse.redirect(url)
     }
 
@@ -75,7 +75,7 @@ export async function middleware(request: NextRequest) {
 
     if (user && (pathname === '/welcome' || pathname === '/login' || pathname === '/cadastro')) {
       const url = request.nextUrl.clone()
-      url.pathname = '/mapa'
+      url.pathname = '/'
       return NextResponse.redirect(url)
     }
   } catch (e) {

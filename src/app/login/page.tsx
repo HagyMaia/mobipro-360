@@ -110,7 +110,7 @@ export default function Login() {
 
       // 3. Redirecionar com sucesso para o painel principal
       console.info('[Login] Login bem-sucedido. Redirecionando...');
-      router.replace('/mapa');
+      router.replace('/');
       router.refresh();
     } catch (err: unknown) {
       console.error('[Login] Falha no login:', err);

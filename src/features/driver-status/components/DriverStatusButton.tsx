@@ -61,8 +61,8 @@ export function DriverStatusButton({
     isInTrip
       ? "bg-violet-600 text-white shadow-lg shadow-violet-600/25"
       : isOnline
-        ? "bg-amber-500 text-white shadow-lg shadow-amber-500/25"
-        : "bg-brand text-white shadow-lg shadow-brand/25",
+        ? "bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/25"
+        : "bg-brand text-slate-950 font-black shadow-lg shadow-brand/25 hover:brightness-105",
   ].join(" ");
 
   return (

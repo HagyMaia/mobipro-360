@@ -15,6 +15,8 @@ import { StatusPill } from "@/components/StatusControl";
 import { Card, Button } from "@/components/ui";
 import type { DriverWorkStatus } from "@/types";
 
+import BottomNav from "@/components/BottomNav";
+
 const DriverMap = dynamic(
     () => import("@/components/map/DriverMap"),
     { ssr: false },
@@ -28,7 +30,7 @@ export default function MapaPage() {
     const [isApproved, setIsApproved] = useState(false);
     const [statusError, setStatusError] = useState<string | null>(null);
 
-    const { location, error } = useDriverLocation(isOnline);
+    const { location } = useDriverLocation(isOnline);
 
     const {
         currentOffer,
@@ -203,8 +205,7 @@ export default function MapaPage() {
 
         if (success) {
             clearOffer();
-            // Em breve: Redirecionar para a tela de corrida em andamento
-            alert('Corrida Aceita! Rota calculada (Módulo 7).');
+            alert('Corrida Aceita! Rota calculada.');
         } else {
             clearOffer();
             alert('Outro motorista aceitou esta corrida antes de você.');
@@ -212,14 +213,14 @@ export default function MapaPage() {
     };
 
     return (
-        <div className="relative w-full h-screen overflow-hidden bg-brand-dark">
+        <div className="relative w-full h-screen overflow-hidden bg-slate-950 text-white font-sans">
             {/* Top header over the map */}
-            <header className="absolute left-0 right-0 top-0 z-[1100] px-4 pt-safe-top pb-3">
+            <header className="absolute left-0 right-0 top-0 z-[1100] px-4 pt-4 pb-3 bg-white/90 dark:bg-dark-950/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-dark-700/80 shadow-md">
                 <div className="mx-auto max-w-4xl">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-lg font-extrabold text-white">Olá, <span className="text-brand-400">{driverName}</span></h1>
-                            <p className="text-xs text-slate-300">Toque em iniciar para receber corridas</p>
+                            <h1 className="text-lg font-black text-slate-900 dark:text-white">Olá, <span className="text-brand-600 dark:text-brand">{driverName}</span> 👋</h1>
+                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Toque no botão abaixo para receber corridas</p>
                         </div>
                         <div className="flex items-center gap-2">
                             <ThemeToggle />
@@ -234,7 +235,7 @@ export default function MapaPage() {
             </div>
 
             {!isOnline && (
-                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-10 transition-all" />
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-10 transition-all pointer-events-none" />
             )}
 
             {/* Renderiza o modal se houver uma nova chamada e o motorista estiver online */}
@@ -249,38 +250,37 @@ export default function MapaPage() {
             {/* Compact preview when there's an offer */}
             {isOnline && currentOffer && (
                 <div className="absolute top-24 left-1/2 z-[1101] w-full max-w-lg -translate-x-1/2 px-4">
-                    <Card className={`p-3 rounded-2xl shadow-xl transition-all duration-300 ${previewMounted ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'} bg-white/95 text-slate-900 border border-slate-200 dark:bg-dark-800/85 dark:text-white dark:border-dark-700`}>
+                    <Card className={`p-4 rounded-3xl shadow-2xl transition-all duration-300 ${previewMounted ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'} bg-white text-slate-900 border border-slate-200 dark:bg-dark-800 dark:text-white dark:border-dark-700`}>
                         <div className="flex items-start justify-between gap-4">
                             <div className="min-w-0">
                                 <div className="text-sm font-bold truncate">Nova chamada</div>
                                 <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate">{currentOffer.passengerName} · {currentOffer.estimatedMinutes} min · {currentOffer.distanceKm} km</div>
-                                <div className="mt-3 text-2xl font-extrabold text-slate-900 dark:text-white tabular-nums">R$ {Number(currentOffer.fareAmount ?? 0).toFixed(2)}</div>
+                                <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white tabular-nums">R$ {Number(currentOffer.fareAmount ?? 0).toFixed(2)}</div>
                             </div>
                             <div className="flex flex-col items-end gap-2">
                                 <Button variant="outline" className="min-w-[96px]" onClick={() => clearOffer()}>Recusar</Button>
-                                <Button className="min-w-[96px]" onClick={() => handleAcceptRide(currentOffer.id)}>Aceitar</Button>
+                                <Button className="min-w-[96px] bg-brand text-slate-950 font-black" onClick={() => handleAcceptRide(currentOffer.id)}>Aceitar</Button>
                             </div>
                         </div>
                     </Card>
                 </div>
             )}
 
-            {/* ... Restante do código (Top Bar e Bottom Sheet) mantido igual à versão anterior ... */}
-
-            <div className="absolute bottom-0 w-full bg-white dark:bg-surface rounded-t-3xl shadow-2xl z-[1100] border-t border-slate-200 dark:border-white/10 p-6 pb-10 transition-all">
+            {/* Bottom Sheet acima do BottomNav */}
+            <div className="absolute bottom-16 inset-x-0 w-full bg-white/95 dark:bg-dark-900/95 backdrop-blur-xl rounded-t-3xl shadow-2xl z-[1050] border-t border-slate-200 dark:border-white/10 p-5 pb-6 transition-all">
                 {statusError && (
-                    <div className="mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-300">
+                    <div className="mb-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs font-semibold text-red-600 dark:text-red-300">
                         {statusError}
                     </div>
                 )}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-4">
                     <div className="flex flex-col">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estado Atual</span>
-                        <span className={`text-lg font-black ${isOnline ? 'text-emerald-500' : 'text-slate-900 dark:text-white'}`}>
+                        <span className={`text-base font-black ${isOnline ? 'text-emerald-500' : 'text-slate-900 dark:text-white'}`}>
                             {isOnline ? 'Disponível para Corridas' : 'Modo Offline'}
                         </span>
                     </div>
-                    <div className={`h-3 w-3 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                    <div className={`h-3.5 w-3.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
                 </div>
                 <DriverStatusButton
                     status={isOnline ? "ONLINE" : "OFFLINE"}
@@ -288,7 +288,10 @@ export default function MapaPage() {
                     onToggle={handleToggleStatus}
                 />
             </div>
+
+            <BottomNav />
         </div>
     );
 }
+
 
