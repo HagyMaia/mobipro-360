@@ -6,6 +6,7 @@ import { DocumentType } from '@/types';
 export interface DriverRegistrationData {
     // Passos 1 & 2
     fullName: string;
+    displayName?: string;
     cpf: string;
     phone: string;
     email: string;
@@ -63,18 +64,24 @@ export class DriverService {
     ): Promise<void> {
         const supabase = createClient();
 
+        const chosenDisplayName = data.displayName?.trim() || data.fullName.trim().split(' ')[0] || 'Motorista';
+
         // 1. Cadastra o perfil do motorista
         const { error: driverError } = await supabase
             .from('motoristas')
             .insert({
                 id: userId,
-                nome: data.fullName,
+                nome: chosenDisplayName,
+                nome_completo: data.fullName,
+                nome_social: chosenDisplayName,
                 cpf: data.cpf,
                 telefone: data.phone,
+                email: data.email,
                 marca_veiculo: data.vehicleMake,
                 modelo_veiculo: data.vehicleModel,
                 ano_veiculo: String(data.vehicleYear),
                 placa_veiculo: data.vehiclePlate,
+                cor_veiculo: data.vehicleColor,
                 categoria: data.vehicleCategory,
                 status: 'Pendente', // Entra como Pendente por padrão
             });

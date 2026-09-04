@@ -17,6 +17,7 @@ export default function RegisterWizard() {
   // Form State
   const [formData, setFormData] = useState<DriverRegistrationData>({
     fullName: '',
+    displayName: '',
     cpf: '',
     phone: '',
     email: '',
@@ -25,8 +26,8 @@ export default function RegisterWizard() {
     number: '',
     complement: '',
     neighborhood: '',
-    city: '',
-    state: '',
+    city: 'Manaus',
+    state: 'AM',
     vehicleMake: '',
     vehicleModel: '',
     vehicleYear: new Date().getFullYear(),
@@ -139,13 +140,29 @@ export default function RegisterWizard() {
           <section className="space-y-4">
             <h2 className="text-xl font-bold">1. Dados Pessoais</h2>
             <div>
-              <label className="text-xs text-zinc-400">Nome Completo</label>
+              <label className="text-xs font-semibold text-brand-400 block mb-1">
+                Como deseja ser chamado no aplicativo? <span className="text-amber-400">*</span>
+              </label>
+              <p className="text-[11px] text-zinc-400 mb-1.5">
+                Este é o nome ou apelido que aparecerá para os passageiros e nas saudações do app (em vez de usar parte do seu e-mail).
+              </p>
+              <input
+                type="text"
+                className="w-full bg-white/5 border border-brand/40 rounded-xl p-3 text-sm text-[color:var(--text)] dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all font-semibold"
+                value={formData.displayName || ''}
+                onChange={(e) => handleInputChange('displayName', e.target.value)}
+                placeholder="Ex: Carlos, Silva, Comandante Roberto"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400">Nome Completo (Conforme CNH) <span className="text-amber-400">*</span></label>
               <input
                 type="text"
                 className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-[color:var(--text)] dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 value={formData.fullName}
                 onChange={(e) => handleInputChange('fullName', e.target.value)}
-                placeholder="Ex: João Silva"
+                placeholder="Ex: Carlos Eduardo da Silva"
               />
             </div>
             <div>
@@ -366,15 +383,17 @@ export default function RegisterWizard() {
           <section className="space-y-4">
             <h2 className="text-xl font-bold">5. Revisão e Envio</h2>
             <div className="bg-brand-surface p-4 rounded-lg space-y-2 text-sm border border-brand-border">
-              <p><strong className="text-zinc-400">Nome:</strong> {formData.fullName}</p>
+              <p><strong className="text-zinc-400">Como deseja ser chamado:</strong> <span className="text-brand-300 font-bold">{formData.displayName || formData.fullName.split(' ')[0] || 'Motorista'}</span></p>
+              <p><strong className="text-zinc-400">Nome Completo:</strong> {formData.fullName}</p>
               <p><strong className="text-zinc-400">CPF:</strong> {formData.cpf}</p>
               <p><strong className="text-zinc-400">E-mail:</strong> {formData.email}</p>
+              <p><strong className="text-zinc-400">Telefone:</strong> {formData.phone}</p>
               <p><strong className="text-zinc-400">Cidade/UF:</strong> {formData.city}/{formData.state}</p>
               <p><strong className="text-zinc-400">Veículo:</strong> {formData.vehicleMake} {formData.vehicleModel} - {formData.vehiclePlate}</p>
               <p><strong className="text-zinc-400">Documentos anexados:</strong> {Object.values(documents).filter(Boolean).length} de 4</p>
             </div>
-            <p className="text-xs text-zinc-500">
-              Ao clicar em Enviar, seus dados passarão por uma análise cadastral.
+            <p className="text-xs text-zinc-400">
+              Ao clicar em Finalizar Cadastro, suas informações serão salvas e enviadas para a central administrativa da <strong>SR Logística</strong> para validação e aprovação.
             </p>
           </section>
         )}

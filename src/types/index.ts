@@ -28,14 +28,25 @@ export interface LocationCoordinates {
 export interface DriverProfile {
     id: string;
     fullName: string;
+    displayName?: string;
     cpf: string;
     phone: string;
     email: string;
-    avatarUrl?: string;
+    avatarUrl?: string | null;
     status: DriverStatus;
     workStatus: DriverWorkStatus;
     rating: number;
     totalRides: number;
+    vehicle?: {
+        make?: string;
+        model?: string;
+        plate?: string;
+        color?: string;
+        year?: string | number;
+        category?: string;
+        status?: 'Pendente' | 'Aprovado' | 'Reprovado';
+    };
+    vehicleStatus?: 'Pendente' | 'Aprovado' | 'Reprovado';
     createdAt: string;
 }
 

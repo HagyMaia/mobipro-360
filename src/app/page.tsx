@@ -49,7 +49,7 @@ export default function HomePage() {
         try {
           const { data: motorista, error: dbError } = await supabase
             .from('motoristas')
-            .select('nome')
+            .select('nome, nome_social, nome_completo')
             .eq('id', user.id)
             .maybeSingle();
 
@@ -57,10 +57,16 @@ export default function HomePage() {
             console.error('[App] Erro ao buscar dados do motorista:', dbError);
           }
 
-          if (motorista?.nome) {
-            setDriverName(motorista.nome.split(' ')[0]);
-          } else if (user.email) {
-            setDriverName(user.email.split('@')[0]);
+          if (motorista?.nome_social?.trim()) {
+            setDriverName(motorista.nome_social.trim());
+          } else if (motorista?.nome?.trim()) {
+            setDriverName(motorista.nome.trim());
+          } else if (motorista?.nome_completo?.trim()) {
+            setDriverName(motorista.nome_completo.trim().split(' ')[0]);
+          } else if (user.user_metadata?.displayName || user.user_metadata?.name) {
+            setDriverName(user.user_metadata.displayName || user.user_metadata.name);
+          } else {
+            setDriverName('Motorista');
           }
         } catch (dbErr) {
           console.error('[App] Erro inesperado ao buscar motorista:', dbErr);

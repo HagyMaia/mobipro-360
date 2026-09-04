@@ -21,6 +21,9 @@ type DemoDriver = {
   email: string;
   password?: string;
   nome: string;
+  nome_social?: string;
+  nome_completo?: string;
+  avatar_url?: string;
   cpf: string;
   cnh: string;
   telefone: string;
@@ -28,8 +31,10 @@ type DemoDriver = {
   modelo_veiculo: string;
   ano_veiculo: string;
   placa_veiculo: string;
+  cor_veiculo?: string;
   categoria: string;
   status: 'Pendente' | 'Aprovado' | 'Reprovado';
+  vehicle_status?: 'Pendente' | 'Aprovado' | 'Reprovado';
   work_status?: 'ONLINE' | 'OFFLINE' | 'BUSY';
   created_at: string;
 };
@@ -155,9 +160,15 @@ function ensureDemoDriverRecord(userId: string, email: string, password = 'demo1
   const existingIndex = records.findIndex((r) => r.id === userId || r.email === normalizedEmail)
   if (existingIndex >= 0) {
     records[existingIndex].status = status
+    if (!records[existingIndex].nome_social && records[existingIndex].nome) {
+      records[existingIndex].nome_social = records[existingIndex].nome
+    }
     setDemoDrivers([...records])
     return
   }
+
+  const defaultSocial = normalizedEmail.includes('demo') ? 'Carlos' : normalizedEmail.split('@')[0] || 'Motorista'
+  const defaultFull = normalizedEmail.includes('demo') ? 'Carlos Eduardo da Silva' : defaultSocial
 
   setDemoDrivers([
     ...records,
@@ -165,16 +176,20 @@ function ensureDemoDriverRecord(userId: string, email: string, password = 'demo1
       id: userId,
       email: normalizedEmail,
       password,
-      nome: normalizedEmail.split('@')[0] || 'Motorista SR',
+      nome: defaultSocial,
+      nome_social: defaultSocial,
+      nome_completo: defaultFull,
       cpf: '000.000.000-00',
       cnh: '00000000000',
-      telefone: '(92) 99999-0000',
+      telefone: '(92) 98492-3316',
       marca_veiculo: 'Chevrolet',
       modelo_veiculo: 'Onix Plus',
       ano_veiculo: '2024',
       placa_veiculo: 'ABC1D23',
+      cor_veiculo: 'Prata',
       categoria: 'POPULAR',
       status,
+      vehicle_status: 'Aprovado',
       work_status: 'OFFLINE',
       created_at: new Date().toISOString(),
     },
