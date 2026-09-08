@@ -66,61 +66,103 @@ export class DriverService {
 
         const chosenDisplayName = data.displayName?.trim() || data.fullName.trim().split(' ')[0] || 'Motorista';
 
-        // 1. Cadastra o perfil do motorista
-        const { error: driverError } = await supabase
+        // 1. Cadastra ou atualiza o perfil do motorista (upsert evita conflito se usuário já iniciou processo)
+        const safeCpf = data.cpf?.trim() || '';
+        const safePhone = data.phone?.trim() || '';
+        const safeCnh = safeCpf || safePhone || 'PENDENTE';
+
+        let driverPayload: Record<string, any> = {
+            id: userId,
+            nome: chosenDisplayName,
+            nome_completo: data.fullName?.trim() || chosenDisplayName,
+            nome_social: chosenDisplayName,
+            cpf: safeCpf,
+            cnh: safeCnh,
+            telefone: safePhone,
+            phone: safePhone,
+            email: data.email?.trim() || '',
+            marca_veiculo: data.vehicleMake?.trim() || 'Chevrolet',
+            modelo_veiculo: data.vehicleModel?.trim() || 'Onix Plus',
+            ano_veiculo: String(data.vehicleYear || 2024),
+            placa_veiculo: data.vehiclePlate?.trim() || 'ABC1D23',
+            cor_veiculo: data.vehicleColor?.trim() || 'Prata',
+            categoria: data.vehicleCategory || 'POPULAR',
+            status: 'Pendente', // Entra como Pendente por padrão
+        };
+
+        let { error: driverError } = await supabase
             .from('motoristas')
-            .insert({
-                id: userId,
-                nome: chosenDisplayName,
-                nome_completo: data.fullName,
-                nome_social: chosenDisplayName,
-                cpf: data.cpf,
-                telefone: data.phone,
-                email: data.email,
-                marca_veiculo: data.vehicleMake,
-                modelo_veiculo: data.vehicleModel,
-                ano_veiculo: String(data.vehicleYear),
-                placa_veiculo: data.vehiclePlate,
-                cor_veiculo: data.vehicleColor,
-                categoria: data.vehicleCategory,
-                status: 'Pendente', // Entra como Pendente por padrão
-            });
+            .upsert(driverPayload, { onConflict: 'id' });
 
-        if (driverError) throw new Error(`Erro ao cadastrar motorista: ${driverError.message}`);
+        let attempts = 0;
+        while (driverError && attempts < 5) {
+            attempts++;
+            const match = driverError.message.match(/Could not find the '([^']+)' column/i);
+            if (match && match[1] && driverPayload[match[1]] !== undefined) {
+                console.warn(`[DriverService] Coluna '${match[1]}' ausente no schema cache, tentando sem ela...`);
+                delete driverPayload[match[1]];
+                const retry = await supabase
+                    .from('motoristas')
+                    .upsert(driverPayload, { onConflict: 'id' });
+                driverError = retry.error;
+            } else {
+                break;
+            }
+        }
 
-        // 2. Cadastra o veículo
-        const { error: vehicleError } = await supabase
-            .from('vehicles')
-            .insert({
-                driver_id: userId,
-                make: data.vehicleMake,
-                model: data.vehicleModel,
-                year: data.vehicleYear,
-                plate: data.vehiclePlate,
-                color: data.vehicleColor,
-                category: data.vehicleCategory,
-            });
+        if (driverError) {
+            console.error('[DriverService] Erro definitivo ao cadastrar motorista:', driverError);
+            throw new Error(`Erro ao cadastrar motorista: ${driverError.message}`);
+        }
 
-        if (vehicleError) throw new Error(`Erro ao cadastrar veículo: ${vehicleError.message}`);
+        // 2. Cadastra o veículo na tabela auxiliar 'vehicles' (se existir)
+        try {
+            const { error: vehicleError } = await supabase
+                .from('vehicles')
+                .upsert(
+                    {
+                        driver_id: userId,
+                        make: data.vehicleMake,
+                        model: data.vehicleModel,
+                        year: data.vehicleYear,
+                        plate: data.vehiclePlate,
+                        color: data.vehicleColor,
+                        category: data.vehicleCategory,
+                    },
+                    { onConflict: 'driver_id' }
+                );
 
-        // 3. Upload dos arquivos e registro na tabela driver_documents
+            if (vehicleError) {
+                console.warn('[DriverService] Aviso ao cadastrar veículo na tabela auxiliar:', vehicleError.message);
+            }
+        } catch (vErr) {
+            console.warn('[DriverService] Tabela vehicles não acessível:', vErr);
+        }
+
+        // 3. Upload dos arquivos e registro na tabela driver-documents
         const docKeys = Object.keys(documents) as DocumentType[];
 
         for (const docType of docKeys) {
             const file = documents[docType];
             if (file) {
-                const fileUrl = await this.uploadDocument(userId, file, docType);
+                try {
+                    const fileUrl = await this.uploadDocument(userId, file, docType);
 
-                const { error: docError } = await supabase
-                    .from('driver-documents')
-                    .insert({
-                        driver_id: userId,
-                        type: docType,
-                        file_url: fileUrl,
-                        status: 'PENDING',
-                    });
+                    const { error: docError } = await supabase
+                        .from('driver_documents')
+                        .insert({
+                            driver_id: userId,
+                            type: docType,
+                            file_url: fileUrl,
+                            status: 'PENDING',
+                        });
 
-                if (docError) throw new Error(`Erro ao vincular documento ${docType}: ${docError.message}`);
+                    if (docError) {
+                        console.warn(`[DriverService] Aviso ao registrar documento ${docType}:`, docError.message);
+                    }
+                } catch (docErr: any) {
+                    console.warn(`[DriverService] Falha no upload/registro do documento ${docType}:`, docErr?.message || docErr);
+                }
             }
         }
     }

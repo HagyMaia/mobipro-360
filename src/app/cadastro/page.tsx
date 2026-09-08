@@ -74,37 +74,111 @@ export default function RegisterWizard() {
     }
   };
 
-  const handleNextStep = () => setStep((s) => Math.min(s + 1, 5));
-  const handlePrevStep = () => setStep((s) => Math.max(s - 1, 1));
+  const validateStep = (currentStep: number): string | null => {
+    if (currentStep === 1) {
+      if (!formData.displayName?.trim()) return 'Por favor, informe como deseja ser chamado no app.';
+      if (!formData.fullName?.trim()) return 'Por favor, informe seu nome completo conforme a CNH.';
+      if (!formData.cpf?.trim()) return 'Por favor, informe seu CPF.';
+      if (!formData.phone?.trim()) return 'Por favor, informe seu telefone / WhatsApp.';
+      if (!formData.email?.trim() || !formData.email.includes('@')) return 'Por favor, informe um e-mail válido.';
+      if (!password || password.length < 6) return 'A senha de acesso deve ter no mínimo 6 caracteres.';
+    }
+    if (currentStep === 2) {
+      if (!formData.street?.trim()) return 'Por favor, informe a rua / logradouro.';
+      if (!formData.number?.trim()) return 'Por favor, informe o número.';
+      if (!formData.neighborhood?.trim()) return 'Por favor, informe o bairro.';
+      if (!formData.city?.trim()) return 'Por favor, informe a cidade.';
+      if (!formData.state?.trim()) return 'Por favor, informe a UF (Estado).';
+    }
+    if (currentStep === 4) {
+      if (!formData.vehicleMake?.trim()) return 'Por favor, informe a marca do veículo.';
+      if (!formData.vehicleModel?.trim()) return 'Por favor, informe o modelo do veículo.';
+      if (!formData.vehiclePlate?.trim()) return 'Por favor, informe a placa do veículo.';
+      if (!formData.vehicleColor?.trim()) return 'Por favor, informe a cor do veículo.';
+    }
+    return null;
+  };
+
+  const handleNextStep = () => {
+    const error = validateStep(step);
+    if (error) {
+      setErrorMessage(error);
+      return;
+    }
+    setErrorMessage(null);
+    setStep((s) => Math.min(s + 1, 5));
+  };
+
+  const handlePrevStep = () => {
+    setErrorMessage(null);
+    setStep((s) => Math.max(s - 1, 1));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMessage(null);
 
+    const step1Err = validateStep(1);
+    if (step1Err) {
+      setErrorMessage(step1Err);
+      setStep(1);
+      setLoading(false);
+      return;
+    }
+
     try {
       const supabase = createClient();
+      const trimmedEmail = formData.email.trim().toLowerCase();
+
+      let targetUserId: string | null = null;
 
       // 1. Autenticação/Criação do usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
+        email: trimmedEmail,
         password: password,
       });
 
-      if (authError || !authData.user) {
-        throw new Error(authError?.message || 'Falha ao criar conta de usuário.');
+      const isExistingUser = authData?.user && Array.isArray(authData.user.identities) && authData.user.identities.length === 0;
+
+      if (authError || isExistingUser) {
+        const errorMsg = (authError?.message || '').toLowerCase();
+        console.warn('[Cadastro] Conta existente no Auth ou erro no signUp. Recuperando sessão...', authError?.message);
+
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: trimmedEmail,
+          password: password,
+        });
+
+        if (signInData?.user) {
+          targetUserId = signInData.user.id;
+        } else if (authData?.user?.id) {
+          targetUserId = authData.user.id;
+        } else {
+          if (errorMsg.includes('password') || errorMsg.includes('at least 6')) {
+            throw new Error('A senha deve ter pelo menos 6 caracteres.');
+          }
+          throw new Error('Este e-mail já possui cadastro. Se você já tem uma conta, acesse a tela de Login.');
+        }
+      } else if (authData?.user) {
+        targetUserId = authData.user.id;
+      }
+
+      if (!targetUserId) {
+        throw new Error('Não foi possível registrar o usuário. Tente novamente.');
       }
 
       // 2. Registro de Perfil, Veículo e Envio de Documentos
       await DriverService.registerDriver(
-        authData.user.id,
-        formData,
+        targetUserId,
+        { ...formData, email: trimmedEmail },
         documents as Record<DocumentType, File>
       );
 
       // Redireciona para a tela de Acompanhamento do Status de Aprovação
       router.push('/status');
     } catch (err: any) {
+      console.error('[Cadastro] Erro ao submeter cadastro:', err);
       setErrorMessage(err.message || 'Ocorreu um erro ao realizar o cadastro.');
     } finally {
       setLoading(false);

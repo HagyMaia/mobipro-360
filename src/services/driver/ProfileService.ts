@@ -9,6 +9,15 @@ import type {
 } from "@/types";
 
 
+function cleanString(val: unknown, fallback = ''): string {
+    if (val === null || val === undefined) return fallback;
+    const str = String(val).trim();
+    if (str === '' || str.toUpperCase() === 'NULL' || str.toLowerCase() === 'null' || str === 'undefined') {
+        return fallback;
+    }
+    return str;
+}
+
 export class ProfileService {
     public static normalizeDriverStatus(value: unknown): DriverStatus {
         const raw = String(value ?? '').trim().toLowerCase();
@@ -49,30 +58,39 @@ export class ProfileService {
             return null;
         }
 
-        const resolvedName = profile.nome_social || profile.nome || (profile.email ? profile.email.split('@')[0] : 'Motorista');
+        const rawName = cleanString(profile.nome_social, cleanString(profile.nome, ''));
+        const resolvedName = rawName || (profile.email ? profile.email.split('@')[0] : 'Motorista');
+
+        const make = cleanString(profile.marca_veiculo, 'Chevrolet');
+        const model = cleanString(profile.modelo_veiculo, 'Onix Plus');
+        const plate = cleanString(profile.placa_veiculo, 'ABC1D23');
+        const color = cleanString(profile.cor_veiculo, 'Prata');
+        const year = cleanString(profile.ano_veiculo, '2024');
+        const category = cleanString(profile.categoria, 'POPULAR');
+        const vStatus = cleanString(profile.vehicle_status, 'Aprovado') as 'Aprovado' | 'Pendente' | 'Reprovado';
 
         return {
             id: profile.id,
-            fullName: profile.nome_completo || profile.nome || resolvedName,
+            fullName: cleanString(profile.nome_completo, cleanString(profile.nome, resolvedName)),
             displayName: resolvedName,
-            cpf: profile.cpf ?? "",
-            phone: profile.telefone ?? profile.phone ?? "",
-            email: profile.email ?? authData.user.email ?? "",
+            cpf: cleanString(profile.cpf, ''),
+            phone: cleanString(profile.telefone, cleanString(profile.phone, '')),
+            email: cleanString(profile.email, authData.user.email ?? ''),
             avatarUrl: profile.avatar_url ?? null,
             status: this.normalizeDriverStatus(profile.status),
             workStatus: profile.work_status ?? "OFFLINE",
             rating: Number(profile.rating ?? 4.95),
             totalRides: Number(profile.total_rides ?? 128),
             vehicle: {
-                make: profile.marca_veiculo || 'Chevrolet',
-                model: profile.modelo_veiculo || 'Onix Plus',
-                plate: profile.placa_veiculo || 'ABC1D23',
-                color: profile.cor_veiculo || 'Prata',
-                year: profile.ano_veiculo || '2024',
-                category: profile.categoria || 'POPULAR',
-                status: profile.vehicle_status || 'Aprovado',
+                make,
+                model,
+                plate,
+                color,
+                year,
+                category,
+                status: vStatus,
             },
-            vehicleStatus: profile.vehicle_status || 'Aprovado',
+            vehicleStatus: vStatus,
             createdAt: profile.created_at || new Date().toISOString(),
         };
     }
@@ -140,20 +158,42 @@ export class ProfileService {
             throw new Error(authError?.message ?? "Usuário não autenticado.");
         }
 
-        const { data: updated, error } = await supabase
+        let payload: Record<string, any> = {
+            marca_veiculo: vehicleData.make.trim(),
+            modelo_veiculo: vehicleData.model.trim(),
+            ano_veiculo: String(vehicleData.year).trim(),
+            placa_veiculo: vehicleData.plate.toUpperCase().trim(),
+            cor_veiculo: vehicleData.color.trim() || 'Prata',
+            categoria: vehicleData.category || 'POPULAR',
+            vehicle_status: 'Pendente', // Exige aprovação administrativa
+        };
+
+        let { data: updated, error } = await supabase
             .from("motoristas")
-            .update({
-                marca_veiculo: vehicleData.make,
-                modelo_veiculo: vehicleData.model,
-                ano_veiculo: String(vehicleData.year),
-                placa_veiculo: vehicleData.plate.toUpperCase().trim(),
-                cor_veiculo: vehicleData.color,
-                categoria: vehicleData.category || 'POPULAR',
-                vehicle_status: 'Pendente', // Exige aprovação administrativa
-            })
+            .update(payload)
             .eq("id", authData.user.id)
             .select()
             .single();
+
+        let attempts = 0;
+        while (error && attempts < 5) {
+            attempts++;
+            const match = error.message.match(/Could not find the '([^']+)' column/i);
+            if (match && match[1] && payload[match[1]] !== undefined) {
+                console.warn(`[ProfileService] Coluna '${match[1]}' ausente no schema cache, tentando sem ela...`);
+                delete payload[match[1]];
+                const retry = await supabase
+                    .from("motoristas")
+                    .update(payload)
+                    .eq("id", authData.user.id)
+                    .select()
+                    .single();
+                updated = retry.data;
+                error = retry.error;
+            } else {
+                break;
+            }
+        }
 
         if (error) {
             throw new Error(`Erro ao solicitar troca de veículo: ${error.message}`);

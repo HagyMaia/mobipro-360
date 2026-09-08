@@ -160,6 +160,11 @@ export default function PerfilPage() {
 
   // Solicitar Troca de Carro / Veículo
   const handleRequestVehicleChange = async () => {
+    if (!vehicleMake.trim() || !vehicleModel.trim() || !vehiclePlate.trim()) {
+      showToast('Preencha marca, modelo e placa do veículo.');
+      return;
+    }
+
     setLoading(true);
     try {
       await ProfileService.requestVehicleChange({
@@ -175,10 +180,8 @@ export default function PerfilPage() {
       setEditVehicleOpen(false);
       showToast('Solicitação de troca enviada para aprovação da SR Logística!');
     } catch (err: any) {
-      console.warn('Erro ao submeter troca de veículo:', err);
-      setVehicleStatus('Pendente');
-      setEditVehicleOpen(false);
-      showToast('Solicitação de troca de veículo enviada para análise!');
+      console.error('[Perfil] Erro ao submeter troca de veículo:', err);
+      showToast(`Erro ao solicitar troca: ${err?.message || 'Tente novamente.'}`);
     } finally {
       setLoading(false);
     }

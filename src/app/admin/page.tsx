@@ -9,9 +9,15 @@ import { Users, Clock, DollarSign, Activity, Check, X } from "lucide-react";
 type Driver = {
   id: string;
   nome: string;
+  nome_social?: string;
+  nome_completo?: string;
   email?: string;
   status: string;
+  vehicle_status?: string;
   telefone?: string;
+  marca_veiculo?: string;
+  modelo_veiculo?: string;
+  placa_veiculo?: string;
   categoria?: string;
 };
 
@@ -23,10 +29,19 @@ export default function AdminPage() {
 
   const loadDrivers = async () => {
     setLoadingDrivers(true);
-    const { data, error: driversError } = await supabase
+    let { data, error: driversError } = await supabase
       .from("motoristas")
-      .select("id, nome, status, telefone, categoria")
+      .select("id, nome, nome_social, nome_completo, status, vehicle_status, telefone, email, marca_veiculo, modelo_veiculo, placa_veiculo, categoria")
       .order("created_at", { ascending: false });
+
+    if (driversError) {
+      console.warn("[Admin] Falha ao ordenar por created_at, tentando sem ordenação:", driversError.message);
+      const retry = await supabase
+        .from("motoristas")
+        .select("id, nome, nome_social, nome_completo, status, vehicle_status, telefone, email, marca_veiculo, modelo_veiculo, placa_veiculo, categoria");
+      data = retry.data;
+      driversError = retry.error;
+    }
 
     if (driversError) {
       setError(
@@ -49,7 +64,7 @@ export default function AdminPage() {
   ) => {
     const { error: updateError } = await supabase
       .from("motoristas")
-      .update({ status })
+      .update({ status, vehicle_status: status })
       .eq("id", id);
     if (updateError) {
       setError(
@@ -58,7 +73,9 @@ export default function AdminPage() {
       return;
     }
     setDrivers((current) =>
-      current.map((driver) => (driver.id === id ? { ...driver, status } : driver))
+      current.map((driver) =>
+        driver.id === id ? { ...driver, status, vehicle_status: status } : driver
+      )
     );
   };
 
@@ -147,38 +164,59 @@ export default function AdminPage() {
       </div>
 
       <div className="pb-10">
-        <SectionTitle className="mb-3">Aprovações de Motoristas</SectionTitle>
+        <SectionTitle className="mb-3">Aprovações de Motoristas & Veículos</SectionTitle>
         <Card className="p-0 shadow-sm overflow-hidden">
           {error && <div className="border-b border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 p-4 text-sm font-semibold text-red-600 dark:text-red-400">{error}</div>}
           {loadingDrivers ? (
-            <div className="p-6 text-center text-sm text-slate-500">Carregando motoristas...</div>
+            <div className="p-6 text-center text-sm text-slate-500">Carregando solicitações...</div>
           ) : drivers.length === 0 ? (
             <div className="p-6 text-center text-sm text-slate-500">Nenhum motorista cadastrado.</div>
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-dark-700">
-              {drivers.map((driver) => (
-                <div key={driver.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="font-bold text-slate-900 dark:text-white">{driver.nome}</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">{driver.categoria || 'Categoria não informada'} {driver.telefone ? `• ${driver.telefone}` : ''}</div>
+              {drivers.map((driver) => {
+                const isPendingVehicle = driver.vehicle_status === "Pendente" && driver.status === "Aprovado";
+                const isPending = driver.status === "Pendente" || driver.vehicle_status === "Pendente";
+                const displayName = driver.nome_social || driver.nome || "Motorista";
+
+                return (
+                  <div key={driver.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 dark:text-white">{displayName}</span>
+                        {isPendingVehicle && (
+                          <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                            Troca de Carro
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        {driver.marca_veiculo || ''} {driver.modelo_veiculo || ''} {driver.placa_veiculo ? `(${driver.placa_veiculo})` : ''} {driver.telefone ? `• ${driver.telefone}` : ''}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
+                        !isPending && driver.status === 'Aprovado'
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                          : driver.status === 'Reprovado' || driver.vehicle_status === 'Reprovado'
+                          ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
+                          : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                      }`}>
+                        {isPendingVehicle ? 'Carro em Análise' : driver.status}
+                      </span>
+                      {isPending && (
+                        <>
+                          <button type="button" aria-label={`Aprovar ${displayName}`} onClick={() => updateDriverStatus(driver.id, 'Aprovado')} className="rounded-xl bg-emerald-600 p-2 text-white hover:bg-emerald-700 transition" title="Aprovar">
+                            <Check size={16} />
+                          </button>
+                          <button type="button" aria-label={`Reprovar ${displayName}`} onClick={() => updateDriverStatus(driver.id, 'Reprovado')} className="rounded-xl bg-red-600 p-2 text-white hover:bg-red-700 transition" title="Reprovar">
+                            <X size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${driver.status === 'Aprovado' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : driver.status === 'Reprovado' ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'}`}>
-                      {driver.status}
-                    </span>
-                    {driver.status === 'Pendente' && (
-                      <>
-                        <button type="button" aria-label={`Aprovar ${driver.nome}`} onClick={() => updateDriverStatus(driver.id, 'Aprovado')} className="rounded-xl bg-emerald-600 p-2 text-white hover:bg-emerald-700 transition">
-                          <Check size={16} />
-                        </button>
-                        <button type="button" aria-label={`Reprovar ${driver.nome}`} onClick={() => updateDriverStatus(driver.id, 'Reprovado')} className="rounded-xl bg-red-600 p-2 text-white hover:bg-red-700 transition">
-                          <X size={16} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>
