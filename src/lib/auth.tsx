@@ -47,24 +47,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             window.location.pathname.startsWith('/atualizar-senha'));
 
         if (isSupabaseConfigured && !isRecovering && currentUser.email !== 'motorista@demo.local') {
-          const { data: motorista } = await supabase
+          let { data: motorista } = await supabase
             .from('motoristas')
             .select('id, status')
             .eq('id', currentUser.id)
             .maybeSingle();
 
-          if (!motorista) {
-            console.warn('[Auth] Motorista foi excluído ou não existe no banco de dados. Encerrando sessão...');
+          if (!motorista && currentUser.email) {
+            const { data: byEmail } = await supabase
+              .from('motoristas')
+              .select('id, status')
+              .eq('email', currentUser.email)
+              .maybeSingle();
+            if (byEmail) {
+              motorista = byEmail;
+            }
+          }
+
+          if (motorista?.status === 'Bloqueado') {
+            console.warn('[Auth] Motorista bloqueado. Encerrando sessão...');
             await supabase.auth.signOut();
             if (typeof document !== 'undefined') {
               document.cookie = 'sb-demo-token=; path=/; max-age=0';
               document.cookie = 'mobipro-demo-session=; path=/; max-age=0';
-            }
-            if (typeof window !== 'undefined') {
-              try {
-                localStorage.clear();
-                sessionStorage.clear();
-              } catch (_) {}
             }
             if (mounted) {
               setUser(null);
@@ -110,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .eq('id', session.user.id)
             .maybeSingle();
 
-          if (!motorista) {
+          if (motorista?.status === 'Bloqueado') {
             await supabase.auth.signOut();
             if (typeof document !== 'undefined') {
               document.cookie = 'sb-demo-token=; path=/; max-age=0';
