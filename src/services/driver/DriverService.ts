@@ -67,9 +67,10 @@ export class DriverService {
         const chosenDisplayName = data.displayName?.trim() || data.fullName.trim().split(' ')[0] || 'Motorista';
 
         // 1. Cadastra ou atualiza o perfil do motorista (upsert evita conflito se usuário já iniciou processo)
-        const safeCpf = data.cpf?.trim() || '';
-        const safePhone = data.phone?.trim() || '';
-        const safeCnh = safeCpf || safePhone || 'PENDENTE';
+        const userShortId = userId.replace(/\D/g, '').slice(0, 8) || userId.slice(0, 8) || String(Date.now()).slice(-8);
+        const safeCpf = data.cpf?.trim() || `000.${userShortId}-00`;
+        const safePhone = data.phone?.trim() || `(92) 9${userShortId}`;
+        const safeCnh = (data as any).cnh?.trim() || data.cpf?.trim() || `CNH${userShortId}`;
 
         let driverPayload: Record<string, any> = {
             id: userId,
@@ -87,7 +88,10 @@ export class DriverService {
             placa_veiculo: data.vehiclePlate?.trim() || 'ABC1D23',
             cor_veiculo: data.vehicleColor?.trim() || 'Prata',
             categoria: data.vehicleCategory || 'POPULAR',
-            status: 'Pendente', // Entra como Pendente por padrão
+            status: 'Pendente',
+            vehicle_status: 'Pendente',
+            work_status: 'OFFLINE',
+            created_at: new Date().toISOString(),
         };
 
         let { error: driverError } = await supabase
@@ -95,16 +99,34 @@ export class DriverService {
             .upsert(driverPayload, { onConflict: 'id' });
 
         let attempts = 0;
-        while (driverError && attempts < 5) {
+        while (driverError && attempts < 8) {
             attempts++;
-            const match = driverError.message.match(/Could not find the '([^']+)' column/i);
+            const msg = driverError.message || '';
+            const match =
+                msg.match(/Could not find the '([^']+)' column/i) ||
+                msg.match(/column "([^"]+)" of relation/i) ||
+                msg.match(/column "([^"]+)" does not exist/i);
+
             if (match && match[1] && driverPayload[match[1]] !== undefined) {
-                console.warn(`[DriverService] Coluna '${match[1]}' ausente no schema cache, tentando sem ela...`);
+                console.warn(`[DriverService] Coluna '${match[1]}' ausente no banco, removendo do payload e tentando novamente...`);
                 delete driverPayload[match[1]];
                 const retry = await supabase
                     .from('motoristas')
                     .upsert(driverPayload, { onConflict: 'id' });
                 driverError = retry.error;
+            } else if (msg.toLowerCase().includes('null value in column')) {
+                const nullMatch = msg.match(/null value in column "([^"]+)"/i);
+                if (nullMatch && nullMatch[1]) {
+                    const col = nullMatch[1];
+                    console.warn(`[DriverService] Coluna '${col}' com restrição NOT NULL, preenchendo valor padrão...`);
+                    driverPayload[col] = driverPayload[col] || 'PENDENTE';
+                    const retry = await supabase
+                        .from('motoristas')
+                        .upsert(driverPayload, { onConflict: 'id' });
+                    driverError = retry.error;
+                } else {
+                    break;
+                }
             } else {
                 break;
             }

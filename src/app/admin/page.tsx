@@ -70,13 +70,24 @@ export default function AdminPage() {
     id: string,
     status: "Aprovado" | "Reprovado"
   ) => {
-    const { error: updateError } = await supabase
+    let payload: Record<string, any> = { status, vehicle_status: status };
+    let { error: updateError } = await supabase
       .from("motoristas")
-      .update({ status, vehicle_status: status })
+      .update(payload)
       .eq("id", id);
+
+    if (updateError) {
+      const match = updateError.message.match(/Could not find the '([^']+)' column/i);
+      if (match && match[1] && payload[match[1]] !== undefined) {
+        delete payload[match[1]];
+        const retry = await supabase.from("motoristas").update(payload).eq("id", id);
+        updateError = retry.error;
+      }
+    }
+
     if (updateError) {
       setError(
-        "Não foi possível atualizar este motorista. Verifique se sua conta é administradora."
+        "Não foi possível atualizar este motorista: " + updateError.message
       );
       return;
     }

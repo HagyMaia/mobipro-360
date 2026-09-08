@@ -137,6 +137,13 @@ export default function RegisterWizard() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: trimmedEmail,
         password: password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+            name: formData.displayName || formData.fullName,
+            phone: formData.phone,
+          },
+        },
       });
 
       const isExistingUser = authData?.user && Array.isArray(authData.user.identities) && authData.user.identities.length === 0;
@@ -174,6 +181,16 @@ export default function RegisterWizard() {
         { ...formData, email: trimmedEmail },
         documents as Record<DocumentType, File>
       );
+
+      // Garante sessão ativa antes de navegar
+      try {
+        await supabase.auth.signInWithPassword({
+          email: trimmedEmail,
+          password: password,
+        });
+      } catch (sErr) {
+        console.warn('[Cadastro] Aviso na auto-autenticação pós-cadastro:', sErr);
+      }
 
       // Redireciona para a tela de Acompanhamento do Status de Aprovação
       router.push('/status');
@@ -240,13 +257,23 @@ export default function RegisterWizard() {
               />
             </div>
             <div>
-              <label className="text-xs text-zinc-400">CPF</label>
+              <label className="text-xs text-zinc-400">CPF <span className="text-amber-400">*</span></label>
               <input
                 type="text"
                 className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-[color:var(--text)] dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 value={formData.cpf}
                 onChange={(e) => handleInputChange('cpf', e.target.value)}
                 placeholder="000.000.000-00"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400">Número da CNH</label>
+              <input
+                type="text"
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-[color:var(--text)] dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
+                value={(formData as any).cnh || ''}
+                onChange={(e) => handleInputChange('cnh' as any, e.target.value)}
+                placeholder="00000000000"
               />
             </div>
             <div>

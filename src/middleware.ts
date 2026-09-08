@@ -86,19 +86,32 @@ export async function middleware(request: NextRequest) {
         .eq('id', user.id)
         .maybeSingle()
 
-      if (!motorista) {
+      // Se a rota for /status ou /admin, permite o acesso sem expulsar o usuário
+      if (pathname.startsWith('/status') || pathname.startsWith('/admin')) {
+        return supabaseResponse
+      }
+
+      // Se for um motorista pendente tentando acessar rotas de corrida, redireciona para /status
+      if (motorista && motorista.status && motorista.status.toLowerCase() !== 'aprovado') {
         const url = request.nextUrl.clone()
-        url.pathname = '/login'
-        const redirectRes = NextResponse.redirect(url)
-        redirectRes.cookies.set('sb-demo-token', '', { maxAge: 0, path: '/' })
-        redirectRes.cookies.set('mobipro-demo-session', '', { maxAge: 0, path: '/' })
-        return redirectRes
+        url.pathname = '/status'
+        return NextResponse.redirect(url)
       }
     }
 
     if (user && (pathname === '/welcome' || (pathname === '/login' && !isResetFlow) || pathname === '/cadastro')) {
+      const { data: motorista } = await supabase
+        .from('motoristas')
+        .select('id, status')
+        .eq('id', user.id)
+        .maybeSingle()
+
       const url = request.nextUrl.clone()
-      url.pathname = '/'
+      if (motorista && motorista.status && motorista.status.toLowerCase() !== 'aprovado') {
+        url.pathname = '/status'
+      } else {
+        url.pathname = '/'
+      }
       return NextResponse.redirect(url)
     }
   } catch (e) {

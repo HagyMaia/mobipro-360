@@ -90,8 +90,21 @@ export default function StatusPage() {
                     </>
                 );
 
+            case 'Pendente':
             default:
-                return null;
+                return (
+                    <>
+                        <div className="w-20 h-20 bg-brand/20 rounded-full flex items-center justify-center mb-6 text-brand shadow-lg shadow-brand/20">
+                            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h1 className="text-2xl font-bold text-[color:var(--text)] dark:text-white mb-2 text-center">Cadastro em Análise</h1>
+                        <p className="text-slate-400 text-center text-sm mb-8 px-4 leading-relaxed">
+                            Recebemos seus documentos! Nossa equipe está analisando seus dados. Esse processo pode levar até 48 horas úteis.
+                        </p>
+                    </>
+                );
         }
     };
 

@@ -58,12 +58,17 @@ export default function HomePage() {
         try {
           const { data: motorista, error: dbError } = await supabase
             .from('motoristas')
-            .select('nome, nome_social, nome_completo')
+            .select('nome, nome_social, nome_completo, status')
             .eq('id', user.id)
             .maybeSingle();
 
           if (dbError) {
             console.error('[App] Erro ao buscar dados do motorista:', dbError);
+          }
+
+          if (motorista && motorista.status && motorista.status.toLowerCase() !== 'aprovado') {
+            router.replace('/status');
+            return;
           }
 
           if (motorista?.nome_social?.trim()) {
