@@ -16,6 +16,10 @@ export async function middleware(request: NextRequest) {
   )
 
   const { pathname } = request.nextUrl
+  const isResetFlow =
+    request.nextUrl.searchParams.get('mode') === 'reset' ||
+    request.nextUrl.searchParams.get('type') === 'recovery' ||
+    pathname.startsWith('/atualizar-senha')
 
   // Rotas públicas acessíveis sem login
   const isPublicPage =
@@ -26,7 +30,8 @@ export async function middleware(request: NextRequest) {
     pathname === '/manifest.webmanifest' ||
     pathname === '/manifest.json' ||
     pathname.startsWith('/login') ||
-    pathname.startsWith('/recuperar-senha')
+    pathname.startsWith('/recuperar-senha') ||
+    pathname.startsWith('/atualizar-senha')
 
   // Se o Supabase NÃO estiver configurado (Preview Vercel / Modo Demo Local)
   if (!isSupabaseConfigured) {
@@ -38,7 +43,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    if (hasDemoAuth && (pathname === '/welcome' || pathname === '/login' || pathname === '/cadastro')) {
+    if (hasDemoAuth && (pathname === '/welcome' || (pathname === '/login' && !isResetFlow) || pathname === '/cadastro')) {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
@@ -74,7 +79,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    if (user && !isPublicPage && user.email !== 'motorista@demo.local') {
+    if (user && !isPublicPage && !isResetFlow && user.email !== 'motorista@demo.local') {
       const { data: motorista } = await supabase
         .from('motoristas')
         .select('id, status')
@@ -91,7 +96,7 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    if (user && (pathname === '/welcome' || pathname === '/login' || pathname === '/cadastro')) {
+    if (user && (pathname === '/welcome' || (pathname === '/login' && !isResetFlow) || pathname === '/cadastro')) {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)

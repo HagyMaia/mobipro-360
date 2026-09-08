@@ -40,7 +40,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Se Supabase configurado e não for demo local, validar se motorista existe no banco
-        if (isSupabaseConfigured && currentUser.email !== 'motorista@demo.local') {
+        const isRecovering =
+          typeof window !== 'undefined' &&
+          (window.location.hash.includes('type=recovery') ||
+            window.location.search.includes('mode=reset') ||
+            window.location.pathname.startsWith('/atualizar-senha'));
+
+        if (isSupabaseConfigured && !isRecovering && currentUser.email !== 'motorista@demo.local') {
           const { data: motorista } = await supabase
             .from('motoristas')
             .select('id, status')
@@ -91,7 +97,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        if (isSupabaseConfigured && session.user.email !== 'motorista@demo.local') {
+        const isRecoveringNow =
+          typeof window !== 'undefined' &&
+          (window.location.hash.includes('type=recovery') ||
+            window.location.search.includes('mode=reset') ||
+            window.location.pathname.startsWith('/atualizar-senha'));
+
+        if (isSupabaseConfigured && !isRecoveringNow && session.user.email !== 'motorista@demo.local') {
           const { data: motorista } = await supabase
             .from('motoristas')
             .select('id, status')

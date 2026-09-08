@@ -55,6 +55,14 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      if (hash.includes('type=recovery') || search.includes('type=recovery') || search.includes('mode=reset')) {
+        window.location.href = '/login' + search + hash;
+        return;
+      }
+    }
     loadDrivers();
   }, []);
 
