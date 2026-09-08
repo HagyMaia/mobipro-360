@@ -1,9 +1,9 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
 import { supabase, browserUrl, isSupabaseConfigured, createMockSupabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { ArrowLeft, HelpCircle, CarTaxiFront, Info, Download, KeyRound, X, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, HelpCircle, CarTaxiFront, Info, Download, KeyRound, X, CheckCircle2, Lock } from 'lucide-react';
 import { SupportModal } from '@/components/Support/SupportModal';
 import { ProfileService } from '@/services/driver/ProfileService';
 
@@ -15,12 +15,48 @@ export default function Login() {
   const [error, setError] = useState('');
   const [supportOpen, setSupportOpen] = useState(false);
 
-  // Modal de Recuperação de Senha (Pop-up no próprio App)
+  // 1. Modal para SOLICITAR link de redefinição de senha
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotErr, setForgotErr] = useState('');
+
+  // 2. Modal para DEFINIR NOVA SENHA (acionado automaticamente ao abrir o link do e-mail)
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSuccessMsg, setResetSuccessMsg] = useState('');
+  const [resetErrMsg, setResetErrMsg] = useState('');
+
+  // Detecta quando o motorista abre o app vindo do link de recuperação
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event: any) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setForgotModalOpen(false);
+        setResetModalOpen(true);
+      }
+    });
+
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      if (
+        hash.includes('type=recovery') ||
+        hash.includes('access_token=') ||
+        search.includes('type=recovery') ||
+        search.includes('mode=reset')
+      ) {
+        setForgotModalOpen(false);
+        setResetModalOpen(true);
+      }
+    }
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, []);
 
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +73,7 @@ export default function Login() {
 
     try {
       if (isSupabaseConfigured) {
-        const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/atualizar-senha` : undefined;
+        const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/login?mode=reset` : undefined;
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
           redirectTo: redirectUrl,
         });
@@ -53,6 +89,43 @@ export default function Login() {
       setForgotErr(err.message || 'Não foi possível solicitar a redefinição de senha.');
     } finally {
       setForgotLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+    setResetErrMsg('');
+    setResetSuccessMsg('');
+
+    if (newPassword.length < 6) {
+      setResetErrMsg('A nova senha deve ter no mínimo 6 caracteres.');
+      setResetLoading(false);
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setResetErrMsg('As senhas digitadas não coincidem.');
+      setResetLoading(false);
+      return;
+    }
+
+    try {
+      const { error: updateErr } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateErr) {
+        throw new Error(updateErr.message || 'O link de recuperação expirou. Solicite um novo link.');
+      }
+
+      setResetSuccessMsg('Senha redefinida com sucesso! Você já pode entrar com sua nova senha no aplicativo.');
+      setPassword(newPassword);
+    } catch (err: any) {
+      console.error('[ResetPassword] Erro ao redefinir senha:', err);
+      setResetErrMsg(err.message || 'Erro ao atualizar senha.');
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -419,6 +492,105 @@ export default function Login() {
                     className="flex-1 bg-brand text-slate-950 font-bold py-3 rounded-xl hover:brightness-105 active:scale-[0.98] transition disabled:opacity-50 text-sm shadow-lg shadow-brand/20"
                   >
                     {forgotLoading ? 'Enviando...' : 'Enviar Link'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* POP-UP MODAL 2: Definir Nova Senha (Acionado pelo link de redefinição) */}
+      {resetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-[#0D1624] border border-brand/30 p-6 rounded-3xl shadow-2xl space-y-4">
+            {/* Botão Fechar */}
+            <button
+              onClick={() => setResetModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-brand/15 border border-brand/30 rounded-2xl text-brand shadow-lg shadow-brand/10">
+                <Lock size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Criar Nova Senha</h3>
+                <p className="text-xs text-slate-400">Defina sua nova credencial de acesso</p>
+              </div>
+            </div>
+
+            {resetSuccessMsg ? (
+              <div className="space-y-4 py-2">
+                <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-2xl flex items-start gap-3">
+                  <CheckCircle2 size={22} className="text-emerald-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-emerald-300 leading-relaxed font-medium">
+                    {resetSuccessMsg}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetModalOpen(false);
+                    setResetSuccessMsg('');
+                  }}
+                  className="w-full bg-brand text-slate-950 font-bold py-3.5 rounded-xl hover:brightness-105 active:scale-[0.98] transition shadow-lg shadow-brand/20 text-sm"
+                >
+                  Entrar com a Nova Senha
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Digite e confirme sua nova senha de acesso abaixo.
+                </p>
+
+                {resetErrMsg && (
+                  <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-xs font-medium">
+                    {resetErrMsg}
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Nova Senha</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                    className="w-full bg-white/5 border border-white/10 p-3.5 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Confirme a Nova Senha</label>
+                  <input
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="Digite novamente a nova senha"
+                    className="w-full bg-white/5 border border-white/10 p-3.5 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition"
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setResetModalOpen(false)}
+                    className="flex-1 bg-white/5 hover:bg-white/10 text-slate-300 font-semibold py-3 rounded-xl transition text-sm border border-white/5"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="flex-1 bg-brand text-slate-950 font-bold py-3 rounded-xl hover:brightness-105 active:scale-[0.98] transition disabled:opacity-50 text-sm shadow-lg shadow-brand/20"
+                  >
+                    {resetLoading ? 'Salvando...' : 'Salvar Senha'}
                   </button>
                 </div>
               </form>
