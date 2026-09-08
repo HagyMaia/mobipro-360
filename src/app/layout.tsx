@@ -4,6 +4,7 @@ import { AppProvider } from '@/lib/store';
 import { AuthProvider } from '@/lib/auth';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { GlobalPasswordResetModal } from '@/components/Auth/GlobalPasswordResetModal';
 
 export const metadata: Metadata = {
   title: 'SR Logística - App do Motorista',
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="mx-auto min-h-dvh max-w-md w-full flex flex-col relative bg-[color:var(--surface)] dark:bg-dark-900 shadow-2xl overflow-x-hidden text-inherit">
                 {children}
               </div>
+              <GlobalPasswordResetModal />
               <div className="fixed right-4 bottom-20 z-[1110]">
                 <ThemeToggle />
               </div>
