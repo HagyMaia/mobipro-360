@@ -27,6 +27,7 @@ export async function middleware(request: NextRequest) {
     pathname === '/cadastro' ||
     pathname === '/sr-logistica.apk' ||
     pathname === '/sw.js' ||
+    pathname.startsWith('/.well-known') ||
     pathname.endsWith('.apk') ||
     pathname === '/manifest.webmanifest' ||
     pathname === '/manifest.json' ||
