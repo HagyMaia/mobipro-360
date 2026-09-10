@@ -5,6 +5,11 @@
   "id": "/",
   "start_url": "/",
   "scope": "/",
+  "serviceworker": {
+    "src": "/sw.js",
+    "scope": "/",
+    "use_cache": true
+  },
   "display": "standalone",
   "display_override": [
     "standalone",

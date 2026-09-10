@@ -50,9 +50,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="serviceworker" href="/sw.js" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(function(reg) {
+                      console.log('[PWA] Service Worker registrado com sucesso:', reg.scope);
+                    })
+                    .catch(function(err) {
+                      console.warn('[PWA] Falha ao registrar Service Worker:', err);
+                    });
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body className={`font-sans antialiased bg-[color:var(--bg)] dark:bg-dark transition-colors min-h-dvh select-none`}>
         <ThemeProvider>
@@ -72,4 +90,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </body>
     </html>
   );
-}
+}
