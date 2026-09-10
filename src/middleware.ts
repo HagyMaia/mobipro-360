@@ -23,6 +23,7 @@ export async function middleware(request: NextRequest) {
 
   // Rotas públicas acessíveis sem login
   const isPublicPage =
+    pathname === '/' ||
     pathname === '/welcome' ||
     pathname === '/cadastro' ||
     pathname === '/sr-logistica.apk' ||
