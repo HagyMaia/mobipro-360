@@ -1,11 +1,10 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
-import { supabase, browserUrl, isSupabaseConfigured, createMockSupabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured, createMockSupabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { ArrowLeft, HelpCircle, CarTaxiFront, Info, Download, KeyRound, X, CheckCircle2, Lock } from 'lucide-react';
+import { ArrowLeft, HelpCircle, Download, KeyRound, X, CheckCircle2, Lock, ShieldCheck } from 'lucide-react';
 import { SupportModal } from '@/components/Support/SupportModal';
-import { ProfileService } from '@/services/driver/ProfileService';
 
 export default function Login() {
   const router = useRouter();
@@ -135,44 +134,22 @@ export default function Login() {
     setError('');
 
     const trimmedEmail = email.trim().toLowerCase();
-    console.log('[Login] Tentando login com:', { email: trimmedEmail });
-    console.log('[Login] Supabase URL:', browserUrl, 'Configurado:', isSupabaseConfigured);
 
     try {
       let authUser: any = null;
 
-      // 1. Tentar autenticação via Supabase
+      // 1. Autenticação via Supabase Auth
       if (isSupabaseConfigured) {
-        try {
-          const { data, error: authError } = await supabase.auth.signInWithPassword({
-            email: trimmedEmail,
-            password,
-          });
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email: trimmedEmail,
+          password,
+        });
 
-          if (authError) {
-            console.warn('[Login] Supabase auth retornou erro:', authError.message);
-            // Se o erro for de credenciais ou rede, verifica se é modo fallback
-            if (trimmedEmail === 'motorista@demo.local') {
-              const mockClient = createMockSupabase();
-              const mockRes = await mockClient.auth.signInWithPassword({ email: trimmedEmail, password });
-              authUser = mockRes.data?.user;
-            } else {
-              throw new Error(authError.message || 'E-mail ou senha incorretos.');
-            }
-          } else {
-            authUser = data?.user;
-          }
-        } catch (err: any) {
-          if (trimmedEmail === 'motorista@demo.local') {
-            const mockClient = createMockSupabase();
-            const mockRes = await mockClient.auth.signInWithPassword({ email: trimmedEmail, password });
-            authUser = mockRes.data?.user;
-          } else {
-            throw err;
-          }
+        if (authError) {
+          throw new Error(authError.message || 'E-mail ou senha incorretos.');
         }
+        authUser = data?.user;
       } else {
-        // Ambiente sem Supabase (Preview Vercel / Modo Demo Local)
         const { data, error: mockError } = await supabase.auth.signInWithPassword({
           email: trimmedEmail,
           password,
@@ -181,17 +158,16 @@ export default function Login() {
         if (mockError || !data?.user) {
           throw new Error(mockError?.message || 'E-mail ou senha incorretos.');
         }
-
         authUser = data.user;
       }
 
       if (!authUser) {
-        throw new Error('Não foi possível autenticar o usuário.');
+        throw new Error('Não foi possível autenticar o usuário. Verifique seus dados.');
       }
 
       // 2. Verificar cadastro ativo na tabela de motoristas
-      if (isSupabaseConfigured && trimmedEmail !== 'motorista@demo.local') {
-        let { data: motorista, error: dbError } = await supabase
+      if (isSupabaseConfigured) {
+        let { data: motorista } = await supabase
           .from('motoristas')
           .select('id, status, nome, nome_social, email')
           .eq('id', authUser.id)
@@ -215,7 +191,6 @@ export default function Login() {
         let activeMotorista = motorista;
 
         if (!activeMotorista) {
-          console.warn('[Login] Usuário autenticado sem registro em motoristas. Auto-recuperando perfil...');
           const displayName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Motorista';
           const userShortId = authUser.id.replace(/\D/g, '').slice(0, 8) || authUser.id.slice(0, 8) || String(Date.now()).slice(-8);
 
@@ -288,7 +263,6 @@ export default function Login() {
           if (newMotorista) {
             activeMotorista = newMotorista;
           } else {
-            // Fallback seguro em memória para nunca bloquear um usuário autenticado
             activeMotorista = { id: authUser.id, status: 'Pendente', nome: displayName };
           }
         }
@@ -299,7 +273,7 @@ export default function Login() {
           if (typeof document !== 'undefined') {
             document.cookie = 'sb-demo-token=; path=/; max-age=0';
           }
-          throw new Error('Sua conta de motorista está temporariamente bloqueada pela central.');
+          throw new Error('Sua conta de motorista está temporariamente bloqueada pela central de atendimento.');
         }
 
         if (normalizedStatus === 'reprovado' || normalizedStatus === 'rejected') {
@@ -307,7 +281,7 @@ export default function Login() {
           if (typeof document !== 'undefined') {
             document.cookie = 'sb-demo-token=; path=/; max-age=0';
           }
-          throw new Error('Seu cadastro de motorista foi reprovado pela análise da SR Logística.');
+          throw new Error('Seu cadastro de motorista foi recusado na análise documental. Entre em contato com o suporte.');
         }
 
         if (normalizedStatus === 'pendente' || normalizedStatus === 'pending') {
@@ -320,76 +294,88 @@ export default function Login() {
         }
       }
 
-      // Garantir cookie de sessão
+      // 3. Garantir cookie de sessão e redirecionar
       if (typeof document !== 'undefined') {
         document.cookie = `sb-demo-token=${authUser.id}; path=/; max-age=86400; SameSite=Lax`;
       }
 
-      // 3. Redirecionar com sucesso para o painel principal
-      console.info('[Login] Login bem-sucedido. Redirecionando...');
       router.replace('/');
       router.refresh();
     } catch (err: unknown) {
       console.error('[Login] Falha no login:', err);
-      setError(err instanceof Error ? err.message : 'Não foi possível entrar. Tente novamente.');
+      const msg = err instanceof Error ? err.message : 'Não foi possível entrar. Verifique seu e-mail e senha.';
+      if (msg.includes('Invalid login credentials')) {
+        setError('E-mail ou senha incorretos. Verifique suas credenciais.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col justify-between bg-[#070D18] text-white font-sans overflow-hidden">
-      {/* Fundo estilizado com destaque da marca (gradiente + overlay) */}
+    <div className="relative min-h-screen flex flex-col justify-between bg-[#070D18] text-white font-sans overflow-x-hidden select-none">
+      {/* Background sofisticado com imagem sutil e gradientes */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `radial-gradient(circle at 10% 10%, rgba(224,184,0,0.06), transparent 10%), linear-gradient(180deg, rgba(224,184,0,0.06) 0%, rgba(11,18,36,var(--login-gradient-opacity)) 100%)`,
-        }}
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-25 pointer-events-none"
+        style={{ backgroundImage: "url('/images/white-taxi.jpg')" }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0B141A]/75 via-[#0B141A]/88 to-[#0B141A] pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#070D18]/95 via-[#070D18]/90 to-[#070D18] pointer-events-none" />
+      <div className="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-brand/10 blur-3xl pointer-events-none" />
 
-      {/* Topo: Logo e Ajuda */}
-      <header className="relative z-10 flex justify-between items-center p-6 pt-10">
-        <Link href="/welcome" className="flex items-center gap-2 text-brand hover:opacity-80 transition">
-          <ArrowLeft size={22} className="text-white" />
-          <CarTaxiFront size={28} strokeWidth={1.5} />
-          <span className="font-extrabold text-white text-lg tracking-wide">
-            SR <span className="text-brand">Logística</span>
-          </span>
+      {/* Header com Navegação e Suporte */}
+      <header className="relative z-10 flex justify-between items-center px-5 pt-8 pb-4">
+        <Link
+          href="/welcome"
+          className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full border border-white/10 text-xs font-semibold backdrop-blur-md"
+        >
+          <ArrowLeft size={16} />
+          <span>Voltar</span>
         </Link>
 
-        <button
-          onClick={() => setSupportOpen(true)}
-          className="flex items-center gap-1.5 text-white font-medium text-sm hover:text-brand transition-colors"
-        >
-          Ajuda <HelpCircle size={18} className="text-slate-300" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSupportOpen(true)}
+            className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full border border-white/10 text-xs font-semibold backdrop-blur-md"
+          >
+            <HelpCircle size={15} className="text-brand" />
+            <span>Ajuda</span>
+          </button>
+        </div>
       </header>
 
-      {/* Formulário Central Translúcido */}
-      <main className="relative z-10 flex-1 flex flex-col justify-center px-6 my-auto max-w-md w-full mx-auto">
-        <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl shadow-2xl">
+      {/* Cartão Central de Login */}
+      <main className="relative z-10 flex-1 flex flex-col justify-center px-5 my-auto max-w-md w-full mx-auto">
+        <div className="bg-white/[0.04] backdrop-blur-2xl border border-white/10 p-7 sm:p-8 rounded-3xl shadow-2xl">
+          {/* Cabeçalho do Cartão */}
           <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold mb-1 text-white">Bem-vindo de volta</h1>
-            <p className="text-slate-400 text-sm">Insira suas credenciais para acessar o app.</p>
+            <div className="w-12 h-12 rounded-2xl bg-brand/20 border border-brand/40 flex items-center justify-center text-brand mx-auto mb-3 shadow-lg shadow-brand/10">
+              <Lock size={22} />
+            </div>
+            <h1 className="text-2xl font-black text-white tracking-tight">Acesso ao Motorista</h1>
+            <p className="text-slate-400 text-xs mt-1">
+              Informe seu e-mail e senha para entrar na central.
+            </p>
           </div>
 
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             {error && (
-              <div className="bg-red-500/10 border border-red-500/40 text-red-400 p-3 rounded-xl text-xs text-center font-medium">
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3.5 rounded-2xl text-xs text-center font-medium animate-in fade-in">
                 {error}
               </div>
             )}
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-300">E-mail</label>
+              <label className="text-xs font-semibold text-slate-300">E-mail cadastrado</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                className="bg-white/5 border border-white/10 p-4 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition-all"
+                placeholder="seu.email@exemplo.com"
+                className="bg-white/5 border border-white/10 p-3.5 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition-all"
                 required
+                autoComplete="email"
               />
             </div>
 
@@ -404,7 +390,7 @@ export default function Login() {
                     setForgotErr('');
                     setForgotModalOpen(true);
                   }}
-                  className="text-xs text-brand hover:underline transition"
+                  className="text-xs text-brand hover:underline transition font-semibold"
                 >
                   Esqueceu a senha?
                 </button>
@@ -413,71 +399,64 @@ export default function Login() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••"
-                className="bg-white/5 border border-white/10 p-4 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition-all"
+                placeholder="••••••••"
+                className="bg-white/5 border border-white/10 p-3.5 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition-all"
                 required
+                autoComplete="current-password"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-brand text-slate-950 mt-2 py-4 rounded-2xl font-black text-lg hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl shadow-brand/20"
+              className="w-full bg-brand text-slate-950 mt-2 py-4 rounded-2xl font-black text-base hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl shadow-brand/20 flex items-center justify-center gap-2"
             >
-              {loading ? 'Verificando...' : 'Entrar'}
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  <span>Autenticando...</span>
+                </>
+              ) : (
+                <span>Entrar na Minha Conta</span>
+              )}
             </button>
           </form>
 
-          <div className="mt-6 text-center space-y-5">
-            <div className="rounded-xl border border-brand/30 bg-brand/5 px-3 py-2 text-[11px] text-slate-300">
-              Modo local / teste: <span className="font-semibold text-brand">motorista@demo.local</span> / <span className="font-semibold text-brand">demo123</span>
-            </div>
-
+          {/* Links Auxiliares */}
+          <div className="mt-6 text-center space-y-4">
             <p className="text-slate-400 text-xs">
-              Ainda não tem conta?{' '}
+              Ainda não tem conta de motorista?{' '}
               <Link href="/cadastro" className="text-brand font-bold hover:underline transition">
-                Criar uma conta
+                Cadastre-se aqui
               </Link>
             </p>
 
-            {/* BOTÃO DE DOWNLOAD DO APK */}
-            <div className="pt-5 border-t border-white/10 flex justify-center">
+            <div className="pt-4 border-t border-white/10 flex justify-center">
               <a
                 href="/sr-logistica.apk"
                 download="sr-logistica.apk"
-                className="flex items-center gap-2 text-sm font-bold bg-white/5 hover:bg-white/10 text-white py-3 px-6 rounded-full transition-all border border-white/10 active:scale-95"
+                className="inline-flex items-center gap-2 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white py-2.5 px-4 rounded-full transition-all border border-white/10 active:scale-95"
               >
-                <Download size={18} className="text-emerald-400" />
-                Baixar App para Android (APK)
+                <Download size={14} className="text-emerald-400" />
+                <span>Baixar App Android (APK)</span>
               </a>
             </div>
           </div>
         </div>
       </main>
 
-      {/* Rodapé: Versão e Faixa de Atualização */}
-      <footer className="relative z-10 w-full flex flex-col items-center">
-        <div className="text-center text-slate-400 text-xs mb-3">Versão 3.42.00</div>
-
-        <a
-          href="/sr-logistica.apk"
-          download="sr-logistica.apk"
-          className="w-full bg-[#A832A8] p-4 flex items-center gap-3 cursor-pointer hover:bg-[#962896] active:bg-[#852385] transition-colors shadow-inner"
-        >
-          <div className="bg-white rounded-full p-0.5 shrink-0">
-            <Info size={14} className="text-[#A832A8]" strokeWidth={3} />
-          </div>
-          <p className="text-white text-xs font-medium leading-tight">
-            Há uma nova versão do aplicativo Android disponível. Toque aqui para baixar o APK.
-          </p>
-        </a>
+      {/* Footer com Selo de Segurança */}
+      <footer className="relative z-10 w-full p-4 flex flex-col items-center gap-1">
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+          <ShieldCheck size={14} className="text-emerald-400" />
+          <span>SR Logística • Conexão Criptografada SSL</span>
+        </div>
       </footer>
 
-      {/* POP-UP MODAL: Recuperação de Senha */}
+      {/* MODAL 1: Recuperação de Senha */}
       {forgotModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="relative w-full max-w-md bg-[#0D1624] border border-white/10 p-6 rounded-3xl shadow-2xl space-y-4">
-            {/* Botão Fechar */}
             <button
               onClick={() => setForgotModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition"
@@ -557,11 +536,10 @@ export default function Login() {
         </div>
       )}
 
-      {/* POP-UP MODAL 2: Definir Nova Senha (Acionado pelo link de redefinição) */}
+      {/* MODAL 2: Definir Nova Senha */}
       {resetModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
           <div className="relative w-full max-w-md bg-[#0D1624] border border-brand/30 p-6 rounded-3xl shadow-2xl space-y-4">
-            {/* Botão Fechar */}
             <button
               onClick={() => setResetModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition"

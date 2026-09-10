@@ -5,17 +5,36 @@ import { AuthProvider } from '@/lib/auth';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { GlobalPasswordResetModal } from '@/components/Auth/GlobalPasswordResetModal';
+import { ServiceWorkerRegister } from '@/components/PWA/ServiceWorkerRegister';
 
 export const metadata: Metadata = {
   title: 'SR Logística - App do Motorista',
-  description: 'Super app para motoristas profissionais e taxistas da SR Logística.',
+  description: 'Aplicativo oficial para motoristas e frotistas da SR Logística. Gerenciamento de corridas, despacho e repasses em tempo real.',
   manifest: '/manifest.webmanifest',
   applicationName: 'SR Logística',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'SR Logística'
-  }
+    title: 'SR Logística',
+  },
+  openGraph: {
+    title: 'SR Logística - App do Motorista',
+    description: 'Central oficial de despacho e mobilidade para motoristas parceiros da SR Logística.',
+    images: [{ url: '/screenshot-desktop.png', width: 1920, height: 1080, alt: 'SR Logística' }],
+    locale: 'pt_BR',
+    type: 'website',
+  },
 };
 
 export const viewport: Viewport = {
@@ -23,7 +42,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0B1220'
+  themeColor: '#070D18',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -31,6 +50,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className={`font-sans antialiased bg-[color:var(--bg)] dark:bg-dark transition-colors min-h-dvh select-none`}>
         <ThemeProvider>
@@ -40,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {children}
               </div>
               <GlobalPasswordResetModal />
+              <ServiceWorkerRegister />
               <div className="fixed right-4 bottom-20 z-[1110]">
                 <ThemeToggle />
               </div>
@@ -49,4 +72,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </body>
     </html>
   );
-}
+}

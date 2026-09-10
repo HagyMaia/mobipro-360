@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             window.location.search.includes('mode=reset') ||
             window.location.pathname.startsWith('/atualizar-senha'));
 
-        if (isSupabaseConfigured && !isRecovering && currentUser.email !== 'motorista@demo.local') {
+        if (isSupabaseConfigured && !isRecovering) {
           let { data: motorista } = await supabase
             .from('motoristas')
             .select('id, status')
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             window.location.search.includes('mode=reset') ||
             window.location.pathname.startsWith('/atualizar-senha'));
 
-        if (isSupabaseConfigured && !isRecoveringNow && session.user.email !== 'motorista@demo.local') {
+        if (isSupabaseConfigured && !isRecoveringNow) {
           const { data: motorista } = await supabase
             .from('motoristas')
             .select('id, status')

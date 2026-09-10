@@ -47,6 +47,8 @@ export interface DriverProfile {
         status?: 'Pendente' | 'Aprovado' | 'Reprovado';
     };
     vehicleStatus?: 'Pendente' | 'Aprovado' | 'Reprovado';
+    role?: string;
+    isAdmin?: boolean;
     createdAt: string;
 }
 

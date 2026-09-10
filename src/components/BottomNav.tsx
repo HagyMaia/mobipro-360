@@ -1,10 +1,12 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MapPin, Car, Flame, User, Wallet, Lock } from 'lucide-react';
+import { Home, MapPin, Car, Flame, User, Wallet, Shield } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/lib/auth';
+import { ProfileService } from '@/services/driver/ProfileService';
 
 const BASE_ITEMS = [
   { href: '/', label: 'Início', icon: Home },
@@ -18,14 +20,36 @@ const BASE_ITEMS = [
 export default function BottomNav() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  const items = user?.role === 'admin'
-    ? BASE_ITEMS.map((item) => (item.href === '/seguranca' ? { href: '/admin', label: 'Admin', icon: Lock } : item))
+  useEffect(() => {
+    // Check in auth metadata
+    const metaRole = (user as any)?.user_metadata?.role || (user as any)?.app_metadata?.role;
+    const metaIsAdmin = (user as any)?.user_metadata?.is_admin || (user as any)?.app_metadata?.claims_admin;
+    if (metaRole === 'admin' || metaIsAdmin === true) {
+      setIsAdmin(true);
+      return;
+    }
+
+    // Check in driver profile table
+    ProfileService.getCurrentProfile().then((p) => {
+      if (p?.isAdmin || p?.role?.toLowerCase() === 'admin') {
+        setIsAdmin(true);
+      }
+    }).catch(() => {});
+  }, [user]);
+
+  const items = isAdmin
+    ? [
+        ...BASE_ITEMS.slice(0, 5),
+        { href: '/admin', label: 'Admin', icon: Shield },
+        BASE_ITEMS[5]
+      ]
     : BASE_ITEMS;
 
   return (
     <nav className="safe-bottom fixed inset-x-0 bottom-0 z-[1100] border-t border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-950/95 backdrop-blur-xl shadow-[0_-10px_25px_rgba(0,0,0,0.08)] dark:shadow-[0_-18px_35px_rgba(0,0,0,0.4)]">
-      <div className="mx-auto flex max-w-md items-stretch justify-around px-2 py-2">
+      <div className="mx-auto flex max-w-md items-stretch justify-around px-1 py-2">
         {items.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || (href === '/corridas' && pathname.startsWith('/corridas/'));
 
@@ -34,7 +58,7 @@ export default function BottomNav() {
               key={href}
               href={href}
               className={cn(
-                'flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 transition-all duration-200',
+                'flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-0.5 py-1.5 transition-all duration-200',
                 active
                   ? 'text-brand-800 dark:text-brand-300'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -59,4 +83,4 @@ export default function BottomNav() {
       </div>
     </nav>
   );
-}
+}

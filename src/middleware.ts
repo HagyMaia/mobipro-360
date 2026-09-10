@@ -79,7 +79,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    if (user && !isPublicPage && !isResetFlow && user.email !== 'motorista@demo.local') {
+    if (user && !isPublicPage && !isResetFlow) {
       const { data: motorista } = await supabase
         .from('motoristas')
         .select('id, status')

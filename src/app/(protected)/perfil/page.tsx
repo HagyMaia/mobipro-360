@@ -19,7 +19,10 @@ import {
   Clock, 
   User, 
   Mail,
-  Car
+  Car,
+  Shield,
+  ExternalLink,
+  Lock
 } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import { Badge, Button, Card, Field, SectionTitle, Stat, inputClass } from '@/components/ui';
@@ -32,7 +35,7 @@ import type { DriverProfile } from '@/types';
 
 export default function PerfilPage() {
   const { state, dispatch, todayEarnings } = useApp();
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { profile: mockProfile } = state;
   const [dbProfile, setDbProfile] = useState<DriverProfile | null>(null);
   const [loading, setLoading] = useState(false);
@@ -81,16 +84,21 @@ export default function PerfilPage() {
     });
   }, []);
 
+  const metaRole = (user as any)?.user_metadata?.role || (user as any)?.app_metadata?.role;
+  const metaIsAdmin = (user as any)?.user_metadata?.is_admin || (user as any)?.app_metadata?.claims_admin;
+  const isAdmin = Boolean(dbProfile?.isAdmin || dbProfile?.role?.toLowerCase() === 'admin' || metaRole === 'admin' || metaIsAdmin === true);
+
   const profile = {
     name: displayName || dbProfile?.displayName || dbProfile?.fullName || mockProfile.name || 'Motorista',
     fullName: fullName || dbProfile?.fullName || mockProfile.name || 'Motorista',
     phone: phone || dbProfile?.phone || mockProfile.phone || '(92) 99999-9999',
-    email: dbProfile?.email || 'motorista@srlogistica.com.br',
+    email: dbProfile?.email || user?.email || 'motorista@srlogistica.com.br',
     avatarUrl: avatarUrl || dbProfile?.avatarUrl,
     rating: dbProfile?.rating ?? Number(mockProfile.rating ?? 4.95),
     totalRides: dbProfile?.totalRides ?? Number(mockProfile.totalRides ?? 128),
     city: 'Manaus - AM',
     status: dbProfile?.status ?? 'Aprovado',
+    isAdmin,
     vehicle: {
       make: vehicleMake,
       model: vehicleModel,
@@ -267,9 +275,16 @@ export default function PerfilPage() {
             </div>
           </div>
           
-          <Badge className={`font-bold shrink-0 ${profile.status === 'Aprovado' ? 'border border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300'}`}>
-            <ShieldCheck size={13} /> {profile.status === 'Aprovado' ? 'Ativo' : profile.status}
-          </Badge>
+          <div className="flex flex-col gap-1 items-end shrink-0">
+            <Badge className={`font-bold ${profile.status === 'Aprovado' ? 'border border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300'}`}>
+              <ShieldCheck size={13} /> {profile.status === 'Aprovado' ? 'Ativo' : profile.status}
+            </Badge>
+            {isAdmin && (
+              <Badge className="font-bold border border-brand/40 bg-brand/20 text-brand-700 dark:text-brand">
+                <Shield size={11} /> Admin
+              </Badge>
+            )}
+          </div>
         </Card>
 
         {/* Estatísticas Rápidas */}
@@ -300,6 +315,59 @@ export default function PerfilPage() {
               <ChevronRight size={16} className="text-slate-400" />
             </Card>
           </button>
+        </div>
+
+        {/* SEÇÃO DA CENTRAL ADMINISTRATIVA (Portal Oficial Web + Painel In-App) */}
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <SectionTitle className="flex items-center gap-1.5 text-xs font-bold uppercase">
+              <Shield size={14} className="text-brand-600 dark:text-brand" /> Painel da Central Administrativa
+            </SectionTitle>
+            {isAdmin && (
+              <span className="text-[10px] font-extrabold uppercase bg-brand/15 text-brand-700 dark:text-brand px-2 py-0.5 rounded-full border border-brand/30">
+                Acesso Liberado
+              </span>
+            )}
+          </div>
+
+          <Card className="p-4 bg-gradient-to-br from-brand/10 via-slate-50 dark:via-dark-850 to-slate-100 dark:to-dark-900 border-brand/30 shadow-md space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand text-slate-950 shadow-md shadow-brand/20">
+                <Shield size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white">Central Web SR Logística</h3>
+                  <span className="bg-brand/20 text-brand-700 dark:text-brand text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                    Admin
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Gerenciamento de frotas, motoristas, aprovações de veículos e controle financeiro.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-1 flex flex-col sm:flex-row gap-2">
+              <a
+                href="https://srlogisticatrasporte.vercel.app/admin.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 bg-brand text-slate-950 font-black py-3 px-4 rounded-xl text-xs hover:brightness-105 active:scale-[0.98] transition shadow-lg shadow-brand/20"
+              >
+                <span>Abrir Portal Web (admin.html)</span>
+                <ExternalLink size={14} />
+              </a>
+
+              <Link
+                href="/admin"
+                className="flex items-center justify-center gap-1.5 bg-white/80 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 text-slate-800 dark:text-slate-200 font-bold py-3 px-4 rounded-xl text-xs hover:bg-slate-100 dark:hover:bg-dark-750 transition"
+              >
+                <span>Painel In-App</span>
+                <ChevronRight size={14} />
+              </Link>
+            </div>
+          </Card>
         </div>
 
         {/* Informações Pessoais */}
@@ -551,5 +619,3 @@ export default function PerfilPage() {
     </div>
   );
 }
-
-

@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useApp } from "@/lib/store";
 import { Card, SectionTitle } from "@/components/ui";
-import { Users, Clock, DollarSign, Activity, Check, X } from "lucide-react";
+import { Users, Clock, DollarSign, Activity, Check, X, Shield, ExternalLink, ArrowLeft } from "lucide-react";
+import BottomNav from "@/components/BottomNav";
 
 type Driver = {
   id: string;
@@ -110,10 +112,56 @@ export default function AdminPage() {
   const totalMinutes = Math.round(totalTime / 60000);
 
   return (
-    <div className="flex flex-col space-y-6 p-4 text-slate-900 dark:text-slate-100 min-h-screen bg-[color:var(--bg)] transition-colors">
-      <header className="mb-2">
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white">Painel Gerencial</h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400">Acompanhamento operacional e administrativo em tempo real</p>
+    <div className="flex flex-col space-y-6 p-4 text-slate-900 dark:text-slate-100 min-h-screen bg-[color:var(--bg)] pb-28 transition-colors select-none font-sans">
+      <header className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Link
+              href="/perfil"
+              className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 dark:border-dark-700 bg-slate-100 dark:bg-dark-800 text-slate-700 dark:text-slate-300 hover:text-white transition"
+              title="Voltar ao Perfil"
+            >
+              <ArrowLeft size={18} />
+            </Link>
+            <div>
+              <h1 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                <Shield size={20} className="text-brand-600 dark:text-brand" />
+                <span>Painel Gerencial</span>
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Controle operacional e aprovações</p>
+            </div>
+          </div>
+          <a
+            href="https://srlogisticatrasporte.vercel.app/admin.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-brand text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs hover:brightness-105 active:scale-[0.98] transition shadow-md shadow-brand/20 shrink-0"
+          >
+            <span>Central Web</span>
+            <ExternalLink size={14} />
+          </a>
+        </div>
+
+        {/* Banner com link direto para o painel oficial da Central */}
+        <div className="rounded-2xl border border-brand/30 bg-gradient-to-r from-brand/15 via-brand/10 to-transparent p-3.5 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1">
+              <span>Portal de Gestão SR Logística</span>
+            </div>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
+              Abra a plataforma web completa para relatórios e despacho avançado
+            </p>
+          </div>
+          <a
+            href="https://srlogisticatrasporte.vercel.app/admin.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-brand text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs hover:brightness-105 shrink-0 flex items-center gap-1"
+          >
+            <span>Acessar</span>
+            <ExternalLink size={12} />
+          </a>
+        </div>
       </header>
 
       <div className="grid grid-cols-2 gap-3">
@@ -144,9 +192,9 @@ export default function AdminPage() {
         <Card className="flex flex-col gap-1 p-4 shadow-sm">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <Users size={20} />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Motoristas Ativos</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">Cadastrados</span>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">2</div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white">{drivers.length}</div>
         </Card>
       </div>
 
@@ -182,7 +230,7 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      <div className="pb-10">
+      <div className="pb-6">
         <SectionTitle className="mb-3">Aprovações de Motoristas & Veículos</SectionTitle>
         <Card className="p-0 shadow-sm overflow-hidden">
           {error && <div className="border-b border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 p-4 text-sm font-semibold text-red-600 dark:text-red-400">{error}</div>}
@@ -240,6 +288,8 @@ export default function AdminPage() {
           )}
         </Card>
       </div>
+
+      <BottomNav />
     </div>
   );
 }

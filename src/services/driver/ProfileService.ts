@@ -69,6 +69,21 @@ export class ProfileService {
         const category = cleanString(profile.categoria, 'POPULAR');
         const vStatus = cleanString(profile.vehicle_status, 'Aprovado') as 'Aprovado' | 'Pendente' | 'Reprovado';
 
+        const rawRole = cleanString(
+            profile.role,
+            cleanString(profile.tipo, cleanString(profile.perfil, cleanString(profile.user_role, '')))
+        );
+        const isAdmin =
+            rawRole.toLowerCase() === 'admin' ||
+            rawRole.toLowerCase() === 'administrador' ||
+            profile.is_admin === true ||
+            profile.is_admin === 'true' ||
+            profile.admin === true ||
+            authData.user.user_metadata?.role === 'admin' ||
+            authData.user.user_metadata?.is_admin === true ||
+            authData.user.app_metadata?.role === 'admin' ||
+            authData.user.app_metadata?.claims_admin === true;
+
         return {
             id: profile.id,
             fullName: cleanString(profile.nome_completo, cleanString(profile.nome, resolvedName)),
@@ -81,6 +96,8 @@ export class ProfileService {
             workStatus: profile.work_status ?? "OFFLINE",
             rating: Number(profile.rating ?? 4.95),
             totalRides: Number(profile.total_rides ?? 128),
+            role: rawRole || (isAdmin ? 'admin' : 'motorista'),
+            isAdmin,
             vehicle: {
                 make,
                 model,
