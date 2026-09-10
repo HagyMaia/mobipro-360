@@ -26,6 +26,7 @@ export async function middleware(request: NextRequest) {
     pathname === '/welcome' ||
     pathname === '/cadastro' ||
     pathname === '/sr-logistica.apk' ||
+    pathname === '/sw.js' ||
     pathname.endsWith('.apk') ||
     pathname === '/manifest.webmanifest' ||
     pathname === '/manifest.json' ||
@@ -123,6 +124,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|apk|webmanifest|json)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|apk|webmanifest|json|js|ico|txt)$).*)',
   ],
 }
