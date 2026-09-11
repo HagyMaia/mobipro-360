@@ -14,6 +14,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.classList.remove('light');
       root.classList.add('dark');
     }
+
+    // Garante que o theme-color no Android seja sempre o fundo escuro da marca (#070D18)
+    try {
+      let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (!metaThemeColor) {
+        metaThemeColor = document.createElement('meta');
+        metaThemeColor.setAttribute('name', 'theme-color');
+        document.head.appendChild(metaThemeColor);
+      }
+      metaThemeColor.setAttribute('content', '#070D18');
+
+      let metaNavColor = document.querySelector('meta[name="msapplication-navbutton-color"]');
+      if (!metaNavColor) {
+        metaNavColor = document.createElement('meta');
+        metaNavColor.setAttribute('name', 'msapplication-navbutton-color');
+        document.head.appendChild(metaNavColor);
+      }
+      metaNavColor.setAttribute('content', '#070D18');
+    } catch (_) {}
   }, []);
 
   return <>{children}</>;
