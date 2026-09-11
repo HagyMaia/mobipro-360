@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "app.vercel.mobipro_360.twa",
-        "sha256_cert_fingerprints": ["7E:C8:8C:6B:24:5B:FA:E7:6C:0B:1B:06:32:00:C1:D6:6A:7F:3D:F4:76:5E:6A:6B:41:0C:9C:A1:29:78:92:4E"]
+        "sha256_cert_fingerprints": ["54:C4:3A:04:A5:08:2C:19:E9:AA:0C:9C:33:88:71:39:5E:32:A5:CD:D0:A3:ED:12:B4:0B:66:69:17:CD:49:D9"]
       }
     }]
