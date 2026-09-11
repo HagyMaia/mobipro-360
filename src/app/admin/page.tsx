@@ -132,7 +132,7 @@ export default function AdminPage() {
             </div>
           </div>
           <a
-            href="https://srlogisticatrasporte.vercel.app/admin.html"
+            href="https://www.srlogisticatrasporte.com.br/admin.html"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 bg-brand text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs hover:brightness-105 active:scale-[0.98] transition shadow-md shadow-brand/20 shrink-0"
@@ -153,7 +153,7 @@ export default function AdminPage() {
             </p>
           </div>
           <a
-            href="https://srlogisticatrasporte.vercel.app/admin.html"
+            href="https://www.srlogisticatrasporte.com.br/admin.html"
             target="_blank"
             rel="noopener noreferrer"
             className="bg-brand text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs hover:brightness-105 shrink-0 flex items-center gap-1"

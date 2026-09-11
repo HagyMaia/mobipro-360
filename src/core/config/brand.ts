@@ -9,5 +9,5 @@ export const BRAND = {
   supportPhone: "",
 
   primaryColor: "#0EA5A4",
-  website: "",
+  website: "https://www.srlogisticatrasporte.com.br/",
 } as const;

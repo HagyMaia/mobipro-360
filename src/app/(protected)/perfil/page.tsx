@@ -385,7 +385,7 @@ export default function PerfilPage() {
 
           {/* Site Oficial SR Logística */}
           <a
-            href="https://srlogisticatrasporte.vercel.app"
+            href="https://www.srlogisticatrasporte.com.br/"
             target="_blank"
             rel="noopener noreferrer"
             className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-dark-800/50 transition"
@@ -399,7 +399,7 @@ export default function PerfilPage() {
                   Site Oficial SR Logística
                 </h4>
                 <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
-                  srlogisticatrasporte.vercel.app
+                  www.srlogisticatrasporte.com.br
                 </p>
               </div>
             </div>
@@ -408,7 +408,7 @@ export default function PerfilPage() {
 
           {/* Painel Administrativo Central Web (admin.html) */}
           <a
-            href="https://srlogisticatrasporte.vercel.app/admin.html"
+            href="https://www.srlogisticatrasporte.com.br/admin.html"
             target="_blank"
             rel="noopener noreferrer"
             className="p-4 flex items-center justify-between hover:bg-amber-500/5 dark:hover:bg-amber-500/10 transition"
@@ -427,7 +427,7 @@ export default function PerfilPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
-                  srlogisticatrasporte.vercel.app/admin.html
+                  srlogisticatrasporte.com.br/admin.html
                 </p>
               </div>
             </div>

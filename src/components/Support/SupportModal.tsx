@@ -38,7 +38,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
         <div className="flex flex-col gap-2.5 mb-5 text-left">
           {/* Site Oficial */}
           <a
-            href="http://srlogisticatrasporte.vercel.app/"
+            href="https://www.srlogisticatrasporte.com.br/"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3.5 bg-slate-50 dark:bg-dark-800 hover:bg-slate-100 dark:hover:bg-dark-750 border border-slate-200 dark:border-dark-700 p-3.5 rounded-2xl transition group shadow-sm"
@@ -51,7 +51,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
                 <h4 className="text-slate-900 dark:text-white font-bold text-sm">Site Oficial</h4>
                 <ExternalLink size={12} className="text-slate-400" />
               </div>
-              <p className="text-slate-500 dark:text-slate-400 text-xs truncate">srlogisticatrasporte.vercel.app</p>
+              <p className="text-slate-500 dark:text-slate-400 text-xs truncate">www.srlogisticatrasporte.com.br</p>
             </div>
             <ChevronRight size={18} className="text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition" />
           </a>
