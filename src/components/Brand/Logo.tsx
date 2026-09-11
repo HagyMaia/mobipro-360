@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import { Navigation } from 'lucide-react';
@@ -50,16 +50,41 @@ export function Logo({
   const iconElement = (
     <div
       className={cn(
-        'relative flex items-center justify-center font-black text-slate-950 shrink-0 select-none shadow-lg',
-        'bg-gradient-to-tr from-[#E5A800] via-[#FFC800] to-[#FDE047] shadow-amber-500/25',
-        'border border-amber-300/40',
+        'relative flex items-center justify-center font-black shrink-0 select-none shadow-lg overflow-hidden',
+        'bg-gradient-to-tr from-[#0D192C] to-[#070D18]',
+        'border border-amber-400/50 shadow-amber-500/10',
         iconSizes[size]
       )}
     >
-      <Navigation
-        size={navIconSizes[size]}
-        className="fill-slate-950 stroke-slate-950 translate-x-[0.5px] -translate-y-[0.5px]"
-      />
+      <svg className="w-full h-full p-1" viewBox="0 0 512 512">
+        <circle
+          cx="256"
+          cy="256"
+          r="210"
+          fill="none"
+          stroke="#FFC800"
+          strokeWidth="24"
+          strokeDasharray="24 18"
+          strokeLinecap="round"
+        />
+        <path
+          d="M256 80 C175 80 110 145 110 226 C110 320 256 420 256 420 C256 420 402 320 402 226 C402 145 337 80 256 80 Z"
+          fill="#FFC800"
+        />
+        <circle cx="256" cy="216" r="56" fill="#070D18" />
+        <text
+          x="256"
+          y="233"
+          fill="#FFC800"
+          fontSize="52"
+          fontWeight="900"
+          textAnchor="middle"
+          fontFamily="sans-serif"
+          letterSpacing="1"
+        >
+          SR
+        </text>
+      </svg>
     </div>
   );
 
