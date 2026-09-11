@@ -1,5 +1,5 @@
 // Service Worker for SR Logística PWA
-const CACHE_NAME = 'sr-logistica-v1.0.1';
+const CACHE_NAME = 'sr-logistica-v1.0.2';
 
 const STATIC_PRECACHE = [
   '/',
@@ -7,33 +7,40 @@ const STATIC_PRECACHE = [
   '/login',
   '/cadastro',
   '/manifest.webmanifest',
+  '/manifest.json',
   '/favicon.ico',
   '/icon-192.png',
   '/icon-512.png',
   '/icon-512-maskable.png',
+  '/logo.svg',
+  '/logo-icon.svg',
   '/screenshot-mobile.png',
   '/screenshot-desktop.png'
 ];
 
 // Install Event
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_PRECACHE).catch((err) => {
         console.warn('[SW] Cache addAll warning:', err);
       });
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
-// Activate Event
+// Activate Event - purge all old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
           .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
+          .map((name) => {
+            console.log('[SW] Deleting old cache:', name);
+            return caches.delete(name);
+          })
       );
     }).then(() => self.clients.claim())
   );
