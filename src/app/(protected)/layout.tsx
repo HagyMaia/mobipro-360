@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-
-import { createClient } from "@/lib/supabase";
 import { ProfileService } from "@/services/driver/ProfileService";
+import { createClient } from "@/lib/supabase";
 
 type ProtectedLayoutProps = {
   children: React.ReactNode;
@@ -15,60 +14,42 @@ export default function ProtectedLayout({
 }: ProtectedLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
     const validateAccess = async () => {
-      const supabase = createClient();
+      try {
+        const supabase = createClient();
+        const {
+          data: authData,
+          error: authError,
+        } = await supabase.auth.getUser();
 
-      const {
-        data: authData,
-        error: authError,
-      } = await supabase.auth.getUser();
+        if (authError || !authData?.user) {
+          router.replace("/login");
+          return;
+        }
 
-      if (authError || !authData.user) {
-        router.replace("/login");
-        return;
-      }
+        const profile = await ProfileService.getCurrentProfile();
 
-      const {
-        data: motorista,
-        error: motoristaError,
-      } = await supabase
-        .from("motoristas")
-        .select("id, status, work_status")
-        .eq("id", authData.user.id)
-        .maybeSingle();
+        // Se for rota de mapa ou operacional e motorista não for aprovado, vai para /status
+        if (pathname?.startsWith("/mapa") || pathname?.startsWith("/teste-corrida")) {
+          if (profile && profile.status !== "Aprovado") {
+            router.replace("/status");
+            return;
+          }
+        }
 
-      if (motoristaError || !motorista) {
-        console.error(
-          "[ProtectedLayout] Motorista não encontrado:",
-          motoristaError,
-        );
-
-        await supabase.auth.signOut();
-
-        router.replace("/welcome");
-        return;
-      }
-
-      const normalizedStatus =
-        ProfileService.normalizeDriverStatus(
-          motorista.status,
-        );
-
-      if (normalizedStatus !== "Aprovado") {
-        await supabase.auth.signOut();
-
-        router.replace("/welcome");
-        return;
-      }
-
-      if (isMounted) {
-        setIsCheckingAccess(false);
+        if (isMounted) {
+          setIsCheckingAccess(false);
+        }
+      } catch (err) {
+        console.warn("[ProtectedLayout] Erro na verificação:", err);
+        if (isMounted) {
+          setIsCheckingAccess(false);
+        }
       }
     };
 
@@ -83,11 +64,11 @@ export default function ProtectedLayout({
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#070D18] text-white">
         <div className="text-center">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
           <p className="text-sm font-semibold text-brand">
             Verificando acesso...
           </p>
-
-          <p className="mt-2 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-slate-400">
             SR Logística
           </p>
         </div>

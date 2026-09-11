@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
+import Link from "next/link";
+import { Flame } from "lucide-react";
 import { DriverStatusButton } from "@/features/driver-status/components/DriverStatusButton";
 import { useDriverLocation } from "@/hooks/useDriverLocation";
 import { useRideRequests } from "@/hooks/useRideRequests";
@@ -223,6 +225,14 @@ export default function MapaPage() {
                             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Toque no botão abaixo para receber corridas</p>
                         </div>
                         <div className="flex items-center gap-2">
+                            <Link
+                                href="/radar"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs font-black shadow-sm active:scale-95 transition hover:bg-amber-500/25"
+                                title="Ver Radar de Demanda"
+                            >
+                                <Flame size={14} className="text-amber-500" />
+                                <span>Radar</span>
+                            </Link>
                             <ThemeToggle />
                             <StatusPill />
                         </div>

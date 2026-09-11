@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { CalendarClock, MapPin, Radio } from 'lucide-react';
+import { ArrowLeft, CalendarClock, MapPin, Radio } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import { Badge, Card, SectionTitle } from '@/components/ui';
 import { HEAT_ZONES } from '@/lib/mock-data';
@@ -29,14 +30,23 @@ export default function RadarPage() {
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[color:var(--bg)] text-slate-900 dark:text-slate-50 transition-colors">
       <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-950/90 px-4 pb-3 pt-4 backdrop-blur-xl">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-white">
-              Radar de <span className="text-brand-600 dark:text-brand">Demanda</span>
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Onde se posicionar para obter corridas mais rentáveis
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/mapa"
+              className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 dark:border-dark-700 bg-slate-100 dark:bg-dark-800 text-slate-700 dark:text-slate-300 hover:text-white transition active:scale-95"
+              title="Voltar ao Mapa"
+            >
+              <ArrowLeft size={18} />
+            </Link>
+            <div>
+              <h1 className="text-lg font-black text-slate-900 dark:text-white">
+                Radar de <span className="text-brand-600 dark:text-brand">Demanda</span>
+              </h1>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Onde se posicionar para mais corridas
+              </p>
+            </div>
           </div>
           {/* Badge "Ao Vivo" */}
           <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">

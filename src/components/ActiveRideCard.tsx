@@ -1,7 +1,10 @@
 'use client';
 
-import { CheckCircle2, ExternalLink, Flag, MapPin, Navigation, Phone, XCircle } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle2, ExternalLink, Flag, Loader2, MapPin, Navigation, Phone, XCircle } from 'lucide-react';
 import { useApp } from '@/lib/store';
+import { useAuth } from '@/lib/auth';
+import { RideService } from '@/services/ride/RideService';
 import { openNavigation } from '@/lib/navigation';
 import { formatBRL } from '@/lib/utils';
 import { Badge, Button, Card } from '@/components/ui';
@@ -14,6 +17,8 @@ const STEPS = [
 
 export default function ActiveRideCard() {
   const { state, dispatch } = useApp();
+  const { user } = useAuth();
+  const [loadingAction, setLoadingAction] = useState(false);
   const ride = state.activeRide;
   if (!ride) return null;
 
@@ -29,6 +34,52 @@ export default function ActiveRideCard() {
 
   function handleNavigate() {
     openNavigation(navAddress, navApp);
+  }
+
+  async function handleStart() {
+    if (ride?.id) {
+      setLoadingAction(true);
+      try {
+        await RideService.startRide(ride.id);
+      } catch (err) {
+        console.warn('[ActiveRideCard] Erro ao iniciar corrida no banco:', err);
+      } finally {
+        setLoadingAction(false);
+      }
+    }
+    dispatch({ type: 'START_RIDE' });
+  }
+
+  async function handleComplete() {
+    if (ride?.id) {
+      setLoadingAction(true);
+      try {
+        await RideService.completeRide(ride.id, user?.id, ride.fare);
+      } catch (err) {
+        console.warn('[ActiveRideCard] Erro ao finalizar corrida no banco:', err);
+      } finally {
+        setLoadingAction(false);
+      }
+    }
+    dispatch({ type: 'COMPLETE_RIDE' });
+  }
+
+  async function handleCancel() {
+    if (!window.confirm('Tem certeza que deseja cancelar esta corrida?')) {
+      return;
+    }
+
+    if (ride?.id) {
+      setLoadingAction(true);
+      try {
+        await RideService.cancelRide(ride.id, user?.id);
+      } catch (err) {
+        console.warn('[ActiveRideCard] Erro ao cancelar corrida no banco:', err);
+      } finally {
+        setLoadingAction(false);
+      }
+    }
+    dispatch({ type: 'CANCEL_RIDE' });
   }
 
   return (
@@ -98,21 +149,21 @@ export default function ActiveRideCard() {
       <div className="mt-3.5 grid grid-cols-2 gap-2.5">
         {ride.status === 'accepted' && (
           <>
-            <Button variant="outline" onClick={() => dispatch({ type: 'CANCEL_RIDE' })}>
-              <XCircle size={16} /> Cancelar
+            <Button variant="outline" onClick={handleCancel} disabled={loadingAction}>
+              {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />} Cancelar
             </Button>
-            <Button variant="success" onClick={() => dispatch({ type: 'START_RIDE' })}>
-              <Phone size={16} /> Iniciar corrida
+            <Button variant="success" onClick={handleStart} disabled={loadingAction}>
+              {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Phone size={16} />} Iniciar corrida
             </Button>
           </>
         )}
         {ride.status === 'in-progress' && (
           <>
-            <Button variant="outline" onClick={() => dispatch({ type: 'CANCEL_RIDE' })}>
-              <XCircle size={16} /> Cancelar
+            <Button variant="outline" onClick={handleCancel} disabled={loadingAction}>
+              {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />} Cancelar
             </Button>
-            <Button variant="success" onClick={() => dispatch({ type: 'COMPLETE_RIDE' })}>
-              <Flag size={16} /> Finalizar corrida
+            <Button variant="success" onClick={handleComplete} disabled={loadingAction}>
+              {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />} Finalizar corrida
             </Button>
           </>
         )}

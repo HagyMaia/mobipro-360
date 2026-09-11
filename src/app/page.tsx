@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, Car, MapPin, Navigation, TrendingUp, Trophy } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
@@ -10,25 +10,26 @@ import ActiveRideCard from '@/components/ActiveRideCard';
 import StatusControl, { StatusPill } from '@/components/StatusControl';
 import { Card, EmptyState, SectionTitle } from '@/components/ui';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { useApp, useSimulateRide } from '@/lib/store';
+import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { buildMockRequest } from '@/lib/mock-data';
+import { useRideRequests } from '@/hooks/useRideRequests';
+import { ProfileService } from '@/services/driver/ProfileService';
 import { formatBRL, isToday } from '@/lib/utils';
-import { TripOfferCard } from "@/features/trips/components/TripOfferCard";
-import { useTripStore } from "@/features/trips/store/useTripStore";
-import type { Trip } from "@/features/trips/domain/trip.types";
+import type { RideRequest } from '@/lib/types';
 
 export default function HomePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const { state, dispatch } = useApp();
   const { signOut } = useAuth();
-  const simulate = useSimulateRide();
-  const [tick, setTick] = useState(0);
   const [driverName, setDriverName] = useState('Motorista');
+  const [isApproved, setIsApproved] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const counter = useRef(0);
+
+  // Escuta apenas chamadas reais quando o motorista está cadastrado, aprovado e com status "Disponível" (Online)
+  const isOnlineAndAvailable = state.status === 'available' && isApproved;
+  const { currentOffer, clearOffer } = useRideRequests(isOnlineAndAvailable);
 
   useEffect(() => {
     async function checkAuthAndLoadProfile() {
@@ -58,7 +59,7 @@ export default function HomePage() {
         try {
           const { data: motorista, error: dbError } = await supabase
             .from('motoristas')
-            .select('nome, nome_social, nome_completo, status')
+            .select('nome, nome_social, nome_completo, status, work_status')
             .eq('id', user.id)
             .maybeSingle();
 
@@ -66,9 +67,19 @@ export default function HomePage() {
             console.error('[App] Erro ao buscar dados do motorista:', dbError);
           }
 
-          if (motorista && motorista.status && motorista.status.toLowerCase() !== 'aprovado') {
+          const approvalStatus = ProfileService.normalizeDriverStatus(motorista?.status);
+          const approved = approvalStatus === 'Aprovado';
+          setIsApproved(approved);
+
+          if (motorista && motorista.status && !approved) {
             router.replace('/status');
             return;
+          }
+
+          if (motorista?.work_status === 'ONLINE' && state.status !== 'available' && state.activeRide === null) {
+            dispatch({ type: 'SET_STATUS', status: 'available' });
+          } else if (motorista?.work_status === 'OFFLINE' && state.status === 'available' && state.activeRide === null) {
+            dispatch({ type: 'SET_STATUS', status: 'offline' });
           }
 
           if (motorista?.nome_social?.trim()) {
@@ -94,42 +105,31 @@ export default function HomePage() {
     }
 
     checkAuthAndLoadProfile();
-  }, [router]);
+  }, [router, dispatch, state.status, state.activeRide]);
 
-  const triggerRequest = useCallback(() => {
-    counter.current += 1;
-    simulate(() => buildMockRequest(counter.current));
-  }, [simulate]);
-
+  // Sincroniza a oferta real do Supabase Realtime com o store do app
   useEffect(() => {
-    if (
-      state.status === 'available' &&
-      !state.incomingRide &&
-      !state.activeRide &&
-      tick < 40
-    ) {
-      const delay = 6000 + Math.random() * 9000;
-      const timer = setTimeout(triggerRequest, delay);
-      return () => clearTimeout(timer);
+    if (currentOffer && isOnlineAndAvailable && !state.activeRide) {
+      const realRideRequest: RideRequest = {
+        id: currentOffer.id,
+        passengerName: currentOffer.passengerName,
+        passengerRating: currentOffer.passengerRating,
+        passengerAccountMonths: 6,
+        passengerTrips: 18,
+        pickup: currentOffer.pickupAddress,
+        dropoff: currentOffer.dropoffAddress,
+        distanceKm: currentOffer.distanceKm,
+        estimatedMinutes: currentOffer.estimatedMinutes,
+        fare: currentOffer.fareAmount,
+        paymentMethod: 'pix',
+        requestedAt: new Date().toISOString(),
+        source: 'app',
+      };
+      dispatch({ type: 'NEW_RIDE_REQUEST', ride: realRideRequest });
+    } else if (!currentOffer && state.incomingRide) {
+      dispatch({ type: 'REJECT_RIDE' });
     }
-  }, [state.status, state.incomingRide, state.activeRide, tick, triggerRequest]);
-
-  useEffect(() => {
-    if (state.incomingRide && state.filters.autoReject) {
-      const f = state.filters;
-      const shouldReject =
-        state.incomingRide.passengerRating < f.minRating ||
-        state.incomingRide.passengerAccountMonths < f.minAccountMonths ||
-        (f.rejectCash && state.incomingRide.paymentMethod === 'cash');
-      if (shouldReject) {
-        const timer = setTimeout(() => {
-          dispatch({ type: 'REJECT_RIDE' });
-          setTick((t) => t + 1);
-        }, 1500);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [state.incomingRide, state.filters, dispatch]);
+  }, [currentOffer, isOnlineAndAvailable, state.activeRide, state.incomingRide, dispatch]);
 
   if (loading) {
     return (

@@ -21,9 +21,8 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.searchParams.get('type') === 'recovery' ||
     pathname.startsWith('/atualizar-senha')
 
-  // Rotas públicas acessíveis sem login
+// Rotas públicas acessíveis sem login
   const isPublicPage =
-    pathname === '/' ||
     pathname === '/welcome' ||
     pathname === '/cadastro' ||
     pathname === '/sr-logistica.apk' ||
@@ -36,10 +35,12 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/recuperar-senha') ||
     pathname.startsWith('/atualizar-senha')
 
+  const hasDemoAuth =
+    request.cookies.get('sb-demo-token')?.value ||
+    request.cookies.get('mobipro-demo-session')?.value
+
   // Se o Supabase NÃO estiver configurado (Preview Vercel / Modo Demo Local)
   if (!isSupabaseConfigured) {
-    const hasDemoAuth = request.cookies.get('sb-demo-token')?.value || request.cookies.get('mobipro-demo-session')?.value
-
     if (!hasDemoAuth && !isPublicPage) {
       const url = request.nextUrl.clone()
       url.pathname = '/welcome'
@@ -76,38 +77,62 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user && !isPublicPage) {
+    if (!user && !hasDemoAuth && !isPublicPage) {
       const url = request.nextUrl.clone()
       url.pathname = '/welcome'
       return NextResponse.redirect(url)
     }
 
     if (user && !isPublicPage && !isResetFlow) {
-      const { data: motorista } = await supabase
-        .from('motoristas')
-        .select('id, status')
-        .eq('id', user.id)
-        .maybeSingle()
+      // Rotas de perfil, configurações, suporte, segurança e status são sempre acessíveis ao motorista logado
+      const isAlwaysAllowed =
+        pathname.startsWith('/status') ||
+        pathname.startsWith('/admin') ||
+        pathname.startsWith('/perfil') ||
+        pathname.startsWith('/financeiro') ||
+        pathname.startsWith('/ajustes') ||
+        pathname.startsWith('/seguranca')
 
-      // Se a rota for /status ou /admin, permite o acesso sem expulsar o usuário
-      if (pathname.startsWith('/status') || pathname.startsWith('/admin')) {
-        return supabaseResponse
-      }
+      if (!isAlwaysAllowed) {
+        let { data: motorista } = await supabase
+          .from('motoristas')
+          .select('id, status')
+          .eq('id', user.id)
+          .maybeSingle()
 
-      // Se for um motorista pendente tentando acessar rotas de corrida, redireciona para /status
-      if (motorista && motorista.status && motorista.status.toLowerCase() !== 'aprovado') {
-        const url = request.nextUrl.clone()
-        url.pathname = '/status'
-        return NextResponse.redirect(url)
+        if (!motorista && user.email) {
+          const { data: byEmail } = await supabase
+            .from('motoristas')
+            .select('id, status')
+            .eq('email', user.email)
+            .maybeSingle()
+          if (byEmail) motorista = byEmail
+        }
+
+        // Se for um motorista pendente tentando acessar rotas operacionais de corrida, redireciona para /status
+        if (motorista && motorista.status && motorista.status.toLowerCase() !== 'aprovado') {
+          const url = request.nextUrl.clone()
+          url.pathname = '/status'
+          return NextResponse.redirect(url)
+        }
       }
     }
 
     if (user && (pathname === '/welcome' || (pathname === '/login' && !isResetFlow) || pathname === '/cadastro')) {
-      const { data: motorista } = await supabase
+      let { data: motorista } = await supabase
         .from('motoristas')
         .select('id, status')
         .eq('id', user.id)
         .maybeSingle()
+
+      if (!motorista && user.email) {
+        const { data: byEmail } = await supabase
+          .from('motoristas')
+          .select('id, status')
+          .eq('email', user.email)
+          .maybeSingle()
+        if (byEmail) motorista = byEmail
+      }
 
       const url = request.nextUrl.clone()
       if (motorista && motorista.status && motorista.status.toLowerCase() !== 'aprovado') {

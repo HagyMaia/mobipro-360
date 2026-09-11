@@ -1,7 +1,9 @@
 'use client';
 
-import { Coffee, Moon, Play, Wifi } from 'lucide-react';
+import { useState } from 'react';
+import { Coffee, Loader2, Moon, Play, Wifi } from 'lucide-react';
 import { useApp } from '@/lib/store';
+import { ProfileService } from '@/services/driver/ProfileService';
 import type { WorkStatus } from '@/lib/types';
 import { cn } from '@/lib/cn';
 
@@ -13,7 +15,33 @@ const OPTIONS: Array<{ status: WorkStatus; label: string; icon: typeof Play }> =
 
 export default function StatusControl({ disabled }: { disabled?: boolean }) {
   const { state, dispatch } = useApp();
+  const [updating, setUpdating] = useState(false);
   const canChange = state.activeRide === null && state.incomingRide === null;
+
+  const handleStatusChange = async (targetStatus: WorkStatus) => {
+    if (!canChange || disabled || updating || state.status === targetStatus) return;
+
+    setUpdating(true);
+    try {
+      if (targetStatus === 'available') {
+        const profile = await ProfileService.getCurrentProfile();
+        if (profile?.status !== 'Aprovado') {
+          alert('Seu cadastro precisa estar Aprovado para ficar online e receber corridas.');
+          setUpdating(false);
+          return;
+        }
+        await ProfileService.toggleWorkStatus('ONLINE');
+      } else {
+        await ProfileService.toggleWorkStatus('OFFLINE');
+      }
+      dispatch({ type: 'SET_STATUS', status: targetStatus });
+    } catch (err) {
+      console.warn('[StatusControl] Erro ao sincronizar status no banco:', err);
+      dispatch({ type: 'SET_STATUS', status: targetStatus });
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   return (
     <div className="grid grid-cols-3 gap-2.5">
@@ -30,17 +58,17 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
         return (
           <button
             key={status}
-            disabled={disabled || !canChange}
-            onClick={() => dispatch({ type: 'SET_STATUS', status })}
+            disabled={disabled || !canChange || updating}
+            onClick={() => handleStatusChange(status)}
             className={cn(
               'flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 text-xs font-bold transition-all duration-200 active:scale-95',
               active
                 ? stateStyles
                 : 'border-slate-200/80 dark:border-dark-700 bg-white dark:bg-dark-800 text-slate-500 dark:text-slate-400 hover:border-brand/40 hover:text-slate-900 dark:hover:text-white',
-              (!canChange || disabled) && 'pointer-events-none opacity-50'
+              (!canChange || disabled || updating) && 'pointer-events-none opacity-50'
             )}
           >
-            <Icon size={18} />
+            {updating && active ? <Loader2 size={18} className="animate-spin" /> : <Icon size={18} />}
             <span>{label}</span>
           </button>
         );

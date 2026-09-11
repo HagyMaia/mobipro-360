@@ -1,7 +1,10 @@
 'use client';
 
-import { AlertTriangle, Check, Clock, MapPin, Route, Star, X } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, Check, Clock, Loader2, MapPin, Route, Star, X } from 'lucide-react';
 import { useApp } from '@/lib/store';
+import { useAuth } from '@/lib/auth';
+import { RideService } from '@/services/ride/RideService';
 import type { RideRequest } from '@/lib/types';
 import { calcPerHour, calcPerKm, formatBRL, isProfitable, profitabilityMeta, ratingColor } from '@/lib/utils';
 import { Badge, Button, Card } from '@/components/ui';
@@ -37,13 +40,58 @@ export function RentabilityPanel({ fare, distanceKm, minutes }: { fare: number; 
   );
 }
 
-export default function RideRequestCard({ ride }: { ride: RideRequest }) {
+export default function RideRequestCard({
+  ride,
+  onAccept,
+  onReject,
+}: {
+  ride: RideRequest;
+  onAccept?: () => void;
+  onReject?: () => void;
+}) {
   const { dispatch } = useApp();
-  const passengerRating = typeof ride.passengerRating === 'number' ? ride.passengerRating : 0;
+  const { user } = useAuth();
+  const [accepting, setAccepting] = useState(false);
+
+  const passengerRating = typeof ride.passengerRating === 'number' ? ride.passengerRating : 5.0;
   const flagged =
     passengerRating < 4.5 ||
-    (ride.passengerAccountMonths ?? 0) < 3 ||
-    (ride.paymentMethod === 'cash' && false);
+    (ride.passengerAccountMonths ?? 0) < 3;
+
+  const handleAccept = async () => {
+    if (onAccept) {
+      onAccept();
+      return;
+    }
+
+    if (user?.id && ride.id) {
+      setAccepting(true);
+      try {
+        const success = await RideService.acceptRide(ride.id, user.id);
+        if (success) {
+          dispatch({ type: 'ACCEPT_RIDE' });
+        } else {
+          alert('Esta corrida já foi aceita por outro motorista ou cancelada.');
+          dispatch({ type: 'REJECT_RIDE' });
+        }
+      } catch (err) {
+        console.error('[RideRequestCard] Erro ao aceitar:', err);
+        dispatch({ type: 'ACCEPT_RIDE' });
+      } finally {
+        setAccepting(false);
+      }
+    } else {
+      dispatch({ type: 'ACCEPT_RIDE' });
+    }
+  };
+
+  const handleReject = () => {
+    if (onReject) {
+      onReject();
+    } else {
+      dispatch({ type: 'REJECT_RIDE' });
+    }
+  };
 
   return (
     <Card className="animate-[pulse-in_.3s_ease-out] border-2 border-brand shadow-xl shadow-brand/15 p-4 sm:p-5">
@@ -89,7 +137,7 @@ export default function RideRequestCard({ ride }: { ride: RideRequest }) {
       <div className="mt-3 flex items-center justify-between rounded-2xl border border-slate-200/80 dark:border-dark-700 bg-slate-50 dark:bg-dark-900/70 px-3 py-2.5">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand/20 text-sm font-black text-brand-800 dark:text-brand">
-            {(ride.passengerName && ride.passengerName.charAt) ? ride.passengerName.charAt(0) : ''}
+            {(ride.passengerName && ride.passengerName.charAt) ? ride.passengerName.charAt(0) : 'P'}
           </div>
           <div>
             <div className="text-sm font-bold text-slate-900 dark:text-white">{ride.passengerName}</div>
@@ -112,11 +160,19 @@ export default function RideRequestCard({ ride }: { ride: RideRequest }) {
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2.5">
-        <Button variant="danger" size="lg" onClick={() => dispatch({ type: 'REJECT_RIDE' })}>
+        <Button variant="danger" size="lg" onClick={handleReject} disabled={accepting}>
           <X size={16} /> Recusar
         </Button>
-        <Button variant="success" size="lg" onClick={() => dispatch({ type: 'ACCEPT_RIDE' })}>
-          <Check size={16} /> Aceitar
+        <Button variant="success" size="lg" onClick={handleAccept} disabled={accepting}>
+          {accepting ? (
+            <span className="flex items-center gap-1.5">
+              <Loader2 size={16} className="animate-spin" /> Aceitando...
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <Check size={16} /> Aceitar
+            </span>
+          )}
         </Button>
       </div>
     </Card>

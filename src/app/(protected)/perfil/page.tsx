@@ -16,7 +16,9 @@ import {
   CheckCircle2, 
   Clock, 
   ShieldCheck,
-  Camera
+  Camera,
+  Flame,
+  Settings
 } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import { SupportModal } from '@/components/Support/SupportModal';
@@ -285,8 +287,80 @@ export default function PerfilPage() {
           </button>
         </div>
 
-        {/* Card 3: Lista de Links e Central Administrativa */}
+        {/* Card Especial de Administração para Usuários Admin */}
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className="block rounded-3xl border border-amber-500/40 bg-gradient-to-br from-amber-500/15 via-amber-500/10 to-transparent p-4 shadow-lg shadow-amber-500/10 hover:border-amber-500/60 active:scale-[0.99] transition duration-200"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shadow-md shadow-amber-500/25 shrink-0">
+                  <Shield size={20} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                      Painel Gerencial Admin
+                    </h3>
+                    <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      Gerenciar
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                    Aprovação de motoristas e controle operacional
+                  </p>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-amber-500 shrink-0" />
+            </div>
+          </Link>
+        )}
+
+        {/* Card 3: Hub de Ferramentas, Radar, Ajustes e Suporte */}
         <div className="bg-white dark:bg-dark-900/90 rounded-3xl border border-slate-100 dark:border-dark-700/80 shadow-sm overflow-hidden divide-y divide-slate-100 dark:divide-dark-800">
+          {/* Radar de Demanda */}
+          <Link
+            href="/radar"
+            className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-dark-800/50 transition"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Flame size={18} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
+                  Radar de Demanda & Zonas Quentes
+                </h4>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                  Mapa de calor e previsão de corridas em Manaus
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-slate-400" />
+          </Link>
+
+          {/* Ajustes e Filtros */}
+          <Link
+            href="/ajustes"
+            className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-dark-800/50 transition"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-dark-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0">
+                <Settings size={18} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
+                  Ajustes e Filtros de Corrida
+                </h4>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                  Navegação GPS, alertas sonoros e preferências
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-slate-400" />
+          </Link>
+
           {/* Suporte */}
           <button
             type="button"
@@ -332,7 +406,7 @@ export default function PerfilPage() {
             <ExternalLink size={16} className="text-slate-400" />
           </a>
 
-          {/* Painel Administrativo Central (admin.html) */}
+          {/* Painel Administrativo Central Web (admin.html) */}
           <a
             href="https://srlogisticatrasporte.vercel.app/admin.html"
             target="_blank"
@@ -346,10 +420,10 @@ export default function PerfilPage() {
               <div>
                 <div className="flex items-center gap-1.5">
                   <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                    Painel Administrativo Central
+                    Painel Administrativo Web
                   </h4>
-                  <span className="bg-[#F59E0B]/20 text-[#B45309] dark:text-[#F59E0B] text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
-                    Admin
+                  <span className="bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
+                    Web
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
@@ -357,7 +431,7 @@ export default function PerfilPage() {
                 </p>
               </div>
             </div>
-            <ExternalLink size={16} className="text-[#F59E0B]" />
+            <ExternalLink size={16} className="text-amber-500" />
           </a>
 
           {/* Privacidade e Segurança */}

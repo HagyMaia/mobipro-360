@@ -3,33 +3,33 @@
 @tailwind utilities;
 
 :root {
-  --bg: #F4F7FA;
-  --surface: #FFFFFF;
-  --surface-card: #FFFFFF;
-  --surface-muted: #F1F5F9;
-  --border: #E2E8F0;
-  --brand: #FFC800;
-  --brand-hover: #E5B400;
-  --brand-dark: #1A1A1A;
-  --muted: #64748B;
-  --text: #0B1224;
-  --text-muted: #64748B;
+  --bg: #f4f7fa;
+  --surface: #ffffff;
+  --surface-card: #ffffff;
+  --surface-muted: #f1f5f9;
+  --border: #e2e8f0;
+  --brand: #ffc800;
+  --brand-hover: #e5b400;
+  --brand-dark: #1a1a1a;
+  --muted: #64748b;
+  --text: #0b1224;
+  --text-muted: #64748b;
   --login-gradient-opacity: 0.75;
   color-scheme: light;
 }
 
 .dark {
-  --bg: #070D18;
-  --surface: #0B1220;
-  --surface-card: #0F172A;
-  --surface-muted: #1E293B;
-  --border: #1E293B;
-  --brand: #FFC800;
-  --brand-hover: #E5B400;
-  --brand-dark: #1A1A1A;
-  --muted: #94A3B8;
-  --text: #F8FAFC;
-  --text-muted: #94A3B8;
+  --bg: #070d18;
+  --surface: #0b1220;
+  --surface-card: #0f172a;
+  --surface-muted: #1e293b;
+  --border: #1e293b;
+  --brand: #ffc800;
+  --brand-hover: #e5b400;
+  --brand-dark: #1a1a1a;
+  --muted: #94a3b8;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
   color-scheme: dark;
 }
 
@@ -42,15 +42,17 @@ body {
   overscroll-behavior-y: none;
   background:
     radial-gradient(circle at top, rgba(255, 200, 0, 0.08), transparent 30%),
-    linear-gradient(180deg, var(--bg) 0%, #E2E8F0 100%);
+    linear-gradient(180deg, var(--bg) 0%, #e2e8f0 100%);
   color: var(--text);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 .dark body {
   background:
     radial-gradient(circle at top, rgba(255, 200, 0, 0.12), transparent 30%),
-    linear-gradient(180deg, #070D18 0%, #0B1220 100%);
+    linear-gradient(180deg, #070d18 0%, #0b1220 100%);
 }
 
 /* Leaflet no tema escuro */
@@ -88,18 +90,26 @@ body {
 }
 
 @layer base {
-  html, body {
+  html,
+  body {
     height: 100%;
   }
   body {
-    font-family: var(--font-inter), system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    font-family:
+      var(--font-inter),
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial;
   }
   /* Fix WebKit autofill in dark mode so text isn't invisible */
   input:-webkit-autofill,
-  input:-webkit-autofill:hover, 
-  input:-webkit-autofill:focus, 
-  input:-webkit-autofill:active{
-    -webkit-box-shadow: 0 0 0 30px #0B141A inset !important;
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #0b141a inset !important;
     -webkit-text-fill-color: white !important;
     transition: background-color 5000s ease-in-out 0s;
   }
