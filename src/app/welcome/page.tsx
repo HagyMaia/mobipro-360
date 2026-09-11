@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Navigation, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { Logo } from '@/components/Brand/Logo';
 
 export default function WelcomeScreen() {
   return (
@@ -18,14 +19,7 @@ export default function WelcomeScreen() {
 
       {/* HEADER: Ícone Amarelo de Navegação + SR LOGÍSTICA + Botão Entrar */}
       <header className="relative z-10 flex justify-between items-center px-6 pt-10 pb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-[#F59E0B] flex items-center justify-center text-slate-950 shadow-lg shadow-amber-500/20">
-            <Navigation size={20} className="fill-slate-950 stroke-slate-950 translate-x-[1px] translate-y-[-1px]" />
-          </div>
-          <span className="font-black text-white text-base tracking-wider uppercase">
-            SR LOGÍSTICA
-          </span>
-        </div>
+        <Logo size="md" lightText subtitle="MOTORISTA" />
 
         <Link
           href="/login"

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { DriverService, DriverRegistrationData } from '@/services/driver/DriverService';
 import { DocumentType } from '@/types';
+import { Logo } from '@/components/Brand/Logo';
 
 export default function RegisterWizard() {
   const router = useRouter();
@@ -204,12 +205,13 @@ export default function RegisterWizard() {
 
   return (
     <div className="min-h-screen bg-[#070D18] text-[color:var(--text)] dark:text-white flex flex-col justify-between p-4 max-w-md mx-auto">
-      {/* Header com Progresso */}
-      <header className="py-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-xs text-zinc-400">Passo {step} de 5</span>
-          <span className="text-xs text-brand-primary font-semibold">SR Logística
-</span>
+      {/* Header com Logo e Progresso */}
+      <header className="py-4 space-y-3">
+        <div className="flex justify-between items-center">
+          <Logo size="sm" lightText subtitle="MOTORISTA" />
+          <span className="text-xs font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-full">
+            Passo {step} de 5
+          </span>
         </div>
         <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
           <div

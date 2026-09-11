@@ -7,6 +7,7 @@ import { DriverProfile } from '@/types';
 import { createClient } from '@/lib/supabase';
 import { HelpCircle, RefreshCw, LogOut, Clock, ShieldAlert, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { SupportModal } from '@/components/Support/SupportModal';
+import { Logo } from '@/components/Brand/Logo';
 
 export default function StatusPage() {
   const router = useRouter();
@@ -128,9 +129,7 @@ export default function StatusPage() {
     <div className="min-h-screen bg-[#070D18] flex flex-col justify-between p-6 text-white font-sans select-none">
       {/* Header */}
       <header className="flex justify-between items-center pb-4 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <span className="font-black text-lg text-white">SR <span className="text-brand">Logística</span></span>
-        </div>
+        <Logo size="sm" lightText subtitle="MOTORISTA" />
         <button
           onClick={() => setSupportOpen(true)}
           className="flex items-center gap-1.5 text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full text-slate-300 hover:text-white transition"

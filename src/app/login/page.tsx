@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured, createMockSupabase } from '@/lib/supaba
 import Link from 'next/link';
 import { ArrowLeft, HelpCircle, Download, KeyRound, X, CheckCircle2, Lock, ShieldCheck } from 'lucide-react';
 import { SupportModal } from '@/components/Support/SupportModal';
+import { Logo } from '@/components/Brand/Logo';
 
 export default function Login() {
   const router = useRouter();
@@ -349,9 +350,9 @@ export default function Login() {
       <main className="relative z-10 flex-1 flex flex-col justify-center px-5 my-auto max-w-md w-full mx-auto">
         <div className="bg-white/[0.04] backdrop-blur-2xl border border-white/10 p-7 sm:p-8 rounded-3xl shadow-2xl">
           {/* Cabeçalho do Cartão */}
-          <div className="mb-6 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-brand/20 border border-brand/40 flex items-center justify-center text-brand mx-auto mb-3 shadow-lg shadow-brand/10">
-              <Lock size={22} />
+          <div className="mb-6 text-center flex flex-col items-center">
+            <div className="mb-4">
+              <Logo size="lg" lightText subtitle="MOTORISTA" />
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight">Acesso ao Motorista</h1>
             <p className="text-slate-400 text-xs mt-1">
