@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.mobipro_360.twa",
+        "sha256_cert_fingerprints": ["13:14:33:BA:BC:C3:B1:6C:D8:AA:7B:83:DF:38:53:0E:2B:58:A9:05:4E:61:70:E9:66:D9:02:B7:61:C3:F2:A6"]
+      }
+    }]
