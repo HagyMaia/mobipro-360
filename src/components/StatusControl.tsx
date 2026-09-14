@@ -1,65 +1,48 @@
 'use client';
 
 import { useState } from 'react';
-import { Coffee, Loader2, Moon, Play, Power, Radio, ShieldCheck, Sparkles, Zap } from 'lucide-react';
+import { Coffee, Loader2, Power, Radio, ShieldCheck, Sparkles, Zap, Navigation } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { ProfileService } from '@/services/driver/ProfileService';
 import type { WorkStatus } from '@/lib/types';
 import { cn } from '@/lib/cn';
 
-interface StatusOption {
+interface StatusItem {
   status: WorkStatus;
   label: string;
-  sublabel: string;
-  icon: typeof Play;
-  activeClasses: {
-    bg: string;
-    text: string;
-    badge: string;
-    shadow: string;
-    border: string;
-  };
+  badge: string;
+  icon: typeof Radio;
+  activeStyles: string;
+  glowStyles: string;
 }
 
-const OPTIONS: StatusOption[] = [
+const STATUS_ITEMS: StatusItem[] = [
   {
     status: 'available',
     label: 'Disponível',
-    sublabel: 'Recebendo chamadas',
+    badge: 'ONLINE',
     icon: Radio,
-    activeClasses: {
-      bg: 'bg-gradient-to-br from-emerald-500 to-emerald-600 dark:from-emerald-400 dark:to-emerald-500',
-      text: 'text-white dark:text-slate-950',
-      badge: 'bg-white/25 text-white dark:bg-slate-950/20 dark:text-slate-950',
-      shadow: 'shadow-lg shadow-emerald-500/30',
-      border: 'border-emerald-400/50 dark:border-emerald-300/60',
-    },
+    activeStyles:
+      'bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-600 text-slate-950 border-emerald-300 ring-2 ring-emerald-400/80 shadow-[0_0_25px_rgba(16,185,129,0.45)]',
+    glowStyles: 'bg-emerald-400/20 text-emerald-400 border-emerald-500/30',
   },
   {
     status: 'break',
     label: 'Pausa',
-    sublabel: 'Descanso temporário',
+    badge: 'DESCANSO',
     icon: Coffee,
-    activeClasses: {
-      bg: 'bg-gradient-to-br from-amber-500 to-amber-600 dark:from-amber-400 dark:to-amber-500',
-      text: 'text-white dark:text-slate-950',
-      badge: 'bg-white/25 text-white dark:bg-slate-950/20 dark:text-slate-950',
-      shadow: 'shadow-lg shadow-amber-500/30',
-      border: 'border-amber-400/50 dark:border-amber-300/60',
-    },
+    activeStyles:
+      'bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 text-slate-950 border-amber-200 ring-2 ring-amber-400/80 shadow-[0_0_25px_rgba(245,158,11,0.45)]',
+    glowStyles: 'bg-amber-400/20 text-amber-400 border-amber-500/30',
   },
   {
     status: 'offline',
     label: 'Offline',
-    sublabel: 'Turno desconectado',
+    badge: 'TURNO OFF',
     icon: Power,
-    activeClasses: {
-      bg: 'bg-gradient-to-br from-slate-800 to-slate-900 dark:from-dark-700 dark:to-dark-800',
-      text: 'text-white dark:text-slate-100',
-      badge: 'bg-white/15 text-slate-200 dark:bg-white/10 dark:text-slate-300',
-      shadow: 'shadow-md shadow-slate-900/30',
-      border: 'border-slate-700/60 dark:border-slate-600/60',
-    },
+    activeStyles:
+      'bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 text-white border-slate-600 ring-2 ring-slate-500/60 shadow-[0_0_20px_rgba(30,41,59,0.5)]',
+    glowStyles: 'bg-slate-800/40 text-slate-400 border-slate-700/40',
   },
 ];
 
@@ -93,14 +76,12 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
     }
   };
 
-  const currentOption = OPTIONS.find((o) => o.status === state.status);
-
   return (
-    <div className="w-full space-y-2.5">
-      {/* Segmented Controller Container */}
-      <div className="relative rounded-3xl border border-slate-200/80 bg-slate-100/90 p-1.5 shadow-sm backdrop-blur-xl transition-all dark:border-dark-700/80 dark:bg-dark-900/90">
-        <div className="grid grid-cols-3 gap-1.5">
-          {OPTIONS.map(({ status, label, icon: Icon, activeClasses }) => {
+    <div className="w-full space-y-2.5 select-none">
+      {/* Container Principal Estilo Cockpit / Segmented Dock */}
+      <div className="relative rounded-3xl p-1.5 bg-slate-900/90 dark:bg-dark-950/95 border border-slate-800/90 dark:border-dark-700/90 shadow-2xl backdrop-blur-2xl transition-all">
+        <div className="grid grid-cols-3 gap-2">
+          {STATUS_ITEMS.map(({ status, label, badge, icon: Icon, activeStyles }) => {
             const active = state.status === status;
             const isButtonUpdating = updating && active;
 
@@ -111,81 +92,105 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
                 disabled={disabled || !canChange || updating}
                 onClick={() => handleStatusChange(status)}
                 className={cn(
-                  'group relative flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3.5 text-center transition-all duration-300 active:scale-[0.97]',
+                  'group relative flex flex-col items-center justify-between py-3 px-2 rounded-2xl transition-all duration-300 ease-out active:scale-95 border min-h-[72px]',
                   active
-                    ? cn(
-                        'border font-black',
-                        activeClasses.bg,
-                        activeClasses.text,
-                        activeClasses.shadow,
-                        activeClasses.border
-                      )
-                    : 'border border-transparent text-slate-600 hover:bg-white/60 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-dark-800/60 dark:hover:text-white',
-                  (!canChange || disabled || updating) && 'pointer-events-none opacity-60'
+                    ? cn('font-black scale-[1.02] z-10', activeStyles)
+                    : 'bg-slate-800/50 hover:bg-slate-800/80 dark:bg-dark-900/60 dark:hover:bg-dark-800/80 border-slate-750/50 dark:border-dark-800 text-slate-400 hover:text-slate-200',
+                  (!canChange || disabled || updating) && 'pointer-events-none opacity-50'
                 )}
               >
-                {/* Active subtle glow beacon */}
-                {active && status === 'available' && (
-                  <span className="absolute right-2 top-2 flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75 dark:bg-slate-950" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-white dark:bg-slate-950" />
-                  </span>
+                {/* Efeito Glow / Beacon no modo Ativo */}
+                {active && (
+                  <div className="absolute -top-1 right-2 flex h-2.5 w-2.5">
+                    {status === 'available' && (
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-slate-950 opacity-75" />
+                    )}
+                    <span
+                      className={cn(
+                        'relative inline-flex h-2.5 w-2.5 rounded-full',
+                        status === 'available' ? 'bg-slate-950' : status === 'break' ? 'bg-slate-950' : 'bg-emerald-400'
+                      )}
+                    />
+                  </div>
                 )}
 
-                <div className="flex items-center justify-center">
+                {/* Ícone com animação */}
+                <div className="flex items-center justify-center my-0.5">
                   {isButtonUpdating ? (
-                    <Loader2 size={20} className="animate-spin" />
+                    <Loader2 size={22} className="animate-spin text-current" />
                   ) : (
                     <Icon
-                      size={20}
+                      size={22}
                       className={cn(
                         'transition-transform duration-200 group-hover:scale-110',
-                        active ? activeClasses.text : 'text-slate-500 dark:text-slate-400'
+                        active ? 'text-current stroke-[2.5]' : 'text-slate-400 dark:text-slate-500'
                       )}
                     />
                   )}
                 </div>
 
-                <span className="text-xs font-black tracking-tight">{label}</span>
+                {/* Texto do Status */}
+                <div className="flex flex-col items-center">
+                  <span
+                    className={cn(
+                      'text-xs tracking-tight font-black transition-colors',
+                      active ? 'text-current' : 'text-slate-300 dark:text-slate-400'
+                    )}
+                  >
+                    {label}
+                  </span>
+                  <span
+                    className={cn(
+                      'text-[9px] font-extrabold uppercase tracking-widest mt-0.5',
+                      active
+                        ? status === 'available' || status === 'break'
+                          ? 'text-slate-900/75'
+                          : 'text-slate-300'
+                        : 'text-slate-500 dark:text-slate-600'
+                    )}
+                  >
+                    {badge}
+                  </span>
+                </div>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Live Status Subtitle Banner */}
-      <div className="flex items-center justify-between rounded-2xl border border-slate-200/60 bg-white/70 px-3.5 py-2 text-[11px] font-medium backdrop-blur-md dark:border-dark-700/60 dark:bg-dark-900/60">
+      {/* Barra de Telemetria e Conexão em Tempo Real */}
+      <div className="flex items-center justify-between rounded-2xl px-3.5 py-2 text-[11px] bg-slate-900/70 dark:bg-dark-900/80 border border-slate-800/80 dark:border-dark-800 backdrop-blur-md">
         <div className="flex items-center gap-2">
           {state.status === 'available' ? (
             <>
-              <span className="relative flex h-2 w-2">
+              <span className="relative flex h-2.5 w-2.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
               </span>
-              <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                Radar de chamadas ativo
+              <span className="font-bold text-emerald-400">
+                Radar de chamadas ativo · Pronto para receber corridas
               </span>
             </>
           ) : state.status === 'break' ? (
             <>
-              <span className="h-2 w-2 rounded-full bg-amber-500" />
-              <span className="font-bold text-amber-700 dark:text-amber-400">
-                Pausa ativa · Chamadas pausadas
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
+              <span className="font-bold text-amber-300">
+                Modo pausa · Chamadas suspensas temporariamente
               </span>
             </>
           ) : (
             <>
-              <span className="h-2 w-2 rounded-full bg-slate-400 dark:bg-slate-500" />
-              <span className="font-medium text-slate-500 dark:text-slate-400">
-                Turno offline · Toque em Disponível para receber corridas
+              <span className="h-2 w-2 rounded-full bg-slate-500" />
+              <span className="font-medium text-slate-400">
+                Turno offline · Toque em <strong className="text-emerald-400 font-bold">Disponível</strong> para iniciar
               </span>
             </>
           )}
         </div>
 
-        <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-          <ShieldCheck size={12} className="text-emerald-500" />
-          <span>GPS Pronto</span>
+        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
+          <ShieldCheck size={13} className="text-emerald-400" />
+          <span>GPS OK</span>
         </div>
       </div>
     </div>
@@ -198,39 +203,39 @@ export function StatusPill() {
     offline: {
       label: 'Offline',
       dot: 'bg-slate-400',
-      text: 'text-slate-600 dark:text-slate-400',
-      bg: 'bg-slate-100 dark:bg-dark-800 border-slate-200 dark:border-dark-700',
+      text: 'text-slate-300',
+      bg: 'bg-slate-800/80 border-slate-700/70',
     },
     available: {
       label: 'Disponível',
-      dot: 'bg-emerald-500 animate-pulse',
-      text: 'text-emerald-700 dark:text-emerald-400',
-      bg: 'bg-emerald-500/10 border-emerald-500/25',
+      dot: 'bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]',
+      text: 'text-emerald-300 font-black',
+      bg: 'bg-emerald-950/60 border-emerald-500/40',
     },
     'en-route': {
       label: 'A caminho',
-      dot: 'bg-amber-500 animate-ping',
-      text: 'text-amber-700 dark:text-amber-400',
-      bg: 'bg-amber-500/10 border-amber-500/25',
+      dot: 'bg-amber-400 animate-ping',
+      text: 'text-amber-300 font-black',
+      bg: 'bg-amber-950/60 border-amber-500/40',
     },
     'on-ride': {
       label: 'Em corrida',
-      dot: 'bg-brand animate-pulse',
-      text: 'text-brand-800 dark:text-brand',
-      bg: 'bg-brand/10 border-brand/25',
+      dot: 'bg-brand animate-pulse shadow-[0_0_8px_rgba(255,200,0,0.8)]',
+      text: 'text-brand font-black',
+      bg: 'bg-brand/15 border-brand/40',
     },
     break: {
       label: 'Pausa',
       dot: 'bg-amber-400',
-      text: 'text-amber-700 dark:text-amber-400',
-      bg: 'bg-amber-500/10 border-amber-500/25',
+      text: 'text-amber-300 font-bold',
+      bg: 'bg-amber-950/60 border-amber-500/40',
     },
   };
   const info = map[state.status];
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold transition-all',
+        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold backdrop-blur-md shadow-sm transition-all',
         info.bg,
         info.text
       )}
