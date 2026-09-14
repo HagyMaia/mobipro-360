@@ -37,6 +37,7 @@ export default function MapaPage() {
     const {
         currentOffer,
         clearOffer,
+        rejectOffer,
     } = useRideRequests(isOnline);
 
     const [previewMounted, setPreviewMounted] = useState(false);
@@ -209,7 +210,7 @@ export default function MapaPage() {
             clearOffer();
             alert('Corrida Aceita! Rota calculada.');
         } else {
-            clearOffer();
+            rejectOffer(rideId);
             alert('Outro motorista aceitou esta corrida antes de você.');
         }
     };
@@ -253,7 +254,7 @@ export default function MapaPage() {
                 <NewRideModal
                     offer={currentOffer}
                     onAccept={handleAcceptRide}
-                    onReject={clearOffer}
+                    onReject={() => rejectOffer(currentOffer.id)}
                 />
             )}
 
@@ -268,7 +269,7 @@ export default function MapaPage() {
                                 <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white tabular-nums">R$ {Number(currentOffer.fareAmount ?? 0).toFixed(2)}</div>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                                <Button variant="outline" className="min-w-[96px]" onClick={() => clearOffer()}>Recusar</Button>
+                                <Button variant="outline" className="min-w-[96px]" onClick={() => rejectOffer(currentOffer.id)}>Recusar</Button>
                                 <Button className="min-w-[96px] bg-brand text-slate-950 font-black" onClick={() => handleAcceptRide(currentOffer.id)}>Aceitar</Button>
                             </div>
                         </div>

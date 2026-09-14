@@ -59,29 +59,41 @@ export default function RideRequestCard({
     (ride.passengerAccountMonths ?? 0) < 3;
 
   const handleAccept = async () => {
-    if (onAccept) {
-      onAccept();
-      return;
-    }
+    if (accepting) return;
+    setAccepting(true);
+    try {
+      if (onAccept) {
+        await onAccept();
+        return;
+      }
 
-    if (user?.id && ride.id) {
-      setAccepting(true);
-      try {
-        const success = await RideService.acceptRide(ride.id, user.id);
+      let userId = user?.id;
+      if (!userId) {
+        const { supabase } = await import('@/lib/supabase');
+        const res = await supabase.auth.getUser();
+        userId = res.data?.user?.id;
+      }
+
+      if (userId && ride.id) {
+        const success = await RideService.acceptRide(ride.id, userId);
         if (success) {
           dispatch({ type: 'ACCEPT_RIDE' });
         } else {
           alert('Esta corrida já foi aceita por outro motorista ou cancelada.');
-          dispatch({ type: 'REJECT_RIDE' });
+          if (onReject) {
+            onReject();
+          } else {
+            dispatch({ type: 'REJECT_RIDE' });
+          }
         }
-      } catch (err) {
-        console.error('[RideRequestCard] Erro ao aceitar:', err);
+      } else {
         dispatch({ type: 'ACCEPT_RIDE' });
-      } finally {
-        setAccepting(false);
       }
-    } else {
+    } catch (err) {
+      console.error('[RideRequestCard] Erro ao aceitar:', err);
       dispatch({ type: 'ACCEPT_RIDE' });
+    } finally {
+      setAccepting(false);
     }
   };
 

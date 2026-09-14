@@ -33,7 +33,7 @@ export default function CorridasPage() {
   const [isOnline, setIsOnline] = useState(false);
   const [isLoadingTurno, setIsLoadingTurno] = useState(false);
   const { location } = useDriverLocation(isOnline);
-  const { currentOffer, clearOffer } = useRideRequests(isOnline);
+  const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isOnline);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -90,6 +90,7 @@ export default function CorridasPage() {
       clearOffer();
       router.push(`/corridas/${rideId}`);
     } else {
+      rejectOffer(rideId);
       alert('Não foi possível aceitar esta corrida. Tente novamente.');
     }
   };
@@ -201,7 +202,17 @@ export default function CorridasPage() {
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <Button variant="outline" full onClick={() => clearOffer()}>
+              <Button
+                variant="outline"
+                full
+                onClick={() => {
+                  if (currentOffer?.id) {
+                    rejectOffer(currentOffer.id);
+                  } else {
+                    clearOffer();
+                  }
+                }}
+              >
                 Recusar
               </Button>
               <Button full onClick={() => handleAccept(currentOffer.id)}>

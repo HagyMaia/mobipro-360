@@ -16,7 +16,7 @@ const OPTIONS: Array<{ status: WorkStatus; label: string; icon: typeof Play }> =
 export default function StatusControl({ disabled }: { disabled?: boolean }) {
   const { state, dispatch } = useApp();
   const [updating, setUpdating] = useState(false);
-  const canChange = state.activeRide === null && state.incomingRide === null;
+  const canChange = state.activeRide === null;
 
   const handleStatusChange = async (targetStatus: WorkStatus) => {
     if (!canChange || disabled || updating || state.status === targetStatus) return;

@@ -80,10 +80,13 @@ const DEFAULT_STATE: AppState = {
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_STATUS':
+      if (action.status !== 'available') {
+        return { ...state, status: action.status, incomingRide: null };
+      }
       return { ...state, status: action.status };
 
     case 'NEW_RIDE_REQUEST':
-      if (state.status !== 'available') return state;
+      if (state.status !== 'available' || state.activeRide) return state;
       return { ...state, incomingRide: action.ride };
 
     case 'ACCEPT_RIDE': {

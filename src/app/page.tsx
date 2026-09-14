@@ -15,6 +15,7 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { useRideRequests } from '@/hooks/useRideRequests';
 import { ProfileService } from '@/services/driver/ProfileService';
+import { RideService } from '@/services/ride/RideService';
 import { formatBRL, isToday } from '@/lib/utils';
 import type { RideRequest } from '@/lib/types';
 
@@ -29,7 +30,7 @@ export default function HomePage() {
 
   // Escuta apenas chamadas reais quando o motorista está cadastrado, aprovado e com status "Disponível" (Online)
   const isOnlineAndAvailable = state.status === 'available' && isApproved;
-  const { currentOffer, clearOffer } = useRideRequests(isOnlineAndAvailable);
+  const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isOnlineAndAvailable);
 
   useEffect(() => {
     async function checkAuthAndLoadProfile() {
@@ -129,7 +130,49 @@ export default function HomePage() {
     } else if (!currentOffer && state.incomingRide) {
       dispatch({ type: 'REJECT_RIDE' });
     }
-  }, [currentOffer, isOnlineAndAvailable, state.activeRide, state.incomingRide, dispatch]);
+  }, [currentOffer, isOnlineAndAvailable, state.activeRide, dispatch]);
+
+  const handleRejectIncomingRide = () => {
+    const rideId = state.incomingRide?.id;
+    if (rideId) {
+      rejectOffer(rideId);
+    } else {
+      clearOffer();
+    }
+    dispatch({ type: 'REJECT_RIDE' });
+  };
+
+  const handleAcceptIncomingRide = async () => {
+    const ride = state.incomingRide;
+    if (!ride) return;
+
+    let userId = null;
+    try {
+      const res = await supabase.auth.getUser();
+      userId = res.data?.user?.id;
+    } catch (_) {}
+
+    if (userId && ride.id) {
+      try {
+        const success = await RideService.acceptRide(ride.id, userId);
+        if (success) {
+          clearOffer();
+          dispatch({ type: 'ACCEPT_RIDE' });
+        } else {
+          alert('Esta corrida já foi aceita por outro motorista ou cancelada.');
+          rejectOffer(ride.id);
+          dispatch({ type: 'REJECT_RIDE' });
+        }
+      } catch (err) {
+        console.error('[HomePage] Erro ao aceitar corrida:', err);
+        clearOffer();
+        dispatch({ type: 'ACCEPT_RIDE' });
+      }
+    } else {
+      clearOffer();
+      dispatch({ type: 'ACCEPT_RIDE' });
+    }
+  };
 
   if (loading) {
     return (
@@ -195,7 +238,11 @@ export default function HomePage() {
         <StatusControl />
 
         {state.incomingRide ? (
-          <RideRequestCard ride={state.incomingRide} />
+          <RideRequestCard
+            ride={state.incomingRide}
+            onAccept={handleAcceptIncomingRide}
+            onReject={handleRejectIncomingRide}
+          />
         ) : state.activeRide ? (
           <ActiveRideCard />
         ) : state.status === 'available' ? (
