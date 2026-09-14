@@ -50,13 +50,14 @@ export default function MapaPage() {
     // Escuta cancelamentos remotos da corrida ativa
     useActiveRideSync();
 
-    const { location } = useDriverLocation(isOnline);
+    const isEffectiveOnline = (isOnline || state.status === 'available') && !state.activeRide;
+    const { location } = useDriverLocation(isEffectiveOnline);
 
     const {
         currentOffer,
         clearOffer,
         rejectOffer,
-    } = useRideRequests(isOnline && !state.activeRide);
+    } = useRideRequests(isEffectiveOnline);
 
     const activeRide = state.activeRide;
 

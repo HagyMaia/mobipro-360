@@ -35,8 +35,9 @@ export default function CorridasPage() {
 
   const [isOnline, setIsOnline] = useState(false);
   const [isLoadingTurno, setIsLoadingTurno] = useState(false);
-  const { location } = useDriverLocation(isOnline);
-  const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isOnline && !state.activeRide);
+  const isEffectiveOnline = (isOnline || state.status === 'available') && !state.activeRide;
+  const { location } = useDriverLocation(isEffectiveOnline);
+  const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isEffectiveOnline);
 
   useEffect(() => {
     if (!authLoading && !user) {

@@ -32,8 +32,8 @@ export default function HomePage() {
   // Monitora cancelamentos remotos da corrida ativa
   useActiveRideSync();
 
-  // Escuta apenas chamadas reais quando o motorista está cadastrado, aprovado e com status "Disponível" (Online)
-  const isOnlineAndAvailable = state.status === 'available' && isApproved;
+  // Escuta chamadas quando o motorista está com status "Disponível" e sem corrida ativa
+  const isOnlineAndAvailable = state.status === 'available' && !state.activeRide;
   const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isOnlineAndAvailable);
 
   useEffect(() => {

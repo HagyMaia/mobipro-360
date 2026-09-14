@@ -1,15 +1,15 @@
 // src/hooks/useRideRequests.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase';
 import { RideOffer } from '@/types';
 
-const REJECTED_RIDES_KEY = 'mobipro_rejected_rides_v1';
-const MAX_STALE_RIDE_MS = 5 * 60 * 1000; // 5 minutos
+// Chave para armazenar IDs recusados recentemente
+const REJECTED_RIDES_KEY = 'mobipro_rejected_rides_v2';
 
 function getRejectedRideIds(): Set<string> {
     if (typeof window === 'undefined') return new Set();
     try {
-        const raw = window.localStorage.getItem(REJECTED_RIDES_KEY) || window.sessionStorage.getItem(REJECTED_RIDES_KEY);
+        const raw = window.sessionStorage.getItem(REJECTED_RIDES_KEY);
         if (!raw) return new Set();
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
@@ -19,7 +19,8 @@ function getRejectedRideIds(): Set<string> {
                 if (typeof item === 'string') {
                     validIds.push(item);
                 } else if (item && typeof item === 'object' && item.id) {
-                    if (!item.time || (now - item.time < 3600 * 1000)) {
+                    // Rejeições expiram em 90 segundos para não travar novos testes com a mesma corrida
+                    if (!item.time || (now - item.time < 90 * 1000)) {
                         validIds.push(item.id);
                     }
                 }
@@ -38,46 +39,189 @@ function saveRejectedRideId(id: string) {
         const ids = getRejectedRideIds();
         ids.add(id);
         const entries = Array.from(ids).map((id) => ({ id, time: Date.now() }));
-        const json = JSON.stringify(entries);
-        window.localStorage.setItem(REJECTED_RIDES_KEY, json);
-        window.sessionStorage.setItem(REJECTED_RIDES_KEY, json);
+        window.sessionStorage.setItem(REJECTED_RIDES_KEY, JSON.stringify(entries));
     } catch {
         // ignore
     }
 }
 
+/**
+ * Retorna true se a corrida estiver aberta para recebimento de motorista
+ */
 function isRideSearching(status?: string | null): boolean {
     if (!status) return true;
-    const s = String(status).toUpperCase();
-    return ['SEARCHING', 'AVAILABLE', 'SEARCHING_DRIVER', 'PENDING', 'SOLICITADA', 'ABERTA'].includes(s);
+    const s = String(status).trim().toUpperCase();
+    const closedStatuses = [
+        'ACCEPTED',
+        'ACEITA',
+        'IN_PROGRESS',
+        'EM_ANDAMENTO',
+        'COMPLETED',
+        'FINALIZADA',
+        'CONCLUIDA',
+        'CANCELLED',
+        'CANCELADA',
+        'FINISHED'
+    ];
+    return !closedStatuses.includes(s);
 }
 
+/**
+ * Toca um aviso sonoro nativo sintetizado pelo navegador (Web Audio API)
+ */
+function playRideNotificationSound() {
+    try {
+        if (typeof window === 'undefined') return;
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(587.33, now); // D5
+        osc1.frequency.setValueAtTime(880.00, now + 0.12); // A5
+
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(880.00, now);
+        osc2.frequency.setValueAtTime(1174.66, now + 0.12); // D6
+
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.35);
+        osc2.stop(now + 0.35);
+
+        if (navigator.vibrate) {
+            navigator.vibrate([200, 100, 200]);
+        }
+    } catch (err) {
+        console.warn('[useRideRequests] Notificação sonora não disponível:', err);
+    }
+}
+
+/**
+ * Converte qualquer registro da tabela de corridas para RideOffer
+ */
 function parseRideToOffer(r: any): RideOffer {
-    const dist = Number(r.distance_km || r.distancia_km || r.distance || 5.0);
-    const fareVal = Number(r.fare_amount || r.valor || r.fare || r.preco || 25.00);
+    const dist = Number(
+        r.distance_km ||
+        r.distancia_km ||
+        r.distance ||
+        r.distancia ||
+        4.5
+    );
+
+    const fareVal = Number(
+        r.fare_amount ||
+        r.valor ||
+        r.fare ||
+        r.preco ||
+        r.price ||
+        r.valor_total ||
+        25.00
+    );
+
+    const pName =
+        r.passenger_name ||
+        r.cliente_nome ||
+        r.nome_passageiro ||
+        r.passageiro_nome ||
+        r.passenger ||
+        r.user_name ||
+        'Passageiro';
+
+    const pRating = Number(r.passenger_rating || r.nota_passageiro || 5.0);
+
+    const pPickup =
+        r.pickup_address ||
+        r.endereco_origem ||
+        r.origem ||
+        r.pickup ||
+        r.endereco_embarque ||
+        r.embarque ||
+        'Origem da solicitação';
+
+    const pPickupLat = Number(
+        r.pickup_lat ||
+        r.latitude_origem ||
+        r.origem_lat ||
+        r.pickup_latitude ||
+        -3.1190
+    );
+
+    const pPickupLng = Number(
+        r.pickup_lng ||
+        r.longitude_origem ||
+        r.origem_lng ||
+        r.pickup_longitude ||
+        -60.0217
+    );
+
+    const pDropoff =
+        r.dropoff_address ||
+        r.endereco_destino ||
+        r.destino ||
+        r.dropoff ||
+        r.destination_address ||
+        r.destination ||
+        r.endereco_desembarque ||
+        r.desembarque ||
+        'Destino da solicitação';
+
+    const pDropoffLat = Number(
+        r.dropoff_lat ||
+        r.latitude_destino ||
+        r.destino_lat ||
+        r.dropoff_latitude ||
+        -3.1072
+    );
+
+    const pDropoffLng = Number(
+        r.dropoff_lng ||
+        r.longitude_destino ||
+        r.destino_lng ||
+        r.dropoff_longitude ||
+        -60.0125
+    );
+
+    const estMinutes = r.estimated_minutes
+        ? Number(r.estimated_minutes)
+        : Math.max(5, Math.round(dist * 2.5)) || 12;
+
     return {
-        id: r.id,
-        passengerName: r.passenger_name || r.cliente_nome || r.passenger || 'Passageiro',
-        passengerRating: Number(r.passenger_rating || 5.0),
-        pickupAddress: r.pickup_address || r.pickup || r.origem || r.endereco_origem || 'Origem da solicitação',
+        id: String(r.id),
+        passengerName: pName,
+        passengerRating: pRating,
+        pickupAddress: pPickup,
         pickupLocation: {
-            latitude: Number(r.pickup_lat || r.latitude_origem || -3.1190),
-            longitude: Number(r.pickup_lng || r.longitude_origem || -60.0217),
+            latitude: pPickupLat,
+            longitude: pPickupLng,
         },
-        dropoffAddress: r.dropoff_address || r.destination_address || r.dropoff || r.destino || r.endereco_destino || 'Destino da solicitação',
+        dropoffAddress: pDropoff,
         dropoffLocation: {
-            latitude: Number(r.dropoff_lat || r.latitude_destino || -3.1072),
-            longitude: Number(r.dropoff_lng || r.longitude_destino || -60.0125),
+            latitude: pDropoffLat,
+            longitude: pDropoffLng,
         },
         fareAmount: fareVal,
         distanceKm: dist,
-        estimatedMinutes: r.estimated_minutes ? Number(r.estimated_minutes) : Math.round(dist * 2.5) || 15,
-        expiresInSeconds: 35,
+        estimatedMinutes: estMinutes,
+        expiresInSeconds: 40,
     };
 }
 
 export function useRideRequests(isOnline: boolean) {
     const [currentOffer, setCurrentOffer] = useState<RideOffer | null>(null);
+    const lastNotifiedOfferId = useRef<string | null>(null);
 
     const clearOffer = useCallback(() => {
         setCurrentOffer(null);
@@ -95,10 +239,10 @@ export function useRideRequests(isOnline: boolean) {
         setCurrentOffer(null);
     }, []);
 
-    // Expiração automática por tempo da oferta atual (35s)
+    // Expiração automática por tempo da oferta atual (40s)
     useEffect(() => {
         if (!currentOffer) return;
-        const durationSec = currentOffer.expiresInSeconds ?? 35;
+        const durationSec = currentOffer.expiresInSeconds ?? 40;
         const timer = setTimeout(() => {
             console.info('[useRideRequests] Oferta expirada por tempo:', currentOffer.id);
             rejectOffer(currentOffer.id);
@@ -113,53 +257,73 @@ export function useRideRequests(isOnline: boolean) {
             return;
         }
 
-        let channel: any = null;
         let isMounted = true;
+        let channel: any = null;
+        let pollInterval: any = null;
         const supabase = createClient();
 
-        // 1. Busca corridas pendentes criadas recentemente no Supabase
-        const checkPendingRides = async () => {
+        // 1. Função unificada para verificar e processar corridas pendentes
+        const processCandidateRides = (rides: any[]) => {
+            if (!isMounted || !Array.isArray(rides) || rides.length === 0) return;
+            const rejected = getRejectedRideIds();
+
+            const candidate = rides.find((r: any) => {
+                if (!r || !r.id) return false;
+                if (rejected.has(String(r.id))) return false;
+                if (!isRideSearching(r.status)) return false;
+
+                // Se já tiver motorista atribuído e o status não estiver aberto
+                if (
+                    r.driver_id &&
+                    r.driver_id !== '00000000-0000-0000-0000-000000000000' &&
+                    String(r.status).toUpperCase() === 'ACCEPTED'
+                ) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            if (candidate && isMounted) {
+                const parsed = parseRideToOffer(candidate);
+                setCurrentOffer((prev) => {
+                    if (prev?.id === parsed.id) return prev;
+                    if (lastNotifiedOfferId.current !== parsed.id) {
+                        lastNotifiedOfferId.current = parsed.id;
+                        playRideNotificationSound();
+                    }
+                    return parsed;
+                });
+            }
+        };
+
+        // 2. Busca inicial e periódica (Polling a cada 3.5 segundos como garantia)
+        const fetchPendingRides = async () => {
             try {
-                const rejected = getRejectedRideIds();
                 const { data, error } = await supabase
                     .from('rides')
                     .select('*')
-                    .or('status.eq.SEARCHING,status.eq.searching,status.eq.AVAILABLE,status.eq.available,status.eq.SEARCHING_DRIVER,status.eq.searching_driver,status.eq.PENDING,status.eq.pending,status.is.null')
                     .order('created_at', { ascending: false })
-                    .limit(10);
+                    .limit(15);
 
-                if (!error && Array.isArray(data) && isMounted) {
-                    const now = Date.now();
-                    const candidate = data.find((r: any) => {
-                        if (!r || !r.id) return false;
-                        if (rejected.has(r.id)) return false;
-                        // Não pode estar já com motorista vinculado
-                        if (r.driver_id && r.status === 'ACCEPTED') return false;
-                        if (r.created_at) {
-                            const createdAtTime = new Date(r.created_at).getTime();
-                            if (!isNaN(createdAtTime) && (now - createdAtTime > MAX_STALE_RIDE_MS)) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    });
-
-                    if (candidate && isMounted) {
-                        setCurrentOffer(parseRideToOffer(candidate));
-                    }
+                if (!error && data) {
+                    processCandidateRides(data);
+                } else if (error) {
+                    console.warn('[useRideRequests] Aviso ao consultar rides:', error.message);
                 }
             } catch (err) {
                 console.warn('[useRideRequests] Erro ao buscar corrida pendente:', err);
             }
         };
 
-        checkPendingRides();
+        fetchPendingRides();
+        pollInterval = setInterval(fetchPendingRides, 3500);
 
-        // 2. Escuta novos registros e atualizações em tempo real na tabela de corridas
+        // 3. Escuta em tempo real via Realtime WebSocket (Entrega instantânea)
         try {
             if (supabase?.channel) {
                 channel = supabase
-                    .channel('public:rides:dispatch')
+                    .channel('mobipro:rides_realtime_feed')
                     .on(
                         'postgres_changes',
                         {
@@ -169,12 +333,8 @@ export function useRideRequests(isOnline: boolean) {
                         },
                         (payload: any) => {
                             const newRide = payload.new;
-                            if (newRide && isRideSearching(newRide.status) && isMounted) {
-                                const rejected = getRejectedRideIds();
-                                if (rejected.has(newRide.id)) return;
-                                if (newRide.driver_id && newRide.status === 'ACCEPTED') return;
-
-                                setCurrentOffer(parseRideToOffer(newRide));
+                            if (newRide && isMounted) {
+                                processCandidateRides([newRide]);
                             }
                         }
                     )
@@ -188,12 +348,11 @@ export function useRideRequests(isOnline: boolean) {
                         (payload: any) => {
                             const updatedRide = payload.new;
                             if (updatedRide && isMounted) {
-                                if (isRideSearching(updatedRide.status) && !updatedRide.driver_id) {
-                                    const rejected = getRejectedRideIds();
-                                    if (rejected.has(updatedRide.id)) return;
-                                    setCurrentOffer(parseRideToOffer(updatedRide));
-                                } else if (updatedRide.status === 'CANCELLED') {
-                                    setCurrentOffer((prev) => (prev?.id === updatedRide.id ? null : prev));
+                                const s = String(updatedRide.status).toUpperCase();
+                                if (s === 'CANCELLED' || s === 'CANCELADA') {
+                                    setCurrentOffer((prev) => (prev?.id === String(updatedRide.id) ? null : prev));
+                                } else if (isRideSearching(updatedRide.status) && !updatedRide.driver_id) {
+                                    processCandidateRides([updatedRide]);
                                 }
                             }
                         }
@@ -201,17 +360,18 @@ export function useRideRequests(isOnline: boolean) {
                     .subscribe();
             }
         } catch (err) {
-            console.warn('[useRideRequests] Erro ao conectar realtime:', err);
+            console.warn('[useRideRequests] Erro ao conectar Realtime WebSocket:', err);
         }
 
         return () => {
             isMounted = false;
-            try {
-                if (channel) {
+            if (pollInterval) clearInterval(pollInterval);
+            if (channel) {
+                try {
                     supabase.removeChannel(channel);
+                } catch {
+                    // ignore
                 }
-            } catch (err) {
-                console.warn('[useRideRequests] Erro ao remover channel:', err);
             }
         };
     }, [isOnline]);
