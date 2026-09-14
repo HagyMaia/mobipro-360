@@ -381,7 +381,7 @@ export default function MapaPage() {
                     pickupLocation={pickupLocation}
                     dropoffLocation={dropoffLocation}
                     showRoute={Boolean(pickupLocation || dropoffLocation)}
-                    routeMode={activeRide?.status === 'accepted' ? 'to-pickup' : activeRide?.status === 'in-progress' ? 'to-dropoff' : 'full'}
+                    routeMode={activeRide?.status === 'accepted' ? 'to-pickup' : (activeRide?.status === 'arrived' || activeRide?.status === 'in-progress') ? 'to-dropoff' : 'full'}
                 />
             </div>
 

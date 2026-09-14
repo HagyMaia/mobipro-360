@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { GlobalPasswordResetModal } from '@/components/Auth/GlobalPasswordResetModal';
 import { ServiceWorkerRegister } from '@/components/PWA/ServiceWorkerRegister';
+import { GlobalRideListener } from '@/components/Ride/GlobalRideListener';
 
 export const metadata: Metadata = {
   title: 'SR Logística - App do Motorista',
@@ -83,6 +84,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
               <GlobalPasswordResetModal />
               <ServiceWorkerRegister />
+              <GlobalRideListener />
               <div className="fixed right-4 bottom-20 z-[1110]">
                 <ThemeToggle />
               </div>

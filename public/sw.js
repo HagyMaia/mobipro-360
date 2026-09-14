@@ -1,5 +1,5 @@
 // Service Worker for SR Logística PWA
-const CACHE_NAME = 'sr-logistica-v1.0.3';
+const CACHE_NAME = 'sr-logistica-v1.0.4';
 
 const STATIC_PRECACHE = [
   '/',
@@ -86,7 +86,7 @@ self.addEventListener('fetch', (event) => {
 
 // Mensagens internas do frontend para o Service Worker
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SHOW_RIDE_NOTIFICATION') {
+  if (event.data && (event.data.type === 'SHOW_RIDE_NOTIFICATION' || event.data.type === 'SHOW_CANCELLATION_NOTIFICATION')) {
     const { title, options } = event.data;
     event.waitUntil(self.registration.showNotification(title, options));
   }

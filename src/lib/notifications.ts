@@ -4,6 +4,85 @@ import { RideOffer } from '@/types';
 let wakeLockSentinel: any = null;
 
 /**
+ * Toca o som de nova corrida sintetizado via Web Audio API
+ */
+export function playRideNotificationSound() {
+    try {
+        if (typeof window === 'undefined') return;
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(587.33, now); // D5
+        osc1.frequency.setValueAtTime(880.00, now + 0.12); // A5
+
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(880.00, now);
+        osc2.frequency.setValueAtTime(1174.66, now + 0.12); // D6
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.45);
+        osc2.stop(now + 0.45);
+
+        if (navigator.vibrate) {
+            navigator.vibrate([300, 150, 300, 150, 400]);
+        }
+    } catch (err) {
+        console.warn('[Notifications] Som de nova corrida indisponível:', err);
+    }
+}
+
+/**
+ * Toca o som de cancelamento de corrida sintetizado via Web Audio API (tom descendente de alerta)
+ */
+export function playCancellationSound() {
+    try {
+        if (typeof window === 'undefined') return;
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(659.25, now); // E5
+        osc.frequency.setValueAtTime(440.00, now + 0.15); // A4
+        osc.frequency.setValueAtTime(293.66, now + 0.30); // D4
+
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.55);
+
+        if (navigator.vibrate) {
+            navigator.vibrate([500, 200, 500]);
+        }
+    } catch (err) {
+        console.warn('[Notifications] Som de cancelamento indisponível:', err);
+    }
+}
+
+/**
  * Solicita permissão do sistema para notificações push/nativas do navegador
  */
 export async function requestNotificationPermission(): Promise<boolean> {
@@ -35,10 +114,7 @@ export async function showRideSystemNotification(offer: RideOffer) {
     if (typeof window === 'undefined') return;
 
     try {
-        // Toca vibração do dispositivo se suportado
-        if (navigator.vibrate) {
-            navigator.vibrate([400, 200, 400, 200, 400]);
-        }
+        playRideNotificationSound();
 
         const fareFormatted = Number(offer.fareAmount || 0).toLocaleString('pt-BR', {
             style: 'currency',
@@ -56,6 +132,7 @@ export async function showRideSystemNotification(offer: RideOffer) {
             renotify: true,
             requireInteraction: true,
             silent: false,
+            vibrate: [400, 200, 400, 200, 400],
             data: {
                 url: '/',
                 rideId: offer.id,
@@ -63,7 +140,7 @@ export async function showRideSystemNotification(offer: RideOffer) {
             },
         };
 
-        // 1. Tenta exibir via Service Worker (Funciona mesmo com app em background / minimizado)
+        // 1. Tenta exibir via Service Worker (Funciona com app em background / minimizado)
         if ('serviceWorker' in navigator) {
             try {
                 const registration = await navigator.serviceWorker.ready;
@@ -86,6 +163,60 @@ export async function showRideSystemNotification(offer: RideOffer) {
         }
     } catch (err) {
         console.warn('[Notifications] Erro ao disparar notificação:', err);
+    }
+}
+
+/**
+ * Exibe notificação de cancelamento de corrida em segundo plano
+ */
+export async function showRideCancelledNotification(passengerName?: string, reason?: string) {
+    if (typeof window === 'undefined') return;
+
+    try {
+        playCancellationSound();
+
+        const title = '⚠️ Corrida Cancelada pelo Passageiro';
+        const body = passengerName
+            ? `O passageiro ${passengerName} cancelou a solicitação de corrida.`
+            : 'A corrida em andamento foi cancelada pelo passageiro.';
+
+        const notificationOptions: any = {
+            body: reason ? `${body} Motivo: ${reason}` : body,
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            tag: 'ride-cancelled',
+            renotify: true,
+            requireInteraction: true,
+            vibrate: [500, 200, 500],
+            data: {
+                url: '/',
+                time: Date.now(),
+            },
+        };
+
+        // 1. Tenta exibir via Service Worker
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                if (registration && registration.showNotification) {
+                    await registration.showNotification(title, notificationOptions);
+                    return;
+                }
+            } catch (swErr) {
+                console.warn('[Notifications] Falha SW no cancelamento:', swErr);
+            }
+        }
+
+        // 2. Fallback nativo
+        if ('Notification' in window && Notification.permission === 'granted') {
+            const notification = new Notification(title, notificationOptions);
+            notification.onclick = () => {
+                window.focus();
+                notification.close();
+            };
+        }
+    } catch (err) {
+        console.warn('[Notifications] Erro ao disparar notificação de cancelamento:', err);
     }
 }
 

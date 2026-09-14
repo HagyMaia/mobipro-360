@@ -66,42 +66,72 @@ export default function DetalheCorrida() {
     if (!currentRide && urlId) {
       setLoadingDbRide(true);
       const supabase = createClient();
+      
+      const parseAndSet = (data: any) => {
+        const dbStatus = String(data.status || '').toUpperCase();
+        let rideStatus: RideStatus = 'accepted';
+        if (dbStatus === 'CONCLUIDA' || dbStatus === 'COMPLETED') rideStatus = 'completed';
+        else if (dbStatus === 'CANCELADA' || dbStatus === 'CANCELLED') rideStatus = 'cancelled';
+        else if (dbStatus === 'IN_PROGRESS' || dbStatus === 'EM_ANDAMENTO') rideStatus = 'in-progress';
+        else if (dbStatus === 'ARRIVED' || dbStatus === 'NO_LOCAL') rideStatus = 'arrived';
+
+        setDbRide({
+          id: data.id,
+          passengerName: data.passenger_name || data.cliente_nome || 'Passageiro Mobipro',
+          passengerRating: 5.0,
+          passengerAccountMonths: 6,
+          passengerTrips: 18,
+          pickup: data.pickup_address || data.origem_endereco || 'Ponto de Embarque',
+          dropoff: data.dropoff_address || data.destino_endereco || 'Ponto de Destino',
+          distanceKm: Number(data.distance_km || data.distancia_km || 3.5),
+          estimatedMinutes: Number(data.estimated_minutes || data.duracao_min || 12),
+          fare: Number(data.fare_amount || data.valor_total || data.valor || 15.0),
+          paymentMethod: (data.payment_method || data.forma_pagamento || 'pix') as any,
+          status: rideStatus,
+          requestedAt: data.created_at || new Date().toISOString(),
+          source: 'app',
+        });
+      };
+
       supabase
-        .from('corridas')
+        .from('rides')
         .select('*')
         .eq('id', urlId)
         .maybeSingle()
         .then((res: any) => {
-          const data = res?.data;
-          const error = res?.error;
-          if (!error && data) {
-            const dbStatus = String(data.status || '').toUpperCase();
-            let rideStatus: RideStatus = 'accepted';
-            if (dbStatus === 'CONCLUIDA' || dbStatus === 'COMPLETED') rideStatus = 'completed';
-            else if (dbStatus === 'CANCELADA' || dbStatus === 'CANCELLED') rideStatus = 'cancelled';
-            else if (dbStatus === 'IN_PROGRESS' || dbStatus === 'EM_ANDAMENTO') rideStatus = 'in-progress';
-            else if (dbStatus === 'ARRIVED' || dbStatus === 'NO_LOCAL') rideStatus = 'arrived';
-
-            setDbRide({
-              id: data.id,
-              passengerName: data.cliente_nome || data.passenger_name || 'Passageiro Mobipro',
-              passengerRating: 5.0,
-              passengerAccountMonths: 6,
-              passengerTrips: 18,
-              pickup: data.origem_endereco || data.pickup_address || 'Ponto de Embarque',
-              dropoff: data.destino_endereco || data.dropoff_address || 'Ponto de Destino',
-              distanceKm: Number(data.distancia_km || 3.5),
-              estimatedMinutes: Number(data.duracao_min || 12),
-              fare: Number(data.valor_total || data.valor || 15.0),
-              paymentMethod: (data.forma_pagamento || 'pix') as any,
-              status: rideStatus,
-              requestedAt: data.created_at || new Date().toISOString(),
-              source: 'app',
-            });
+          if (res?.data) {
+            parseAndSet(res.data);
+            setLoadingDbRide(false);
+          } else {
+            // Fallback para tabela corridas
+            supabase
+              .from('corridas')
+              .select('*')
+              .eq('id', urlId)
+              .maybeSingle()
+              .then((corridaRes: any) => {
+                if (corridaRes?.data) {
+                  parseAndSet(corridaRes.data);
+                }
+                setLoadingDbRide(false);
+              })
+              .catch(() => setLoadingDbRide(false));
           }
-          setLoadingDbRide(false);
         })
-        .catch(() => setLoadingDbRide(false));
+        .catch(() => {
+          supabase
+            .from('corridas')
+            .select('*')
+            .eq('id', urlId)
+            .maybeSingle()
+            .then((corridaRes: any) => {
+              if (corridaRes?.data) {
+                parseAndSet(corridaRes.data);
+              }
+              setLoadingDbRide(false);
+            })
+            .catch(() => setLoadingDbRide(false));
+        });
     }
   }, [currentRide, urlId]);
 
