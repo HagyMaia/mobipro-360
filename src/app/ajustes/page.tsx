@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Settings, 
@@ -16,20 +16,65 @@ import {
   Check, 
   Info,
   CarFront,
-  Download
+  Download,
+  Fingerprint
 } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
-import { Card, SectionTitle, Badge } from '@/components/ui';
+import { Card, SectionTitle, Badge, Button } from '@/components/ui';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useApp } from '@/lib/store';
+import { useAuth } from '@/lib/auth';
+import { BiometricAuthService } from '@/services/auth/BiometricAuthService';
 
 export default function AjustesPage() {
   const { state, dispatch } = useApp();
+  const { user } = useAuth();
   const navApp = state.navApp ?? 'waze';
   const [soundAlerts, setSoundAlerts] = useState(true);
   const [autoReject, setAutoReject] = useState(state.filters.autoReject);
   const [rejectCash, setRejectCash] = useState(state.filters.rejectCash);
   const [minRating, setMinRating] = useState(state.filters.minRating);
+
+  // Estados de Biometria
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricMsg, setBiometricMsg] = useState('');
+
+  useEffect(() => {
+    BiometricAuthService.isBiometricAvailable().then((avail) => {
+      setBiometricAvailable(avail);
+      if (avail) {
+        setBiometricEnabled(BiometricAuthService.isBiometricEnrolled());
+      }
+    });
+  }, []);
+
+  const handleToggleBiometrics = async () => {
+    setBiometricMsg('');
+    if (biometricEnabled) {
+      BiometricAuthService.disableBiometrics();
+      setBiometricEnabled(false);
+      setBiometricMsg('Entrada por digital desativada.');
+      setTimeout(() => setBiometricMsg(''), 3000);
+    } else {
+      if (!user) {
+        setBiometricMsg('Faça login para cadastrar sua digital.');
+        return;
+      }
+      const res = await BiometricAuthService.registerBiometrics({
+        email: user.email || 'motorista@srlogistica.com',
+        userId: user.id,
+      });
+      if (res.success) {
+        setBiometricEnabled(true);
+        setBiometricMsg('Digital cadastrada com sucesso!');
+        setTimeout(() => setBiometricMsg(''), 3000);
+      } else {
+        setBiometricMsg(res.error || 'Falha ao cadastrar digital.');
+        setTimeout(() => setBiometricMsg(''), 4000);
+      }
+    }
+  };
 
   const handleFilterChange = (auto: boolean, cash: boolean, rating: number) => {
     setAutoReject(auto);
@@ -73,6 +118,49 @@ export default function AjustesPage() {
 
       {/* CONTEÚDO */}
       <main className="p-4 space-y-4 flex-1">
+        {/* SEGURANÇA & BIOMETRIA (DIGITAL DO CELULAR) */}
+        <div>
+          <SectionTitle className="mb-2.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+            Segurança e Acesso Rápido
+          </SectionTitle>
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-brand/15 text-brand-700 dark:text-brand flex items-center justify-center shrink-0">
+                  <Fingerprint size={22} className={biometricEnabled ? "text-emerald-500 animate-pulse" : ""} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Entrar com Digital / Biometria
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Acesse o aplicativo com 1 toque no leitor biométrico
+                  </p>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={biometricEnabled}
+                onChange={handleToggleBiometrics}
+                disabled={!biometricAvailable}
+                className="w-5 h-5 accent-brand rounded cursor-pointer"
+              />
+            </div>
+
+            {biometricMsg && (
+              <div className="p-2.5 rounded-xl bg-brand/10 border border-brand/20 text-xs font-bold text-brand-700 dark:text-brand text-center animate-in fade-in">
+                {biometricMsg}
+              </div>
+            )}
+
+            {!biometricAvailable && (
+              <div className="text-[11px] text-slate-400 bg-slate-100 dark:bg-dark-800 p-2.5 rounded-xl">
+                ⚠️ O leitor biométrico não foi detectado neste navegador ou aparelho.
+              </div>
+            )}
+          </Card>
+        </div>
+
         {/* PERMISSÕES DO SISTEMA */}
         <div>
           <SectionTitle className="mb-2.5 text-xs font-bold text-slate-500 dark:text-slate-400">
@@ -242,8 +330,8 @@ export default function AjustesPage() {
         {/* INFORMAÇÕES DE BUILD */}
         <Card className="p-4 bg-slate-100 dark:bg-dark-800/60 text-center text-xs text-slate-500 dark:text-slate-400">
           <p className="font-bold text-slate-900 dark:text-slate-200">SR Logística - App do Motorista</p>
-          <p className="mt-0.5">Versão 1.0.0 (Build 342) · Pronto para produção</p>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Compatível com PWA, Capacitor e React Native Webview</p>
+          <p className="mt-0.5">Versão 1.0.0 (Build 342) · Biometria WebAuthn Ativa</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Compatível com Biometria Android, Touch ID, Face Unlock e PWA</p>
         </Card>
       </main>
 
