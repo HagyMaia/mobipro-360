@@ -97,6 +97,8 @@ export default function CorridasPage() {
             passengerTrips: 18,
             pickup: currentOffer.pickupAddress,
             dropoff: currentOffer.dropoffAddress,
+            pickupCoordinates: currentOffer.pickupLocation,
+            dropoffCoordinates: currentOffer.dropoffLocation,
             distanceKm: currentOffer.distanceKm,
             estimatedMinutes: currentOffer.estimatedMinutes,
             fare: currentOffer.fareAmount,
@@ -301,16 +303,22 @@ export default function CorridasPage() {
               </Card>
             ) : (
               state.rideHistory.slice(0, 6).map((ride) => (
-                <Card key={ride.id} className="flex items-center justify-between p-3.5">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-xs font-bold text-slate-900 dark:text-white">{ride.passengerName}</div>
-                    <div className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">{ride.pickup} → {ride.dropoff}</div>
-                  </div>
-                  <div className="text-right ml-3">
-                    <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(Number(ride.fare ?? 0))}</div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">{ride.status}</div>
-                  </div>
-                </Card>
+                <button
+                  key={ride.id}
+                  onClick={() => router.push(`/corridas/${ride.id}`)}
+                  className="w-full text-left"
+                >
+                  <Card className="flex items-center justify-between p-3.5 transition hover:border-brand/40 active:scale-99">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-bold text-slate-900 dark:text-white">{ride.passengerName}</div>
+                      <div className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">{ride.pickup} → {ride.dropoff}</div>
+                    </div>
+                    <div className="text-right ml-3">
+                      <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(Number(ride.fare ?? 0))}</div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">{ride.status}</div>
+                    </div>
+                  </Card>
+                </button>
               ))
             )}
           </div>

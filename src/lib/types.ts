@@ -4,6 +4,11 @@ export type RideStatus = 'pending' | 'accepted' | 'in-progress' | 'completed' | 
 
 export type PaymentMethod = 'pix' | 'card' | 'cash';
 
+export interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
 export interface RideRequest {
   id: string;
   passengerName: string;
@@ -12,6 +17,8 @@ export interface RideRequest {
   passengerTrips: number;
   pickup: string;
   dropoff: string;
+  pickupCoordinates?: Coordinates;
+  dropoffCoordinates?: Coordinates;
   distanceKm: number;
   estimatedMinutes: number;
   fare: number;

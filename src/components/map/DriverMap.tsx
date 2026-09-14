@@ -1,7 +1,7 @@
 // src/components/map/DriverMap.tsx
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -20,6 +20,9 @@ interface DriverMapProps {
     dropoffLocation?: MapPoint | null;
     showRoute?: boolean;
 }
+
+// Cache local de trajetos em memória para evitar chamadas repetidas
+const routeGeometryCache = new Map<string, [number, number][]>();
 
 // Ícones personalizados em CSS/SVG puro (não dependem de URLs externas)
 const createCarIcon = () =>
@@ -141,15 +144,28 @@ function MapBoundsController({
     location,
     pickupLocation,
     dropoffLocation,
+    roadPath,
 }: {
     location: LocationCoordinates | null;
     pickupLocation?: MapPoint | null;
     dropoffLocation?: MapPoint | null;
+    roadPath?: [number, number][];
 }) {
     const map = useMap();
 
     useEffect(() => {
         const points: [number, number][] = [];
+
+        if (roadPath && roadPath.length > 2) {
+            // Se tiver trajeto real da rota pelas ruas, enquadra todos os pontos do trajeto
+            const bounds = L.latLngBounds(roadPath);
+            map.fitBounds(bounds, {
+                padding: [60, 60],
+                maxZoom: 16,
+                animate: true,
+            });
+            return;
+        }
 
         if (location?.latitude && location?.longitude) {
             points.push([location.latitude, location.longitude]);
@@ -162,7 +178,6 @@ function MapBoundsController({
         }
 
         if (points.length >= 2) {
-            // Ajusta o zoom para enquadrar motorista, embarque e destino
             const bounds = L.latLngBounds(points);
             map.fitBounds(bounds, {
                 padding: [60, 60],
@@ -170,10 +185,9 @@ function MapBoundsController({
                 animate: true,
             });
         } else if (location?.latitude && location?.longitude) {
-            // Se a corrida foi cancelada ou não há rota, foca suavemente na localização do carro
             map.setView([location.latitude, location.longitude], 16, { animate: true });
         }
-    }, [location, pickupLocation, dropoffLocation, map]);
+    }, [location, pickupLocation, dropoffLocation, roadPath, map]);
 
     return null;
 }
@@ -194,23 +208,86 @@ export default function DriverMap({
     const pickupIcon = useMemo(() => createPickupIcon(pickupLocation?.label), [pickupLocation?.label]);
     const dropoffIcon = useMemo(() => createDropoffIcon(dropoffLocation?.label), [dropoffLocation?.label]);
 
-    // Monta coordenadas do trajeto apenas se houver pontos válidos
-    const routeCoordinates: [number, number][] = useMemo(() => {
-        if (!showRoute) return [];
-        const coords: [number, number][] = [];
+    const [roadGeometry, setRoadGeometry] = useState<[number, number][]>([]);
 
-        if (location?.latitude && location?.longitude) {
-            coords.push([location.latitude, location.longitude]);
+    // Busca o trajeto real seguindo as ruas via OSRM Routing API
+    useEffect(() => {
+        if (!showRoute || !pickupLocation || !dropoffLocation) {
+            setRoadGeometry([]);
+            return;
         }
+
+        const pLat = pickupLocation.latitude;
+        const pLng = pickupLocation.longitude;
+        const dLat = dropoffLocation.latitude;
+        const dLng = dropoffLocation.longitude;
+
+        if (!pLat || !pLng || !dLat || !dLng) {
+            setRoadGeometry([]);
+            return;
+        }
+
+        const cacheKey = `${pLat.toFixed(5)},${pLng.toFixed(5)}_${dLat.toFixed(5)},${dLng.toFixed(5)}`;
+        if (routeGeometryCache.has(cacheKey)) {
+            setRoadGeometry(routeGeometryCache.get(cacheKey)!);
+            return;
+        }
+
+        let isMounted = true;
+        const controller = new AbortController();
+
+        async function fetchRoadRoute() {
+            try {
+                const url = `https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`;
+                const response = await fetch(url, { signal: controller.signal });
+                if (!response.ok) throw new Error(`OSRM Status: ${response.status}`);
+                const data = await response.json();
+
+                if (data?.routes?.[0]?.geometry?.coordinates && Array.isArray(data.routes[0].geometry.coordinates)) {
+                    // GeoJSON retorna [longitude, latitude], Leaflet Polyline precisa de [latitude, longitude]
+                    const latLngs: [number, number][] = data.routes[0].geometry.coordinates.map(
+                        ([lng, lat]: [number, number]) => [lat, lng]
+                    );
+
+                    if (isMounted && latLngs.length > 0) {
+                        routeGeometryCache.set(cacheKey, latLngs);
+                        setRoadGeometry(latLngs);
+                        return;
+                    }
+                }
+            } catch (err) {
+                // Fallback para linha direta caso offline ou erro na API OSRM
+                if (isMounted) {
+                    setRoadGeometry([
+                        [pLat, pLng],
+                        [dLat, dLng],
+                    ]);
+                }
+            }
+        }
+
+        fetchRoadRoute();
+
+        return () => {
+            isMounted = false;
+            controller.abort();
+        };
+    }, [pickupLocation?.latitude, pickupLocation?.longitude, dropoffLocation?.latitude, dropoffLocation?.longitude, showRoute]);
+
+    // Coordenadas finais da rota a desenhar
+    const polylinePositions: [number, number][] = useMemo(() => {
+        if (!showRoute) return [];
+        if (roadGeometry.length >= 2) return roadGeometry;
+
+        const directCoords: [number, number][] = [];
         if (pickupLocation?.latitude && pickupLocation?.longitude) {
-            coords.push([pickupLocation.latitude, pickupLocation.longitude]);
+            directCoords.push([pickupLocation.latitude, pickupLocation.longitude]);
         }
         if (dropoffLocation?.latitude && dropoffLocation?.longitude) {
-            coords.push([dropoffLocation.latitude, dropoffLocation.longitude]);
+            directCoords.push([dropoffLocation.latitude, dropoffLocation.longitude]);
         }
-
-        return coords.length >= 2 ? coords : [];
-    }, [location, pickupLocation, dropoffLocation, showRoute]);
+        return directCoords.length >= 2 ? directCoords : [];
+    }, [roadGeometry, pickupLocation, dropoffLocation, showRoute]);
 
     return (
         <div className="w-full h-full z-0 relative">
@@ -229,6 +306,7 @@ export default function DriverMap({
                     location={location}
                     pickupLocation={pickupLocation}
                     dropoffLocation={dropoffLocation}
+                    roadPath={polylinePositions}
                 />
 
                 {/* Marcador do Carro do Motorista */}
@@ -273,28 +351,27 @@ export default function DriverMap({
                     </Marker>
                 )}
 
-                {/* Linha do Trajeto (Trajeto / Polyline) */}
-                {routeCoordinates.length >= 2 && (
+                {/* Linha do Trajeto Real pelas Ruas (Polyline) */}
+                {polylinePositions.length >= 2 && (
                     <>
-                        {/* Linha de fundo / brilho */}
+                        {/* Linha de fundo / borda para contraste */}
                         <Polyline
-                            positions={routeCoordinates}
+                            positions={polylinePositions}
                             pathOptions={{
-                                color: '#1e293b',
+                                color: '#0f172a',
                                 weight: 7,
-                                opacity: 0.6,
+                                opacity: 0.75,
                                 lineCap: 'round',
                                 lineJoin: 'round',
                             }}
                         />
-                        {/* Linha frontal iluminada */}
+                        {/* Linha frontal iluminada seguindo as curvas do asfalto */}
                         <Polyline
-                            positions={routeCoordinates}
+                            positions={polylinePositions}
                             pathOptions={{
                                 color: '#eab308',
-                                weight: 4,
+                                weight: 4.5,
                                 opacity: 0.95,
-                                dashArray: '10, 8',
                                 lineCap: 'round',
                                 lineJoin: 'round',
                             }}

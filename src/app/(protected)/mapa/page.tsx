@@ -27,7 +27,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { StatusPill } from "@/components/StatusControl";
 import { Card, Button, Badge } from "@/components/ui";
 import { useApp } from "@/lib/store";
-import { openNavigation } from "@/lib/navigation";
+import { NavigationModal } from "@/components/NavigationModal";
+import { PaymentCheckoutModal } from "@/components/Ride/PaymentCheckoutModal";
 import { requestNotificationPermission } from "@/lib/notifications";
 import { formatBRL } from "@/lib/utils";
 import type { DriverWorkStatus } from "@/types";
@@ -47,6 +48,8 @@ export default function MapaPage() {
     const [isApproved, setIsApproved] = useState(false);
     const [statusError, setStatusError] = useState<string | null>(null);
     const [loadingRideAction, setLoadingRideAction] = useState(false);
+    const [isNavModalOpen, setNavModalOpen] = useState(false);
+    const [isCheckoutModalOpen, setCheckoutModalOpen] = useState(false);
 
     // Escuta cancelamentos remotos da corrida ativa
     useActiveRideSync();
@@ -259,15 +262,19 @@ export default function MapaPage() {
         dispatch({ type: 'START_RIDE' });
     };
 
-    const handleCompleteActiveRide = async () => {
+    const handleFinishCheckout = async (data: {
+        paymentMethod: 'pix' | 'cash' | 'card' | 'voucher';
+        finalAmount: number;
+        rating: number;
+        ratingFeedback: string[];
+        comments: string;
+        voucherCode?: string;
+    }) => {
         if (activeRide?.id) {
-            setLoadingRideAction(true);
             try {
-                await RideService.completeRide(activeRide.id, userId || undefined, activeRide.fare);
+                await RideService.completeRide(activeRide.id, userId || undefined, data.finalAmount);
             } catch (err) {
                 console.warn('[Mapa] Erro ao finalizar corrida no banco:', err);
-            } finally {
-                setLoadingRideAction(false);
             }
         }
         clearOffer();
@@ -279,8 +286,8 @@ export default function MapaPage() {
     const pickupLocation = useMemo(() => {
         if (activeRide) {
             return {
-                latitude: -3.1190,
-                longitude: -60.0217,
+                latitude: activeRide.pickupCoordinates?.latitude ?? -3.1190,
+                longitude: activeRide.pickupCoordinates?.longitude ?? -60.0217,
                 label: 'EMBARQUE',
                 address: activeRide.pickup,
             };
@@ -299,8 +306,8 @@ export default function MapaPage() {
     const dropoffLocation = useMemo(() => {
         if (activeRide) {
             return {
-                latitude: -3.1072,
-                longitude: -60.0125,
+                latitude: activeRide.dropoffCoordinates?.latitude ?? -3.1072,
+                longitude: activeRide.dropoffCoordinates?.longitude ?? -60.0125,
                 label: 'DESTINO',
                 address: activeRide.dropoff,
             };
@@ -318,6 +325,7 @@ export default function MapaPage() {
 
     const navApp = state.navApp ?? 'waze';
     const navAddress = activeRide?.status === 'in-progress' ? activeRide.dropoff : activeRide?.pickup;
+    const navCoords = activeRide?.status === 'in-progress' ? activeRide.dropoffCoordinates : activeRide?.pickupCoordinates;
     const navLabel = activeRide?.status === 'in-progress' ? 'Navegar ao Destino' : 'Navegar ao Embarque';
 
     return (
@@ -409,7 +417,7 @@ export default function MapaPage() {
                         {/* Botão de Navegação Externa (Waze / Google Maps) */}
                         {navAddress && (
                             <button
-                                onClick={() => openNavigation(navAddress, navApp)}
+                                onClick={() => setNavModalOpen(true)}
                                 className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-brand py-2.5 text-xs font-black text-slate-950 shadow-md shadow-brand/20 transition hover:brightness-105 active:scale-95"
                             >
                                 <Navigation size={14} />
@@ -450,7 +458,7 @@ export default function MapaPage() {
                                     variant="success"
                                     size="sm"
                                     disabled={loadingRideAction}
-                                    onClick={handleCompleteActiveRide}
+                                    onClick={() => setCheckoutModalOpen(true)}
                                     className="font-black"
                                 >
                                     {loadingRideAction ? <Loader2 size={14} className="animate-spin" /> : <Flag size={14} />} Finalizar Viagem
@@ -458,6 +466,29 @@ export default function MapaPage() {
                             )}
                         </div>
                     </Card>
+
+                    {/* Modal de Navegação (Waze / Google Maps) */}
+                    {navAddress && (
+                        <NavigationModal
+                            isOpen={isNavModalOpen}
+                            onClose={() => setNavModalOpen(false)}
+                            address={navAddress}
+                            coords={navCoords}
+                            destinationLabel={activeRide.status === 'in-progress' ? 'Destino' : 'Embarque'}
+                        />
+                    )}
+
+                    {/* Modal de Checkout / PIX QR Code e Avaliação */}
+                    <PaymentCheckoutModal
+                        isOpen={isCheckoutModalOpen}
+                        onClose={() => setCheckoutModalOpen(false)}
+                        rideId={activeRide.id}
+                        fareAmount={activeRide.fare}
+                        passengerName={activeRide.passengerName}
+                        pickupAddress={activeRide.pickup}
+                        dropoffAddress={activeRide.dropoff}
+                        onFinishRide={handleFinishCheckout}
+                    />
                 </div>
             )}
 

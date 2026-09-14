@@ -123,6 +123,8 @@ export default function HomePage() {
         passengerTrips: 18,
         pickup: currentOffer.pickupAddress,
         dropoff: currentOffer.dropoffAddress,
+        pickupCoordinates: currentOffer.pickupLocation,
+        dropoffCoordinates: currentOffer.dropoffLocation,
         distanceKm: currentOffer.distanceKm,
         estimatedMinutes: currentOffer.estimatedMinutes,
         fare: currentOffer.fareAmount,
@@ -160,10 +162,16 @@ export default function HomePage() {
       }
       clearOffer();
       dispatch({ type: 'ACCEPT_RIDE', ride });
+      if (ride.id) {
+        router.push(`/corridas/${ride.id}`);
+      }
     } catch (err) {
       console.error('[HomePage] Erro ao aceitar corrida:', err);
       clearOffer();
       dispatch({ type: 'ACCEPT_RIDE', ride });
+      if (ride.id) {
+        router.push(`/corridas/${ride.id}`);
+      }
     }
   };
 

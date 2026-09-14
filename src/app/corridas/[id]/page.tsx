@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import {
   ArrowLeft,
-  CheckCircle,
+  CheckCircle2,
   Clock,
   MapPin,
   MessageCircle,
@@ -12,154 +12,275 @@ import {
   Phone,
   Star,
   XCircle,
+  QrCode,
+  DollarSign,
+  ShieldCheck,
+  Calendar,
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
 import { QuickMessagesModal } from '@/components/Ride/QuickMessagesModal';
-import { FinishRideModal } from '@/components/Ride/FinishRideModal';
+import { PaymentCheckoutModal } from '@/components/Ride/PaymentCheckoutModal';
+import { NavigationModal } from '@/components/NavigationModal';
 import { useApp } from '@/lib/store';
+import { useAuth } from '@/lib/auth';
+import { RideService } from '@/services/ride/RideService';
+import { createClient } from '@/lib/supabase';
+import { formatBRL } from '@/lib/utils';
+import type { Ride } from '@/lib/types';
 
 export default function DetalheCorrida() {
   const router = useRouter();
-  const { state } = useApp();
+  const params = useParams();
+  const urlId = params?.id as string;
+  const { state, dispatch } = useApp();
+  const { user } = useAuth();
 
   const [isMessageModalOpen, setMessageModalOpen] = useState(false);
-  const [isFinishModalOpen, setFinishModalOpen] = useState(false);
-  const [isRideFinished, setRideFinished] = useState(false);
-  const [finishFeedback, setFinishFeedback] = useState<{ valor: string; voucher: string } | null>(null);
+  const [isCheckoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [isNavModalOpen, setNavModalOpen] = useState(false);
+  const [loadingAction, setLoadingAction] = useState(false);
+  const [dbRide, setDbRide] = useState<Ride | null>(null);
+  const [loadingDbRide, setLoadingDbRide] = useState(false);
 
-  const activeRide = state?.activeRide ?? null;
-  const fallbackRide = (Array.isArray(state?.rideHistory) && state.rideHistory.length > 0)
-    ? state.rideHistory[state.rideHistory.length - 1]
-    : null;
-  const ride = activeRide ?? fallbackRide ?? null;
+  // Sistema de avaliação para corridas do histórico
+  const [historyRating, setHistoryRating] = useState<number>(5);
+  const [historyRatingSubmitted, setHistoryRatingSubmitted] = useState(false);
 
-  const passengerName = String(ride?.passengerName ?? 'Passageiro');
-  const origin = String(ride?.pickup ?? '—');
-  const destination = String(ride?.dropoff ?? '—');
-  const paymentMethod = String(ride?.paymentMethod ?? '');
-  const passengerRating = typeof ride?.passengerRating === 'number' ? ride?.passengerRating : null;
-  const rideId = ride?.id ?? '—';
+  // Busca corrida do store ativo, do histórico ou do banco
+  const activeRide = state?.activeRide?.id === urlId ? state.activeRide : state?.activeRide;
+  const historyRide = state?.rideHistory?.find((r) => r.id === urlId) || null;
+  const currentRide: Ride | null = activeRide || historyRide || dbRide;
 
-  const paymentLabel = paymentMethod === 'cash' ? 'Dinheiro' : paymentMethod === 'card' ? 'Cartão' : paymentMethod === 'pix' ? 'Pix' : '—';
+  // Busca do Supabase se recarregar a página direto no link
+  useEffect(() => {
+    if (!currentRide && urlId) {
+      setLoadingDbRide(true);
+      const supabase = createClient();
+      supabase
+        .from('corridas')
+        .select('*')
+        .eq('id', urlId)
+        .maybeSingle()
+        .then((res: any) => {
+          const data = res?.data;
+          const error = res?.error;
+          if (!error && data) {
+            setDbRide({
+              id: data.id,
+              passengerName: data.cliente_nome || data.passenger_name || 'Passageiro Mobipro',
+              passengerRating: 5.0,
+              passengerAccountMonths: 6,
+              passengerTrips: 18,
+              pickup: data.origem_endereco || data.pickup_address || 'Ponto de Embarque',
+              dropoff: data.destino_endereco || data.dropoff_address || 'Ponto de Destino',
+              distanceKm: Number(data.distancia_km || 3.5),
+              estimatedMinutes: Number(data.duracao_min || 12),
+              fare: Number(data.valor_total || data.valor || 15.0),
+              paymentMethod: (data.forma_pagamento || 'pix') as any,
+              status: (data.status === 'CONCLUIDA' || data.status === 'COMPLETED') ? 'completed' : 'accepted',
+              requestedAt: data.created_at || new Date().toISOString(),
+              source: 'app',
+            });
+          }
+          setLoadingDbRide(false);
+        })
+        .catch(() => setLoadingDbRide(false));
+    }
+  }, [currentRide, urlId]);
 
-  const paymentClass =
-    paymentMethod === 'cash'
-      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-      : paymentMethod === 'card'
-        ? 'bg-brand/15 text-brand-700 dark:text-brand border border-brand/30'
-        : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30';
+  if (loadingDbRide) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-dark-950 px-4 text-slate-900 dark:text-slate-100">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={32} className="animate-spin text-brand" />
+          <p className="text-xs font-bold text-slate-500">Carregando detalhes da corrida...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentRide) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-dark-950 px-4 text-slate-900 dark:text-slate-100">
+        <div className="max-w-md text-center">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-200 dark:bg-dark-800 text-slate-400">
+            <XCircle size={28} />
+          </div>
+          <h2 className="mb-1 text-lg font-black">Corrida não encontrada</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Nenhuma informação disponível para este identificador.</p>
+          <button
+            onClick={() => router.push('/corridas')}
+            className="rounded-2xl bg-brand px-6 py-3 text-xs font-black text-slate-950 shadow-lg shadow-brand/20 transition hover:brightness-105 active:scale-95"
+          >
+            Voltar às Corridas
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const isRideActive = state.activeRide?.id === currentRide.id && currentRide.status !== 'completed' && currentRide.status !== 'cancelled';
+  const navAddress = currentRide.status === 'in-progress' ? currentRide.dropoff : currentRide.pickup;
+  const navCoords = currentRide.status === 'in-progress' ? currentRide.dropoffCoordinates : currentRide.pickupCoordinates;
+  const navLabel = currentRide.status === 'in-progress' ? 'Navegar ao Destino' : 'Navegar ao Embarque';
 
   const handleSendMessage = (msg: string) => {
-    console.log('Mensagem selecionada:', msg);
+    console.log('[DetalheCorrida] Mensagem enviada:', msg);
     setMessageModalOpen(false);
   };
 
-  const handleFinishConfirm = (valor: string, voucher: string) => {
-    setFinishModalOpen(false);
-    setRideFinished(true);
-    setFinishFeedback({ valor, voucher });
+  const handleStartTrip = async () => {
+    setLoadingAction(true);
+    try {
+      if (currentRide.id) {
+        await RideService.startRide(currentRide.id);
+      }
+      dispatch({ type: 'START_RIDE' });
+    } catch (err) {
+      console.warn('[DetalheCorrida] Erro ao iniciar:', err);
+      dispatch({ type: 'START_RIDE' });
+    } finally {
+      setLoadingAction(false);
+    }
   };
 
-  if (isRideFinished && finishFeedback) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[color:var(--bg)] px-6 text-center text-slate-900 dark:text-slate-100 transition-colors">
-        <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-emerald-500/20 shadow-lg shadow-emerald-500/10">
-          <CheckCircle size={48} className="text-emerald-500" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white">Corrida finalizada!</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Ótimo trabalho, motorista.</p>
-        </div>
-        <div className="w-full max-w-xs rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-800 p-5 shadow-xl">
-          <div className="mb-3 text-[11px] font-bold uppercase tracking-widest text-slate-400">Resumo</div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-500 dark:text-slate-400">Valor final</span>
-            <span className="text-2xl font-black tabular-nums text-emerald-600 dark:text-emerald-400">
-              R$ {finishFeedback.valor}
-            </span>
-          </div>
-          {finishFeedback.voucher && (
-            <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-dark-700 pt-2">
-              <span className="text-sm text-slate-500 dark:text-slate-400">Voucher</span>
-              <span className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">{finishFeedback.voucher}</span>
-            </div>
-          )}
-        </div>
-        <button
-          onClick={() => router.push('/corridas')}
-          className="w-full max-w-xs rounded-2xl bg-brand py-4 text-base font-black text-slate-950 shadow-lg shadow-brand/25 transition hover:bg-brand-hover active:scale-95"
-        >
-          Voltar às Corridas
-        </button>
-      </div>
-    );
-  }
+  const handleFinishCheckout = async (data: {
+    paymentMethod: 'pix' | 'cash' | 'card' | 'voucher';
+    finalAmount: number;
+    rating: number;
+    ratingFeedback: string[];
+    comments: string;
+    voucherCode?: string;
+  }) => {
+    try {
+      if (currentRide.id) {
+        await RideService.completeRide(currentRide.id, user?.id, data.finalAmount);
+      }
+    } catch (err) {
+      console.warn('[DetalheCorrida] Erro ao concluir:', err);
+    }
+    dispatch({ type: 'COMPLETE_RIDE' });
+  };
 
-  if (!ride) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[color:var(--bg)] px-4 text-slate-900 dark:text-slate-100">
-        <div className="max-w-md text-center">
-          <h2 className="mb-2 text-xl font-bold">Corrida não encontrada</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Nenhuma corrida ativa ou histórico disponível.</p>
-          <button onClick={() => router.push('/corridas')} className="mt-4 rounded-2xl bg-brand px-6 py-2.5 font-bold text-slate-950 shadow-md">Voltar</button>
-        </div>
-      </div>
-    );
-  }
+  const handleRatePassengerHistory = () => {
+    setHistoryRatingSubmitted(true);
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[color:var(--bg)] text-slate-900 dark:text-slate-100 transition-colors">
-      <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-950/90 px-4 py-3 backdrop-blur-xl">
+    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-dark-950 text-slate-900 dark:text-slate-100 transition-colors">
+      
+      {/* CABEÇALHO */}
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-900/95 px-4 py-3.5 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => router.back()}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 dark:bg-dark-800 text-slate-700 dark:text-slate-300 transition hover:bg-slate-200 dark:hover:bg-dark-700 hover:text-slate-900 dark:hover:text-white"
+            onClick={() => router.push('/corridas')}
+            className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-100 dark:bg-dark-800 text-slate-700 dark:text-slate-300 transition hover:bg-slate-200 dark:hover:bg-dark-700"
           >
             <ArrowLeft size={18} />
           </button>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-bold text-slate-900 dark:text-white">
-              Corrida #{String(rideId).slice(-6).toUpperCase()}
+            <div className="truncate text-sm font-black text-slate-900 dark:text-white">
+              Corrida #{String(currentRide.id).slice(-6).toUpperCase()}
             </div>
-            <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              <Clock size={11} />
-              Em andamento
+            <div className="flex items-center gap-1.5 text-[11px] font-bold">
+              {isRideActive ? (
+                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                  <Clock size={11} className="animate-spin" /> Em andamento
+                </span>
+              ) : currentRide.status === 'completed' ? (
+                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 size={11} /> Concluída com Sucesso
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-red-500">
+                  <XCircle size={11} /> Cancelada
+                </span>
+              )}
             </div>
           </div>
-          {passengerRating != null && (
+          {currentRide.passengerRating != null && (
             <div className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300 border border-amber-500/30">
-              <Star size={11} className="fill-amber-400 text-amber-400" />
-              {typeof passengerRating === 'number' ? passengerRating.toFixed(1) : '--'}
+              <Star size={12} className="fill-amber-400 text-amber-400" />
+              {Number(currentRide.passengerRating).toFixed(1)}
             </div>
           )}
         </div>
       </header>
 
-      <main className="flex-1 space-y-4 overflow-y-auto p-4 pb-8">
-        <div className="rounded-2xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-800 p-4 shadow-sm">
-          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      {/* CONTEÚDO PRINCIPAL */}
+      <main className="flex-1 space-y-4 overflow-y-auto p-4 pb-28">
+        
+        {/* CARD VALOR & TEMPO */}
+        <div className="rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Valor da Corrida
+              </span>
+              <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                {formatBRL(currentRide.fare)}
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Distância & Tempo
+              </span>
+              <div className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                {currentRide.distanceKm} km · {currentRide.estimatedMinutes} min
+              </div>
+            </div>
+          </div>
+
+          {/* Repasse e Método */}
+          <div className="mt-4 flex items-center justify-between border-t border-slate-100 dark:border-dark-800 pt-3 text-xs">
+            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+              <ShieldCheck size={14} className="text-emerald-500" />
+              <span>Repasse Motorista: <strong>100%</strong></span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-full bg-teal-500/15 px-2.5 py-0.5 text-[11px] font-black text-teal-700 dark:text-teal-400 uppercase border border-teal-500/30">
+              <QrCode size={12} /> {currentRide.paymentMethod}
+            </div>
+          </div>
+        </div>
+
+        {/* CARD PASSAGEIRO */}
+        <div className="rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 p-4 shadow-sm">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Passageiro
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="truncate text-base font-bold text-slate-900 dark:text-white">{passengerName}</div>
-              <div className="mt-1 flex items-center gap-2">
-                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${paymentClass}`}>
-                  {paymentLabel}
-                </span>
+              <div className="truncate text-base font-black text-slate-900 dark:text-white">
+                {currentRide.passengerName}
               </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Passageiro verificado Mobipro 360
+              </p>
             </div>
-            <a
-              href="tel:+5592982329629"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand text-slate-950 font-bold shadow-lg shadow-brand/25 transition hover:bg-brand-hover active:scale-95"
-            >
-              <Phone size={18} />
-            </a>
+            {isRideActive && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setMessageModalOpen(true)}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 dark:bg-dark-800 text-slate-700 dark:text-slate-200 font-bold transition hover:bg-slate-200"
+                >
+                  <MessageCircle size={18} />
+                </button>
+                <a
+                  href="tel:+5592982329629"
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand text-slate-950 font-bold shadow-md shadow-brand/20 transition hover:brightness-105"
+                >
+                  <Phone size={18} />
+                </a>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-800 p-4 shadow-sm">
-          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Rota do Trajeto
+        {/* CARD DO TRAJETO */}
+        <div className="rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 p-4 shadow-sm space-y-3">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Trajeto da Viagem
           </div>
 
           <div className="flex items-start gap-3">
@@ -168,11 +289,11 @@ export default function DetalheCorrida() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Origem / Embarque</div>
-              <div className="text-sm font-bold leading-snug text-slate-900 dark:text-white">{origin}</div>
+              <div className="text-xs font-bold leading-snug text-slate-900 dark:text-white">{currentRide.pickup}</div>
             </div>
           </div>
 
-          <div className="my-1.5 ml-4 h-5 border-l-2 border-dashed border-slate-300 dark:border-dark-600" />
+          <div className="my-1 ml-4 h-4 border-l-2 border-dashed border-slate-300 dark:border-dark-700" />
 
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-red-600 dark:text-red-400">
@@ -180,53 +301,118 @@ export default function DetalheCorrida() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Destino Final</div>
-              <div className="text-sm font-bold leading-snug text-slate-900 dark:text-white">{destination}</div>
+              <div className="text-xs font-bold leading-snug text-slate-900 dark:text-white">{currentRide.dropoff}</div>
             </div>
           </div>
         </div>
 
-        {!activeRide && (
-          <div className="rounded-2xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-800 p-4 shadow-sm">
-            <div className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Observações Operacionais
+        {/* SEÇÃO DE AVALIAÇÃO DO PASSAGEIRO (HISTÓRICO) */}
+        {!isRideActive && (
+          <div className="rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 p-4 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Avaliação do Passageiro
+              </span>
+              {historyRatingSubmitted && (
+                <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
+                  <CheckCircle2 size={13} /> Avaliado
+                </span>
+              )}
             </div>
-            <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-              Convênio via licitação — voucher físico ou digital, assinado pelo gestor responsável. Enviar veículo em perfeito estado de conservação.
-            </p>
+
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  disabled={historyRatingSubmitted}
+                  onClick={() => setHistoryRating(star)}
+                  className="p-1 transition transform hover:scale-125 active:scale-95 disabled:hover:scale-100"
+                >
+                  <Star
+                    size={28}
+                    className={`${
+                      star <= historyRating
+                        ? 'fill-amber-400 text-amber-400'
+                        : 'text-slate-300 dark:text-dark-700'
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+
+            {!historyRatingSubmitted && (
+              <button
+                type="button"
+                onClick={handleRatePassengerHistory}
+                className="w-full rounded-2xl bg-slate-100 dark:bg-dark-800 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-dark-700"
+              >
+                Salvar Avaliação ({historyRating} estrelas)
+              </button>
+            )}
           </div>
         )}
       </main>
 
-      <footer className="border-t border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-950/90 p-4 backdrop-blur-xl">
-        <div className="grid grid-cols-2 gap-3">
+      {/* FOOTER FIXO DE AÇÕES SE A CORRIDA ESTIVER ATIVA */}
+      {isRideActive && (
+        <footer className="fixed bottom-0 inset-x-0 z-30 border-t border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-900/95 p-4 backdrop-blur-xl space-y-2">
+          {/* Botão de Navegação Waze / Google Maps */}
           <button
-            onClick={() => setMessageModalOpen(true)}
-            disabled={isRideFinished}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-slate-300 dark:border-dark-700 bg-slate-100 dark:bg-dark-800 py-3.5 text-sm font-bold text-slate-800 dark:text-slate-200 transition hover:bg-slate-200 dark:hover:bg-dark-700 active:scale-95 disabled:opacity-40"
+            onClick={() => setNavModalOpen(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand py-3 text-sm font-black text-slate-950 shadow-md shadow-brand/20 transition hover:brightness-105 active:scale-95"
           >
-            <MessageCircle size={18} />
-            Mensagem
+            <Navigation size={16} />
+            {navLabel} (Waze / Maps)
+            <ExternalLink size={13} className="opacity-80" />
           </button>
-          <button
-            onClick={() => setFinishModalOpen(true)}
-            disabled={isRideFinished}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-red-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-red-500/25 transition hover:bg-red-600 active:scale-95 disabled:opacity-40"
-          >
-            <XCircle size={18} />
-            Finalizar
-          </button>
-        </div>
-      </footer>
 
+          <div className="grid grid-cols-2 gap-2">
+            {currentRide.status === 'accepted' ? (
+              <button
+                onClick={handleStartTrip}
+                disabled={loadingAction}
+                className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600 active:scale-95"
+              >
+                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Phone size={16} />} Iniciar Viagem
+              </button>
+            ) : (
+              <button
+                onClick={() => setCheckoutModalOpen(true)}
+                disabled={loadingAction}
+                className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600 active:scale-95"
+              >
+                <CheckCircle2 size={16} /> Finalizar Viagem & Receber PIX
+              </button>
+            )}
+          </div>
+        </footer>
+      )}
+
+      {/* Modais de Mensagem, Navegação e Pagamento */}
       <QuickMessagesModal
         isOpen={isMessageModalOpen}
         onClose={() => setMessageModalOpen(false)}
         onSendMessage={handleSendMessage}
       />
-      <FinishRideModal
-        isOpen={isFinishModalOpen}
-        onClose={() => setFinishModalOpen(false)}
-        onConfirm={handleFinishConfirm}
+
+      <NavigationModal
+        isOpen={isNavModalOpen}
+        onClose={() => setNavModalOpen(false)}
+        address={navAddress}
+        coords={navCoords}
+        destinationLabel={currentRide.status === 'in-progress' ? 'Destino' : 'Embarque'}
+      />
+
+      <PaymentCheckoutModal
+        isOpen={isCheckoutModalOpen}
+        onClose={() => setCheckoutModalOpen(false)}
+        rideId={currentRide.id}
+        fareAmount={currentRide.fare}
+        passengerName={currentRide.passengerName}
+        pickupAddress={currentRide.pickup}
+        dropoffAddress={currentRide.dropoff}
+        onFinishRide={handleFinishCheckout}
       />
     </div>
   );
