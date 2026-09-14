@@ -95,8 +95,8 @@ function playRideNotificationSound() {
         osc2.frequency.setValueAtTime(880.00, now);
         osc2.frequency.setValueAtTime(1174.66, now + 0.12); // D6
 
-        gain.gain.setValueAtTime(0.15, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        gain.gain.setValueAtTime(0.20, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
 
         osc1.connect(gain);
         osc2.connect(gain);
@@ -104,11 +104,11 @@ function playRideNotificationSound() {
 
         osc1.start(now);
         osc2.start(now);
-        osc1.stop(now + 0.35);
-        osc2.stop(now + 0.35);
+        osc1.stop(now + 0.45);
+        osc2.stop(now + 0.45);
 
         if (navigator.vibrate) {
-            navigator.vibrate([200, 100, 200]);
+            navigator.vibrate([300, 150, 300, 150, 300]);
         }
     } catch (err) {
         console.warn('[useRideRequests] Notificação sonora não disponível:', err);
@@ -150,53 +150,49 @@ function parseRideToOffer(r: any): RideOffer {
 
     const pPickup =
         r.pickup_address ||
-        r.endereco_origem ||
+        r.origem_endereco ||
         r.origem ||
-        r.pickup ||
-        r.endereco_embarque ||
         r.embarque ||
-        'Origem da solicitação';
+        r.ponto_embarque ||
+        'Ponto de Embarque';
+
+    const pDropoff =
+        r.dropoff_address ||
+        r.destino_endereco ||
+        r.destino ||
+        r.desembarque ||
+        r.ponto_destino ||
+        'Destino da Corrida';
 
     const pPickupLat = Number(
-        r.pickup_lat ||
-        r.latitude_origem ||
-        r.origem_lat ||
         r.pickup_latitude ||
+        r.origem_lat ||
+        r.pickup_lat ||
+        r.lat_origem ||
         -3.1190
     );
 
     const pPickupLng = Number(
-        r.pickup_lng ||
-        r.longitude_origem ||
-        r.origem_lng ||
         r.pickup_longitude ||
+        r.origem_lng ||
+        r.pickup_lng ||
+        r.lng_origem ||
         -60.0217
     );
 
-    const pDropoff =
-        r.dropoff_address ||
-        r.endereco_destino ||
-        r.destino ||
-        r.dropoff ||
-        r.destination_address ||
-        r.destination ||
-        r.endereco_desembarque ||
-        r.desembarque ||
-        'Destino da solicitação';
-
     const pDropoffLat = Number(
-        r.dropoff_lat ||
-        r.latitude_destino ||
-        r.destino_lat ||
         r.dropoff_latitude ||
-        -3.1072
+        r.destino_lat ||
+        r.dropoff_lat ||
+        r.lat_destino ||
+        -3.1070
     );
 
     const pDropoffLng = Number(
-        r.dropoff_lng ||
-        r.longitude_destino ||
-        r.destino_lng ||
         r.dropoff_longitude ||
+        r.destino_lng ||
+        r.dropoff_lng ||
+        r.lng_destino ||
         -60.0125
     );
 
@@ -269,7 +265,8 @@ export function useRideRequests(isOnline: boolean) {
         enableScreenWakeLock();
 
         let isMounted = true;
-        let channel: any = null;
+        let channel1: any = null;
+        let channel2: any = null;
         let pollInterval: any = null;
         const supabase = createClient();
 
@@ -309,32 +306,72 @@ export function useRideRequests(isOnline: boolean) {
             }
         };
 
-        // 2. Busca inicial e periódica (Polling a cada 3.5 segundos como garantia)
+        // 2. Ouvinte de mensagens do Service Worker (quando o app acorda do segundo plano)
+        const handleServiceWorkerMessage = (event: MessageEvent) => {
+            if (event.data?.type === 'NEW_RIDE_OFFER_RECEIVED' && event.data.ride && isMounted) {
+                processCandidateRides([event.data.ride]);
+            }
+        };
+
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+        }
+
+        // 3. Checa se o app foi aberto com ?openRide=... na URL
+        if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const openRideId = urlParams.get('openRide');
+            if (openRideId) {
+                supabase
+                    .from('rides')
+                    .select('*')
+                    .eq('id', openRideId)
+                    .maybeSingle()
+                    .then(({ data }: any) => {
+                        if (data && isMounted) {
+                            processCandidateRides([data]);
+                        }
+                    });
+            }
+        }
+
+        // 4. Busca periódica (Polling a cada 3.0 segundos nas duas tabelas)
         const fetchPendingRides = async () => {
             try {
-                const { data, error } = await supabase
+                // Tabela 1: rides
+                const { data: ridesData } = await supabase
                     .from('rides')
                     .select('*')
                     .order('created_at', { ascending: false })
-                    .limit(15);
+                    .limit(10);
 
-                if (!error && data) {
-                    processCandidateRides(data);
-                } else if (error) {
-                    console.warn('[useRideRequests] Aviso ao consultar rides:', error.message);
+                if (ridesData && ridesData.length > 0) {
+                    processCandidateRides(ridesData);
+                    return;
+                }
+
+                // Tabela 2: corridas
+                const { data: corridasData } = await supabase
+                    .from('corridas')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+
+                if (corridasData && corridasData.length > 0) {
+                    processCandidateRides(corridasData);
                 }
             } catch (err) {
-                console.warn('[useRideRequests] Erro ao buscar corrida pendente:', err);
+                console.warn('[useRideRequests] Erro no polling de corridas:', err);
             }
         };
 
         fetchPendingRides();
-        pollInterval = setInterval(fetchPendingRides, 3500);
+        pollInterval = setInterval(fetchPendingRides, 3000);
 
-        // 3. Escuta em tempo real via Realtime WebSocket (Entrega instantânea)
+        // 5. Escuta em tempo real via Realtime WebSocket (Tabelas 'rides' e 'corridas')
         try {
             if (supabase?.channel) {
-                channel = supabase
+                channel1 = supabase
                     .channel('mobipro:rides_realtime_feed')
                     .on(
                         'postgres_changes',
@@ -344,9 +381,8 @@ export function useRideRequests(isOnline: boolean) {
                             table: 'rides',
                         },
                         (payload: any) => {
-                            const newRide = payload.new;
-                            if (newRide && isMounted) {
-                                processCandidateRides([newRide]);
+                            if (payload.new && isMounted) {
+                                processCandidateRides([payload.new]);
                             }
                         }
                     )
@@ -370,6 +406,23 @@ export function useRideRequests(isOnline: boolean) {
                         }
                     )
                     .subscribe();
+
+                channel2 = supabase
+                    .channel('mobipro:corridas_realtime_feed')
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: 'INSERT',
+                            schema: 'public',
+                            table: 'corridas',
+                        },
+                        (payload: any) => {
+                            if (payload.new && isMounted) {
+                                processCandidateRides([payload.new]);
+                            }
+                        }
+                    )
+                    .subscribe();
             }
         } catch (err) {
             console.warn('[useRideRequests] Erro ao conectar Realtime WebSocket:', err);
@@ -379,12 +432,18 @@ export function useRideRequests(isOnline: boolean) {
             isMounted = false;
             disableScreenWakeLock();
             if (pollInterval) clearInterval(pollInterval);
-            if (channel) {
+            if (channel1) {
                 try {
-                    supabase.removeChannel(channel);
-                } catch {
-                    // ignore
-                }
+                    supabase.removeChannel(channel1);
+                } catch {}
+            }
+            if (channel2) {
+                try {
+                    supabase.removeChannel(channel2);
+                } catch {}
+            }
+            if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
             }
         };
     }, [isOnline]);
