@@ -28,6 +28,7 @@ import { StatusPill } from "@/components/StatusControl";
 import { Card, Button, Badge } from "@/components/ui";
 import { useApp } from "@/lib/store";
 import { openNavigation } from "@/lib/navigation";
+import { requestNotificationPermission } from "@/lib/notifications";
 import { formatBRL } from "@/lib/utils";
 import type { DriverWorkStatus } from "@/types";
 import BottomNav from "@/components/BottomNav";
@@ -158,6 +159,10 @@ export default function MapaPage() {
             const newStatus: DriverWorkStatus = isOnline
                 ? "OFFLINE"
                 : "ONLINE";
+
+            if (newStatus === "ONLINE") {
+                requestNotificationPermission();
+            }
 
             const updatedDriver =
                 await ProfileService.toggleWorkStatus(

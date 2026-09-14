@@ -1,6 +1,12 @@
 // src/hooks/useRideRequests.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase';
+import {
+    requestNotificationPermission,
+    showRideSystemNotification,
+    enableScreenWakeLock,
+    disableScreenWakeLock
+} from '@/lib/notifications';
 import { RideOffer } from '@/types';
 
 // Chave para armazenar IDs recusados recentemente
@@ -253,9 +259,14 @@ export function useRideRequests(isOnline: boolean) {
 
     useEffect(() => {
         if (!isOnline) {
+            disableScreenWakeLock();
             setCurrentOffer(null);
             return;
         }
+
+        // Ativa permissão de notificação e previne tela de apagar enquanto estiver online
+        requestNotificationPermission();
+        enableScreenWakeLock();
 
         let isMounted = true;
         let channel: any = null;
@@ -291,6 +302,7 @@ export function useRideRequests(isOnline: boolean) {
                     if (lastNotifiedOfferId.current !== parsed.id) {
                         lastNotifiedOfferId.current = parsed.id;
                         playRideNotificationSound();
+                        showRideSystemNotification(parsed); // Dispara notificação nativa do sistema / pop-up
                     }
                     return parsed;
                 });
@@ -365,6 +377,7 @@ export function useRideRequests(isOnline: boolean) {
 
         return () => {
             isMounted = false;
+            disableScreenWakeLock();
             if (pollInterval) clearInterval(pollInterval);
             if (channel) {
                 try {

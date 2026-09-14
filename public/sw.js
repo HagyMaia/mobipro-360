@@ -1,5 +1,5 @@
 // Service Worker for SR Logística PWA
-const CACHE_NAME = 'sr-logistica-v1.0.2';
+const CACHE_NAME = 'sr-logistica-v1.0.3';
 
 const STATIC_PRECACHE = [
   '/',
@@ -84,18 +84,29 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Push notification listener (ready for dispatch notifications)
+// Mensagens internas do frontend para o Service Worker
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_RIDE_NOTIFICATION') {
+    const { title, options } = event.data;
+    event.waitUntil(self.registration.showNotification(title, options));
+  }
+});
+
+// Push notification listener (ready for background dispatch notifications)
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
   try {
     const data = event.data.json();
-    const title = data.title || 'SR Logística';
+    const title = data.title || '🚖 Nova Corrida Disponível - SR Logística';
     const options = {
-      body: data.body || 'Você tem uma nova notificação da central.',
+      body: data.body || 'Você tem uma nova solicitação de corrida!',
       icon: '/icon-192.png',
       badge: '/icon-192.png',
-      vibrate: [200, 100, 200],
+      tag: data.tag || 'new-ride-offer',
+      renotify: true,
+      requireInteraction: true,
+      vibrate: [400, 200, 400, 200, 400],
       data: data.data || { url: '/' }
     };
 
@@ -113,7 +124,8 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url === targetUrl && 'focus' in client) {
+        if ('focus' in client) {
+          client.navigate(targetUrl);
           return client.focus();
         }
       }

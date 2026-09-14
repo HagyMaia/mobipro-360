@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Coffee, Loader2, Power, Radio, ShieldCheck } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { ProfileService } from '@/services/driver/ProfileService';
+import { requestNotificationPermission } from '@/lib/notifications';
 import type { WorkStatus } from '@/lib/types';
 import { cn } from '@/lib/cn';
 
@@ -49,6 +50,9 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
     setUpdating(true);
     try {
       if (targetStatus === 'available') {
+        // Solicita permissão de notificação push/nativa no clique do motorista
+        requestNotificationPermission();
+
         const profile = await ProfileService.getCurrentProfile();
         if (profile?.status !== 'Aprovado') {
           alert('Seu cadastro precisa estar Aprovado para ficar online e receber corridas.');
