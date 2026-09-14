@@ -19,6 +19,7 @@ import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
 import { useDriverLocation } from '@/hooks/useDriverLocation';
 import { useRideRequests } from '@/hooks/useRideRequests';
+import { useActiveRideSync } from '@/hooks/useActiveRideSync';
 import { RideService } from '@/services/ride/RideService';
 import { ProfileService } from '@/services/driver/ProfileService';
 import { formatBRL } from '@/lib/utils';
@@ -30,10 +31,12 @@ export default function CorridasPage() {
   const { state, dispatch, todayEarnings, todayRides } = useApp();
   const { user, loading: authLoading } = useAuth();
 
+  useActiveRideSync();
+
   const [isOnline, setIsOnline] = useState(false);
   const [isLoadingTurno, setIsLoadingTurno] = useState(false);
   const { location } = useDriverLocation(isOnline);
-  const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isOnline);
+  const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isOnline && !state.activeRide);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -173,7 +176,44 @@ export default function CorridasPage() {
             </Button>
           </div>
           <div className="h-64 overflow-hidden border-b border-slate-200/80 dark:border-dark-700/80">
-            <DriverMap location={location} />
+            <DriverMap
+              location={location}
+              pickupLocation={
+                currentOffer
+                  ? {
+                      latitude: currentOffer.pickupLocation.latitude,
+                      longitude: currentOffer.pickupLocation.longitude,
+                      label: 'EMBARQUE',
+                      address: currentOffer.pickupAddress,
+                    }
+                  : state.activeRide
+                  ? {
+                      latitude: -3.1190,
+                      longitude: -60.0217,
+                      label: 'EMBARQUE',
+                      address: state.activeRide.pickup,
+                    }
+                  : null
+              }
+              dropoffLocation={
+                currentOffer
+                  ? {
+                      latitude: currentOffer.dropoffLocation.latitude,
+                      longitude: currentOffer.dropoffLocation.longitude,
+                      label: 'DESTINO',
+                      address: currentOffer.dropoffAddress,
+                    }
+                  : state.activeRide
+                  ? {
+                      latitude: -3.1072,
+                      longitude: -60.0125,
+                      label: 'DESTINO',
+                      address: state.activeRide.dropoff,
+                    }
+                  : null
+              }
+              showRoute={Boolean(currentOffer || state.activeRide)}
+            />
           </div>
         </div>
 

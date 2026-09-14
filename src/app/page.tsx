@@ -14,6 +14,7 @@ import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { useRideRequests } from '@/hooks/useRideRequests';
+import { useActiveRideSync } from '@/hooks/useActiveRideSync';
 import { ProfileService } from '@/services/driver/ProfileService';
 import { RideService } from '@/services/ride/RideService';
 import { formatBRL, isToday } from '@/lib/utils';
@@ -27,6 +28,9 @@ export default function HomePage() {
   const [driverName, setDriverName] = useState('Motorista');
   const [isApproved, setIsApproved] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  // Monitora cancelamentos remotos da corrida ativa
+  useActiveRideSync();
 
   // Escuta apenas chamadas reais quando o motorista está cadastrado, aprovado e com status "Disponível" (Online)
   const isOnlineAndAvailable = state.status === 'available' && isApproved;

@@ -1,38 +1,54 @@
+// src/app/(protected)/mapa/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
-
 import Link from "next/link";
-import { Flame } from "lucide-react";
+import {
+    Flame,
+    Navigation,
+    XCircle,
+    Phone,
+    Flag,
+    CheckCircle2,
+    MapPin,
+    ExternalLink,
+    Loader2
+} from "lucide-react";
 import { DriverStatusButton } from "@/features/driver-status/components/DriverStatusButton";
 import { useDriverLocation } from "@/hooks/useDriverLocation";
 import { useRideRequests } from "@/hooks/useRideRequests";
+import { useActiveRideSync } from "@/hooks/useActiveRideSync";
 import { ProfileService } from "@/services/driver/ProfileService";
 import { RideService } from "@/services/ride/RideService";
 import { createClient } from "@/lib/supabase";
 import NewRideModal from "@/components/Ride/NewRideModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { StatusPill } from "@/components/StatusControl";
-import { Card, Button } from "@/components/ui";
+import { Card, Button, Badge } from "@/components/ui";
 import { useApp } from "@/lib/store";
+import { openNavigation } from "@/lib/navigation";
+import { formatBRL } from "@/lib/utils";
 import type { DriverWorkStatus } from "@/types";
-
 import BottomNav from "@/components/BottomNav";
 
 const DriverMap = dynamic(
     () => import("@/components/map/DriverMap"),
-    { ssr: false },
+    { ssr: false }
 );
 
 export default function MapaPage() {
-    const { dispatch } = useApp();
+    const { state, dispatch } = useApp();
     const [isOnline, setIsOnline] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
     const [isLoadingToggle, setIsLoadingToggle] = useState(false);
     const [driverName, setDriverName] = useState("Motorista");
     const [isApproved, setIsApproved] = useState(false);
     const [statusError, setStatusError] = useState<string | null>(null);
+    const [loadingRideAction, setLoadingRideAction] = useState(false);
+
+    // Escuta cancelamentos remotos da corrida ativa
+    useActiveRideSync();
 
     const { location } = useDriverLocation(isOnline);
 
@@ -40,23 +56,10 @@ export default function MapaPage() {
         currentOffer,
         clearOffer,
         rejectOffer,
-    } = useRideRequests(isOnline);
+    } = useRideRequests(isOnline && !state.activeRide);
 
-    const [previewMounted, setPreviewMounted] = useState(false);
-    useEffect(() => {
-        console.info(
-            "[Mapa] Página do mapa foi montada.",
-            {
-                currentUrl: window.location.href,
-            },
-        );
+    const activeRide = state.activeRide;
 
-        return () => {
-            console.info(
-                "[Mapa] Página do mapa foi desmontada.",
-            );
-        };
-    }, []);
     useEffect(() => {
         let isComponentMounted = true;
 
@@ -74,7 +77,6 @@ export default function MapaPage() {
                         "Não foi possível identificar o motorista autenticado.",
                     );
                 }
-
                 return;
             }
 
@@ -92,17 +94,11 @@ export default function MapaPage() {
                 .maybeSingle();
 
             if (motoristaError || !motorista) {
-                console.error(
-                    "Erro ao carregar dados do motorista:",
-                    motoristaError,
-                );
-
                 if (isComponentMounted) {
                     setStatusError(
                         "Não foi possível carregar seu perfil de motorista.",
                     );
                 }
-
                 return;
             }
 
@@ -139,24 +135,11 @@ export default function MapaPage() {
         };
     }, []);
 
-    useEffect(() => {
-        if (currentOffer) {
-            setPreviewMounted(false);
-
-            requestAnimationFrame(() => {
-                setPreviewMounted(true);
-            });
-        } else {
-            setPreviewMounted(false);
-        }
-    }, [currentOffer]);
-
     const handleToggleStatus = async () => {
         if (!userId) {
             setStatusError(
                 "Não foi possível identificar o motorista autenticado.",
             );
-
             return;
         }
 
@@ -164,7 +147,6 @@ export default function MapaPage() {
             setStatusError(
                 "Seu cadastro ainda não está aprovado para receber corridas.",
             );
-
             return;
         }
 
@@ -189,11 +171,6 @@ export default function MapaPage() {
                 clearOffer();
             }
         } catch (error) {
-            console.error(
-                "Erro ao alterar status de trabalho:",
-                error,
-            );
-
             setStatusError(
                 error instanceof Error
                     ? error.message
@@ -228,12 +205,114 @@ export default function MapaPage() {
                 });
             }
             clearOffer();
-            alert('Corrida Aceita! Rota calculada.');
         } catch (err) {
             console.error('[Mapa] Erro ao aceitar corrida:', err);
             clearOffer();
         }
     };
+
+    const handleRejectOffer = (rideId?: string) => {
+        if (rideId) {
+            rejectOffer(rideId);
+        } else {
+            clearOffer();
+        }
+        dispatch({ type: 'REJECT_RIDE' });
+    };
+
+    const handleCancelActiveRide = async () => {
+        if (!window.confirm('Tem certeza que deseja cancelar esta corrida?')) {
+            return;
+        }
+
+        if (activeRide?.id) {
+            setLoadingRideAction(true);
+            try {
+                await RideService.cancelRide(activeRide.id, userId || undefined);
+            } catch (err) {
+                console.warn('[Mapa] Erro ao cancelar corrida no banco:', err);
+            } finally {
+                setLoadingRideAction(false);
+            }
+        }
+        clearOffer();
+        dispatch({ type: 'CANCEL_RIDE' });
+    };
+
+    const handleStartActiveRide = async () => {
+        if (activeRide?.id) {
+            setLoadingRideAction(true);
+            try {
+                await RideService.startRide(activeRide.id);
+            } catch (err) {
+                console.warn('[Mapa] Erro ao iniciar corrida no banco:', err);
+            } finally {
+                setLoadingRideAction(false);
+            }
+        }
+        dispatch({ type: 'START_RIDE' });
+    };
+
+    const handleCompleteActiveRide = async () => {
+        if (activeRide?.id) {
+            setLoadingRideAction(true);
+            try {
+                await RideService.completeRide(activeRide.id, userId || undefined, activeRide.fare);
+            } catch (err) {
+                console.warn('[Mapa] Erro ao finalizar corrida no banco:', err);
+            } finally {
+                setLoadingRideAction(false);
+            }
+        }
+        clearOffer();
+        dispatch({ type: 'COMPLETE_RIDE' });
+    };
+
+    // Pontos do mapa: embarque e destino são calculados dinamicamente
+    // e ficam completamente nulos quando a corrida é cancelada
+    const pickupLocation = useMemo(() => {
+        if (activeRide) {
+            return {
+                latitude: -3.1190,
+                longitude: -60.0217,
+                label: 'EMBARQUE',
+                address: activeRide.pickup,
+            };
+        }
+        if (currentOffer) {
+            return {
+                latitude: currentOffer.pickupLocation.latitude,
+                longitude: currentOffer.pickupLocation.longitude,
+                label: 'EMBARQUE',
+                address: currentOffer.pickupAddress,
+            };
+        }
+        return null;
+    }, [activeRide, currentOffer]);
+
+    const dropoffLocation = useMemo(() => {
+        if (activeRide) {
+            return {
+                latitude: -3.1072,
+                longitude: -60.0125,
+                label: 'DESTINO',
+                address: activeRide.dropoff,
+            };
+        }
+        if (currentOffer) {
+            return {
+                latitude: currentOffer.dropoffLocation.latitude,
+                longitude: currentOffer.dropoffLocation.longitude,
+                label: 'DESTINO',
+                address: currentOffer.dropoffAddress,
+            };
+        }
+        return null;
+    }, [activeRide, currentOffer]);
+
+    const navApp = state.navApp ?? 'waze';
+    const navAddress = activeRide?.status === 'in-progress' ? activeRide.dropoff : activeRide?.pickup;
+    const navLabel = activeRide?.status === 'in-progress' ? 'Navegar ao Destino' : 'Navegar ao Embarque';
 
     return (
         <div className="relative w-full h-screen overflow-hidden bg-slate-950 text-white font-sans">
@@ -242,8 +321,12 @@ export default function MapaPage() {
                 <div className="mx-auto max-w-4xl">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-lg font-black text-slate-900 dark:text-white">Olá, <span className="text-brand-600 dark:text-brand">{driverName}</span> 👋</h1>
-                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Toque no botão abaixo para receber corridas</p>
+                            <h1 className="text-lg font-black text-slate-900 dark:text-white">
+                                Olá, <span className="text-brand-600 dark:text-brand">{driverName}</span> 👋
+                            </h1>
+                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                {activeRide ? 'Corrida em andamento' : isOnline ? 'Disponível para chamadas' : 'Modo Offline'}
+                            </p>
                         </div>
                         <div className="flex items-center gap-2">
                             <Link
@@ -261,68 +344,143 @@ export default function MapaPage() {
                 </div>
             </header>
 
+            {/* Mapa Interativo com Carro, Embarque, Destino e Trajeto */}
             <div className="absolute inset-0">
-                <DriverMap location={location} />
+                <DriverMap
+                    location={location}
+                    pickupLocation={pickupLocation}
+                    dropoffLocation={dropoffLocation}
+                    showRoute={Boolean(pickupLocation || dropoffLocation)}
+                />
             </div>
 
-            {!isOnline && (
+            {!isOnline && !activeRide && (
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-10 transition-all pointer-events-none" />
             )}
 
-            {/* Renderiza o modal se houver uma nova chamada e o motorista estiver online */}
-            {isOnline && currentOffer && (
+            {/* Modal de Nova Solicitação */}
+            {isOnline && !activeRide && currentOffer && (
                 <NewRideModal
                     offer={currentOffer}
                     onAccept={handleAcceptRide}
-                    onReject={() => rejectOffer(currentOffer.id)}
+                    onReject={() => handleRejectOffer(currentOffer.id)}
                 />
             )}
 
-            {/* Compact preview when there's an offer */}
-            {isOnline && currentOffer && (
-                <div className="absolute top-24 left-1/2 z-[1101] w-full max-w-lg -translate-x-1/2 px-4">
-                    <Card className={`p-4 rounded-3xl shadow-2xl transition-all duration-300 ${previewMounted ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'} bg-white text-slate-900 border border-slate-200 dark:bg-dark-800 dark:text-white dark:border-dark-700`}>
-                        <div className="flex items-start justify-between gap-4">
-                            <div className="min-w-0">
-                                <div className="text-sm font-bold truncate">Nova chamada</div>
-                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate">{currentOffer.passengerName} · {currentOffer.estimatedMinutes} min · {currentOffer.distanceKm} km</div>
-                                <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white tabular-nums">R$ {Number(currentOffer.fareAmount ?? 0).toFixed(2)}</div>
+            {/* Card Flutuante de Corrida Ativa no Mapa */}
+            {activeRide && (
+                <div className="absolute bottom-20 inset-x-0 mx-auto w-full max-w-lg px-4 z-[1050]">
+                    <Card className="border-2 border-brand/60 bg-white/95 dark:bg-dark-900/95 backdrop-blur-xl shadow-2xl p-4 rounded-3xl text-slate-900 dark:text-white">
+                        <div className="flex items-center justify-between mb-3">
+                            <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-brand-700 dark:text-brand">
+                                    {activeRide.status === 'in-progress' ? 'Em Viagem' : 'A Caminho do Passageiro'}
+                                </span>
+                                <h3 className="text-base font-black truncate">{activeRide.passengerName}</h3>
                             </div>
-                            <div className="flex flex-col items-end gap-2">
-                                <Button variant="outline" className="min-w-[96px]" onClick={() => rejectOffer(currentOffer.id)}>Recusar</Button>
-                                <Button className="min-w-[96px] bg-brand text-slate-950 font-black" onClick={() => handleAcceptRide(currentOffer.id)}>Aceitar</Button>
+                            <div className="text-right">
+                                <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                                    {formatBRL(activeRide.fare)}
+                                </div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    {activeRide.distanceKm} km · {activeRide.estimatedMinutes} min
+                                </div>
                             </div>
+                        </div>
+
+                        {/* Endereço */}
+                        <div className="rounded-2xl bg-slate-100 dark:bg-dark-800 p-2.5 mb-3 text-xs space-y-1.5">
+                            <div className="flex items-center gap-1.5">
+                                <MapPin size={13} className="text-emerald-500 shrink-0" />
+                                <span className="truncate font-semibold">{activeRide.pickup}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <Navigation size={13} className="text-red-500 shrink-0" />
+                                <span className="truncate font-semibold">{activeRide.dropoff}</span>
+                            </div>
+                        </div>
+
+                        {/* Botão de Navegação Externa (Waze / Google Maps) */}
+                        {navAddress && (
+                            <button
+                                onClick={() => openNavigation(navAddress, navApp)}
+                                className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-brand py-2.5 text-xs font-black text-slate-950 shadow-md shadow-brand/20 transition hover:brightness-105 active:scale-95"
+                            >
+                                <Navigation size={14} />
+                                {navLabel}
+                                <span className="rounded-lg bg-black/15 px-1.5 py-0.5 text-[10px] uppercase font-bold">
+                                    {navApp}
+                                </span>
+                                <ExternalLink size={12} className="opacity-80" />
+                            </button>
+                        )}
+
+                        {/* Ações da Corrida */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={loadingRideAction}
+                                onClick={handleCancelActiveRide}
+                                className="text-red-600 border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40"
+                            >
+                                {loadingRideAction ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />} Cancelar
+                            </Button>
+
+                            {activeRide.status === 'accepted' && (
+                                <Button
+                                    variant="success"
+                                    size="sm"
+                                    disabled={loadingRideAction}
+                                    onClick={handleStartActiveRide}
+                                    className="font-black"
+                                >
+                                    {loadingRideAction ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />} Iniciar Viagem
+                                </Button>
+                            )}
+
+                            {activeRide.status === 'in-progress' && (
+                                <Button
+                                    variant="success"
+                                    size="sm"
+                                    disabled={loadingRideAction}
+                                    onClick={handleCompleteActiveRide}
+                                    className="font-black"
+                                >
+                                    {loadingRideAction ? <Loader2 size={14} className="animate-spin" /> : <Flag size={14} />} Finalizar Viagem
+                                </Button>
+                            )}
                         </div>
                     </Card>
                 </div>
             )}
 
-            {/* Bottom Sheet acima do BottomNav */}
-            <div className="absolute bottom-16 inset-x-0 w-full bg-white/95 dark:bg-dark-900/95 backdrop-blur-xl rounded-t-3xl shadow-2xl z-[1050] border-t border-slate-200 dark:border-white/10 p-5 pb-6 transition-all">
-                {statusError && (
-                    <div className="mb-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs font-semibold text-red-600 dark:text-red-300">
-                        {statusError}
+            {/* Bottom Sheet com Status do Motorista (quando não houver corrida ativa) */}
+            {!activeRide && (
+                <div className="absolute bottom-16 inset-x-0 w-full bg-white/95 dark:bg-dark-900/95 backdrop-blur-xl rounded-t-3xl shadow-2xl z-[1050] border-t border-slate-200 dark:border-white/10 p-5 pb-6 transition-all">
+                    {statusError && (
+                        <div className="mb-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs font-semibold text-red-600 dark:text-red-300">
+                            {statusError}
+                        </div>
+                    )}
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estado Atual</span>
+                            <span className={`text-base font-black ${isOnline ? 'text-emerald-500' : 'text-slate-900 dark:text-white'}`}>
+                                {isOnline ? 'Disponível para Corridas' : 'Modo Offline'}
+                            </span>
+                        </div>
+                        <div className={`h-3.5 w-3.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
                     </div>
-                )}
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estado Atual</span>
-                        <span className={`text-base font-black ${isOnline ? 'text-emerald-500' : 'text-slate-900 dark:text-white'}`}>
-                            {isOnline ? 'Disponível para Corridas' : 'Modo Offline'}
-                        </span>
-                    </div>
-                    <div className={`h-3.5 w-3.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                    <DriverStatusButton
+                        status={isOnline ? "ONLINE" : "OFFLINE"}
+                        isLoading={isLoadingToggle}
+                        onToggle={handleToggleStatus}
+                    />
                 </div>
-                <DriverStatusButton
-                    status={isOnline ? "ONLINE" : "OFFLINE"}
-                    isLoading={isLoadingToggle}
-                    onToggle={handleToggleStatus}
-                />
-            </div>
+            )}
 
             <BottomNav />
         </div>
     );
 }
-
-

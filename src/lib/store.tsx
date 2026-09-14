@@ -134,12 +134,12 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'CANCEL_RIDE': {
-      if (!state.activeRide) return state;
-      const cancelled: Ride = { ...state.activeRide, status: 'cancelled' };
+      const cancelled: Ride | null = state.activeRide ? { ...state.activeRide, status: 'cancelled' } : null;
       return {
         ...state,
         activeRide: null,
-        rideHistory: [cancelled, ...state.rideHistory],
+        incomingRide: null,
+        rideHistory: cancelled ? [cancelled, ...state.rideHistory] : state.rideHistory,
         status: 'available'
       };
     }
