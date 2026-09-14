@@ -74,24 +74,17 @@ export default function RideRequestCard({
         userId = res.data?.user?.id;
       }
 
-      if (userId && ride.id) {
-        const success = await RideService.acceptRide(ride.id, userId);
-        if (success) {
-          dispatch({ type: 'ACCEPT_RIDE' });
-        } else {
-          alert('Esta corrida já foi aceita por outro motorista ou cancelada.');
-          if (onReject) {
-            onReject();
-          } else {
-            dispatch({ type: 'REJECT_RIDE' });
-          }
+      if (ride.id) {
+        try {
+          await RideService.acceptRide(ride.id, userId || undefined);
+        } catch (err) {
+          console.warn('[RideRequestCard] Aviso ao aceitar no Supabase:', err);
         }
-      } else {
-        dispatch({ type: 'ACCEPT_RIDE' });
       }
+      dispatch({ type: 'ACCEPT_RIDE', ride });
     } catch (err) {
       console.error('[RideRequestCard] Erro ao aceitar:', err);
-      dispatch({ type: 'ACCEPT_RIDE' });
+      dispatch({ type: 'ACCEPT_RIDE', ride });
     } finally {
       setAccepting(false);
     }

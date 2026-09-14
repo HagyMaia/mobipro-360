@@ -15,6 +15,7 @@ import NewRideModal from "@/components/Ride/NewRideModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { StatusPill } from "@/components/StatusControl";
 import { Card, Button } from "@/components/ui";
+import { useApp } from "@/lib/store";
 import type { DriverWorkStatus } from "@/types";
 
 import BottomNav from "@/components/BottomNav";
@@ -25,6 +26,7 @@ const DriverMap = dynamic(
 );
 
 export default function MapaPage() {
+    const { dispatch } = useApp();
     const [isOnline, setIsOnline] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
     const [isLoadingToggle, setIsLoadingToggle] = useState(false);
@@ -203,15 +205,33 @@ export default function MapaPage() {
     };
 
     const handleAcceptRide = async (rideId: string) => {
-        if (!userId) return;
-        const success = await RideService.acceptRide(rideId, userId);
-
-        if (success) {
+        try {
+            await RideService.acceptRide(rideId, userId || undefined);
+            if (currentOffer) {
+                dispatch({
+                    type: 'ACCEPT_RIDE',
+                    ride: {
+                        id: currentOffer.id,
+                        passengerName: currentOffer.passengerName,
+                        passengerRating: currentOffer.passengerRating,
+                        passengerAccountMonths: 6,
+                        passengerTrips: 18,
+                        pickup: currentOffer.pickupAddress,
+                        dropoff: currentOffer.dropoffAddress,
+                        distanceKm: currentOffer.distanceKm,
+                        estimatedMinutes: currentOffer.estimatedMinutes,
+                        fare: currentOffer.fareAmount,
+                        paymentMethod: 'pix',
+                        requestedAt: new Date().toISOString(),
+                        source: 'app',
+                    },
+                });
+            }
             clearOffer();
             alert('Corrida Aceita! Rota calculada.');
-        } else {
-            rejectOffer(rideId);
-            alert('Outro motorista aceitou esta corrida antes de você.');
+        } catch (err) {
+            console.error('[Mapa] Erro ao aceitar corrida:', err);
+            clearOffer();
         }
     };
 

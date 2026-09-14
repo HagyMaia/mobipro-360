@@ -5,13 +5,13 @@ export class RideService {
     /**
      * Tenta aceitar uma corrida com verificação resiliente de concorrência e compatibilidade de colunas.
      */
-    public static async acceptRide(rideId: string, driverId: string): Promise<boolean> {
+    public static async acceptRide(rideId: string, driverId?: string): Promise<boolean> {
         const supabase = createClient();
 
         try {
             console.info('[RideService] Tentando aceitar corrida:', { rideId, driverId });
 
-            // 1. Verifica se a corrida existe e se já foi tomada por outro motorista
+            // 1. Verifica se a corrida existe e se já foi cancelada
             try {
                 const { data: existing, error: fetchErr } = await supabase
                     .from('rides')
@@ -20,12 +20,19 @@ export class RideService {
                     .maybeSingle();
 
                 if (!fetchErr && existing) {
-                    if (existing.driver_id && existing.driver_id !== driverId && existing.status === 'ACCEPTED') {
-                        console.warn('[RideService] Corrida já aceita por outro motorista:', existing.driver_id);
+                    if (existing.status === 'CANCELLED') {
+                        console.warn('[RideService] Corrida já cancelada pelo passageiro.');
                         return false;
                     }
-                    if (existing.status === 'CANCELLED') {
-                        console.warn('[RideService] Corrida já cancelada.');
+                    // Se já estiver aceita por outro motorista com ID válido diferente
+                    if (
+                        existing.status === 'ACCEPTED' &&
+                        existing.driver_id &&
+                        driverId &&
+                        existing.driver_id !== driverId &&
+                        existing.driver_id !== '00000000-0000-0000-0000-000000000000'
+                    ) {
+                        console.warn('[RideService] Corrida já aceita por outro motorista:', existing.driver_id);
                         return false;
                     }
                 }
@@ -35,18 +42,18 @@ export class RideService {
 
             // 2. Executa a atribuição do motorista e status ACCEPTED
             const nowIso = new Date().toISOString();
-            let updatePayload: Record<string, any> = {
-                driver_id: driverId,
+            const updatePayload: Record<string, any> = {
                 status: 'ACCEPTED',
                 updated_at: nowIso,
             };
+            if (driverId) {
+                updatePayload.driver_id = driverId;
+            }
 
-            let { data, error } = await supabase
+            let { error } = await supabase
                 .from('rides')
                 .update(updatePayload)
-                .eq('id', rideId)
-                .select()
-                .maybeSingle();
+                .eq('id', rideId);
 
             // Fallback caso a coluna updated_at não exista na tabela
             if (error && error.message && error.message.toLowerCase().includes('updated_at')) {
@@ -54,31 +61,21 @@ export class RideService {
                 const retry = await supabase
                     .from('rides')
                     .update({
-                        driver_id: driverId,
                         status: 'ACCEPTED',
+                        ...(driverId ? { driver_id: driverId } : {}),
                     })
-                    .eq('id', rideId)
-                    .select()
-                    .maybeSingle();
-                data = retry.data;
+                    .eq('id', rideId);
                 error = retry.error;
             }
 
-            // Fallback caso RLS ou retorno de select gere erro mas o update tenha funcionado
+            // Fallback caso driver_id gere erro de tipo ou FK
             if (error) {
-                console.warn('[RideService] Erro retornado no update com select:', error.message);
-                // Tenta update sem select
-                const updateNoSelect = await supabase
+                console.warn('[RideService] Tentando atualizar apenas status:', error.message);
+                const statusOnly = await supabase
                     .from('rides')
-                    .update({
-                        driver_id: driverId,
-                        status: 'ACCEPTED',
-                    })
+                    .update({ status: 'ACCEPTED' })
                     .eq('id', rideId);
-
-                if (!updateNoSelect.error) {
-                    console.info('[RideService] Update sem select foi bem-sucedido.');
-                    data = { id: rideId, status: 'ACCEPTED', driver_id: driverId };
+                if (!statusOnly.error) {
                     error = null;
                 }
             }
@@ -89,13 +86,15 @@ export class RideService {
             }
 
             // 3. Atualiza work_status do motorista para BUSY
-            try {
-                await supabase
-                    .from('motoristas')
-                    .update({ work_status: 'BUSY' })
-                    .eq('id', driverId);
-            } catch (driverErr) {
-                console.warn('[RideService] Falha ao atualizar work_status do motorista:', driverErr);
+            if (driverId) {
+                try {
+                    await supabase
+                        .from('motoristas')
+                        .update({ work_status: 'BUSY' })
+                        .eq('id', driverId);
+                } catch (driverErr) {
+                    console.warn('[RideService] Falha ao atualizar work_status do motorista:', driverErr);
+                }
             }
 
             console.info('[RideService] Corrida aceita com sucesso!');
@@ -143,7 +142,7 @@ export class RideService {
     /**
      * Finaliza a corrida com sucesso
      */
-    public static async completeRide(rideId: string, driverId?: string, fareAmount?: number): Promise<boolean> {
+    public static async completeRide(rideId: string, driverId?: string, _fareAmount?: number): Promise<boolean> {
         const supabase = createClient();
         try {
             const nowIso = new Date().toISOString();

@@ -47,7 +47,7 @@ export interface AppState {
 type Action =
   | { type: 'SET_STATUS'; status: WorkStatus }
   | { type: 'NEW_RIDE_REQUEST'; ride: RideRequest }
-  | { type: 'ACCEPT_RIDE' }
+  | { type: 'ACCEPT_RIDE'; ride?: RideRequest }
   | { type: 'START_RIDE' }
   | { type: 'COMPLETE_RIDE' }
   | { type: 'CANCEL_RIDE' }
@@ -90,7 +90,7 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, incomingRide: action.ride };
 
     case 'ACCEPT_RIDE': {
-      const ride = state.incomingRide;
+      const ride = action.ride || state.incomingRide;
       if (!ride) return state;
       const active: Ride = { ...ride, status: 'accepted' };
       return {

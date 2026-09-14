@@ -127,8 +127,6 @@ export default function HomePage() {
         source: 'app',
       };
       dispatch({ type: 'NEW_RIDE_REQUEST', ride: realRideRequest });
-    } else if (!currentOffer && state.incomingRide) {
-      dispatch({ type: 'REJECT_RIDE' });
     }
   }, [currentOffer, isOnlineAndAvailable, state.activeRide, dispatch]);
 
@@ -152,25 +150,16 @@ export default function HomePage() {
       userId = res.data?.user?.id;
     } catch (_) {}
 
-    if (userId && ride.id) {
-      try {
-        const success = await RideService.acceptRide(ride.id, userId);
-        if (success) {
-          clearOffer();
-          dispatch({ type: 'ACCEPT_RIDE' });
-        } else {
-          alert('Esta corrida já foi aceita por outro motorista ou cancelada.');
-          rejectOffer(ride.id);
-          dispatch({ type: 'REJECT_RIDE' });
-        }
-      } catch (err) {
-        console.error('[HomePage] Erro ao aceitar corrida:', err);
-        clearOffer();
-        dispatch({ type: 'ACCEPT_RIDE' });
+    try {
+      if (ride.id) {
+        await RideService.acceptRide(ride.id, userId || undefined);
       }
-    } else {
       clearOffer();
-      dispatch({ type: 'ACCEPT_RIDE' });
+      dispatch({ type: 'ACCEPT_RIDE', ride });
+    } catch (err) {
+      console.error('[HomePage] Erro ao aceitar corrida:', err);
+      clearOffer();
+      dispatch({ type: 'ACCEPT_RIDE', ride });
     }
   };
 

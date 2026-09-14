@@ -80,18 +80,34 @@ export default function CorridasPage() {
   }
 
   const handleAccept = async (rideId: string) => {
-    const success = await RideService.acceptRide(rideId, user.id);
-    if (success) {
+    try {
+      await RideService.acceptRide(rideId, user.id);
       if (currentOffer) {
         dispatch({
-          type: 'ACCEPT_RIDE'
+          type: 'ACCEPT_RIDE',
+          ride: {
+            id: currentOffer.id,
+            passengerName: currentOffer.passengerName,
+            passengerRating: currentOffer.passengerRating,
+            passengerAccountMonths: 6,
+            passengerTrips: 18,
+            pickup: currentOffer.pickupAddress,
+            dropoff: currentOffer.dropoffAddress,
+            distanceKm: currentOffer.distanceKm,
+            estimatedMinutes: currentOffer.estimatedMinutes,
+            fare: currentOffer.fareAmount,
+            paymentMethod: 'pix',
+            requestedAt: new Date().toISOString(),
+            source: 'app',
+          },
         });
       }
       clearOffer();
       router.push(`/corridas/${rideId}`);
-    } else {
-      rejectOffer(rideId);
-      alert('Não foi possível aceitar esta corrida. Tente novamente.');
+    } catch (err) {
+      console.error('[Corridas] Erro ao aceitar:', err);
+      clearOffer();
+      router.push(`/corridas/${rideId}`);
     }
   };
 

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase';
 import { RideOffer } from '@/types';
 
 const REJECTED_RIDES_KEY = 'mobipro_rejected_rides_v1';
-const MAX_STALE_RIDE_MS = 3 * 60 * 1000; // 3 minutos
+const MAX_STALE_RIDE_MS = 5 * 60 * 1000; // 5 minutos
 
 function getRejectedRideIds(): Set<string> {
     if (typeof window === 'undefined') return new Set();
@@ -46,6 +46,36 @@ function saveRejectedRideId(id: string) {
     }
 }
 
+function isRideSearching(status?: string | null): boolean {
+    if (!status) return true;
+    const s = String(status).toUpperCase();
+    return ['SEARCHING', 'AVAILABLE', 'SEARCHING_DRIVER', 'PENDING', 'SOLICITADA', 'ABERTA'].includes(s);
+}
+
+function parseRideToOffer(r: any): RideOffer {
+    const dist = Number(r.distance_km || r.distancia_km || r.distance || 5.0);
+    const fareVal = Number(r.fare_amount || r.valor || r.fare || r.preco || 25.00);
+    return {
+        id: r.id,
+        passengerName: r.passenger_name || r.cliente_nome || r.passenger || 'Passageiro',
+        passengerRating: Number(r.passenger_rating || 5.0),
+        pickupAddress: r.pickup_address || r.pickup || r.origem || r.endereco_origem || 'Origem da solicitação',
+        pickupLocation: {
+            latitude: Number(r.pickup_lat || r.latitude_origem || -3.1190),
+            longitude: Number(r.pickup_lng || r.longitude_origem || -60.0217),
+        },
+        dropoffAddress: r.dropoff_address || r.destination_address || r.dropoff || r.destino || r.endereco_destino || 'Destino da solicitação',
+        dropoffLocation: {
+            latitude: Number(r.dropoff_lat || r.latitude_destino || -3.1072),
+            longitude: Number(r.dropoff_lng || r.longitude_destino || -60.0125),
+        },
+        fareAmount: fareVal,
+        distanceKm: dist,
+        estimatedMinutes: r.estimated_minutes ? Number(r.estimated_minutes) : Math.round(dist * 2.5) || 15,
+        expiresInSeconds: 35,
+    };
+}
+
 export function useRideRequests(isOnline: boolean) {
     const [currentOffer, setCurrentOffer] = useState<RideOffer | null>(null);
 
@@ -65,10 +95,10 @@ export function useRideRequests(isOnline: boolean) {
         setCurrentOffer(null);
     }, []);
 
-    // Expiração automática por tempo da oferta atual (30s)
+    // Expiração automática por tempo da oferta atual (35s)
     useEffect(() => {
         if (!currentOffer) return;
-        const durationSec = currentOffer.expiresInSeconds ?? 30;
+        const durationSec = currentOffer.expiresInSeconds ?? 35;
         const timer = setTimeout(() => {
             console.info('[useRideRequests] Oferta expirada por tempo:', currentOffer.id);
             rejectOffer(currentOffer.id);
@@ -87,22 +117,24 @@ export function useRideRequests(isOnline: boolean) {
         let isMounted = true;
         const supabase = createClient();
 
-        // 1. Busca corridas pendentes criadas recentemente com status SEARCHING
+        // 1. Busca corridas pendentes criadas recentemente no Supabase
         const checkPendingRides = async () => {
             try {
                 const rejected = getRejectedRideIds();
                 const { data, error } = await supabase
                     .from('rides')
                     .select('*')
-                    .eq('status', 'SEARCHING')
+                    .or('status.eq.SEARCHING,status.eq.searching,status.eq.AVAILABLE,status.eq.available,status.eq.SEARCHING_DRIVER,status.eq.searching_driver,status.eq.PENDING,status.eq.pending,status.is.null')
                     .order('created_at', { ascending: false })
-                    .limit(5);
+                    .limit(10);
 
                 if (!error && Array.isArray(data) && isMounted) {
                     const now = Date.now();
                     const candidate = data.find((r: any) => {
                         if (!r || !r.id) return false;
                         if (rejected.has(r.id)) return false;
+                        // Não pode estar já com motorista vinculado
+                        if (r.driver_id && r.status === 'ACCEPTED') return false;
                         if (r.created_at) {
                             const createdAtTime = new Date(r.created_at).getTime();
                             if (!isNaN(createdAtTime) && (now - createdAtTime > MAX_STALE_RIDE_MS)) {
@@ -113,21 +145,7 @@ export function useRideRequests(isOnline: boolean) {
                     });
 
                     if (candidate && isMounted) {
-                        const dist = Number(candidate.distance_km || candidate.distancia_km || candidate.distance || 5.2);
-                        const fareVal = Number(candidate.fare_amount || candidate.valor || candidate.fare || 28.50);
-                        setCurrentOffer({
-                            id: candidate.id,
-                            passengerName: candidate.passenger_name || candidate.cliente_nome || 'Passageiro',
-                            passengerRating: Number(candidate.passenger_rating || 5.0),
-                            pickupAddress: candidate.pickup_address || candidate.origem || 'Av. Djalma Batista, 1000 - Manaus',
-                            pickupLocation: { latitude: Number(candidate.pickup_lat || -3.1190), longitude: Number(candidate.pickup_lng || -60.0217) },
-                            dropoffAddress: candidate.dropoff_address || candidate.destino || candidate.destination_address || 'Shopping Manauara - Adrianópolis',
-                            dropoffLocation: { latitude: Number(candidate.dropoff_lat || -3.1072), longitude: Number(candidate.dropoff_lng || -60.0125) },
-                            fareAmount: fareVal,
-                            distanceKm: dist,
-                            estimatedMinutes: candidate.estimated_minutes ? Number(candidate.estimated_minutes) : Math.round(dist * 2.5) || 12,
-                            expiresInSeconds: 30,
-                        });
+                        setCurrentOffer(parseRideToOffer(candidate));
                     }
                 }
             } catch (err) {
@@ -137,7 +155,7 @@ export function useRideRequests(isOnline: boolean) {
 
         checkPendingRides();
 
-        // 2. Escuta novos registros e atualizações na tabela de corridas
+        // 2. Escuta novos registros e atualizações em tempo real na tabela de corridas
         try {
             if (supabase?.channel) {
                 channel = supabase
@@ -151,25 +169,12 @@ export function useRideRequests(isOnline: boolean) {
                         },
                         (payload: any) => {
                             const newRide = payload.new;
-                            if (newRide && newRide.status === 'SEARCHING' && isMounted) {
+                            if (newRide && isRideSearching(newRide.status) && isMounted) {
                                 const rejected = getRejectedRideIds();
                                 if (rejected.has(newRide.id)) return;
+                                if (newRide.driver_id && newRide.status === 'ACCEPTED') return;
 
-                                const dist = Number(newRide.distance_km || newRide.distancia_km || newRide.distance || 5.2);
-                                const fareVal = Number(newRide.fare_amount || newRide.valor || newRide.fare || 28.50);
-                                setCurrentOffer({
-                                    id: newRide.id,
-                                    passengerName: newRide.passenger_name || newRide.cliente_nome || 'Passageiro',
-                                    passengerRating: Number(newRide.passenger_rating || 5.0),
-                                    pickupAddress: newRide.pickup_address || newRide.origem || 'Av. Djalma Batista, 1000 - Manaus',
-                                    pickupLocation: { latitude: Number(newRide.pickup_lat || -3.1190), longitude: Number(newRide.pickup_lng || -60.0217) },
-                                    dropoffAddress: newRide.dropoff_address || newRide.destino || newRide.destination_address || 'Shopping Manauara - Adrianópolis',
-                                    dropoffLocation: { latitude: Number(newRide.dropoff_lat || -3.1072), longitude: Number(newRide.dropoff_lng || -60.0125) },
-                                    fareAmount: fareVal,
-                                    distanceKm: dist,
-                                    estimatedMinutes: newRide.estimated_minutes ? Number(newRide.estimated_minutes) : Math.round(dist * 2.5) || 12,
-                                    expiresInSeconds: 30,
-                                });
+                                setCurrentOffer(parseRideToOffer(newRide));
                             }
                         }
                     )
@@ -183,27 +188,11 @@ export function useRideRequests(isOnline: boolean) {
                         (payload: any) => {
                             const updatedRide = payload.new;
                             if (updatedRide && isMounted) {
-                                if (updatedRide.status === 'SEARCHING') {
+                                if (isRideSearching(updatedRide.status) && !updatedRide.driver_id) {
                                     const rejected = getRejectedRideIds();
                                     if (rejected.has(updatedRide.id)) return;
-
-                                    const dist = Number(updatedRide.distance_km || updatedRide.distancia_km || updatedRide.distance || 5.2);
-                                    const fareVal = Number(updatedRide.fare_amount || updatedRide.valor || updatedRide.fare || 28.50);
-                                    setCurrentOffer({
-                                        id: updatedRide.id,
-                                        passengerName: updatedRide.passenger_name || updatedRide.cliente_nome || 'Passageiro',
-                                        passengerRating: Number(updatedRide.passenger_rating || 5.0),
-                                        pickupAddress: updatedRide.pickup_address || updatedRide.origem || 'Av. Djalma Batista, 1000 - Manaus',
-                                        pickupLocation: { latitude: Number(updatedRide.pickup_lat || -3.1190), longitude: Number(updatedRide.pickup_lng || -60.0217) },
-                                        dropoffAddress: updatedRide.dropoff_address || updatedRide.destino || updatedRide.destination_address || 'Shopping Manauara - Adrianópolis',
-                                        dropoffLocation: { latitude: Number(updatedRide.dropoff_lat || -3.1072), longitude: Number(updatedRide.dropoff_lng || -60.0125) },
-                                        fareAmount: fareVal,
-                                        distanceKm: dist,
-                                        estimatedMinutes: updatedRide.estimated_minutes ? Number(updatedRide.estimated_minutes) : Math.round(dist * 2.5) || 12,
-                                        expiresInSeconds: 30,
-                                    });
-                                } else {
-                                    // Se a corrida atual foi aceita por outro ou cancelada, limpa a oferta
+                                    setCurrentOffer(parseRideToOffer(updatedRide));
+                                } else if (updatedRide.status === 'CANCELLED') {
                                     setCurrentOffer((prev) => (prev?.id === updatedRide.id ? null : prev));
                                 }
                             }
