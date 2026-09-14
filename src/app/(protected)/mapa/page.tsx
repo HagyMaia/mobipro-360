@@ -54,8 +54,8 @@ export default function MapaPage() {
     // Escuta cancelamentos remotos da corrida ativa
     useActiveRideSync();
 
-    const isEffectiveOnline = (isOnline || state.status === 'available') && !state.activeRide;
-    const { location } = useDriverLocation(isEffectiveOnline);
+    const isEffectiveOnline = (isOnline || state.status === 'available') || Boolean(state.activeRide);
+    const { location } = useDriverLocation(isEffectiveOnline, userId, state.activeRide?.id);
 
     const {
         currentOffer,
@@ -365,6 +365,7 @@ export default function MapaPage() {
                     pickupLocation={pickupLocation}
                     dropoffLocation={dropoffLocation}
                     showRoute={Boolean(pickupLocation || dropoffLocation)}
+                    routeMode={activeRide?.status === 'accepted' ? 'to-pickup' : activeRide?.status === 'in-progress' ? 'to-dropoff' : 'full'}
                 />
             </div>
 

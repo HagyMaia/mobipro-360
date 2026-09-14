@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -24,10 +25,13 @@ import { PaymentCheckoutModal } from '@/components/Ride/PaymentCheckoutModal';
 import { NavigationModal } from '@/components/NavigationModal';
 import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
+import { useDriverLocation } from '@/hooks/useDriverLocation';
 import { RideService } from '@/services/ride/RideService';
 import { createClient } from '@/lib/supabase';
 import { formatBRL } from '@/lib/utils';
 import type { Ride } from '@/lib/types';
+
+const DriverMap = dynamic(() => import('@/components/map/DriverMap'), { ssr: false });
 
 export default function DetalheCorrida() {
   const router = useRouter();
@@ -51,6 +55,9 @@ export default function DetalheCorrida() {
   const activeRide = state?.activeRide?.id === urlId ? state.activeRide : state?.activeRide;
   const historyRide = state?.rideHistory?.find((r) => r.id === urlId) || null;
   const currentRide: Ride | null = activeRide || historyRide || dbRide;
+
+  const isRideActive = state.activeRide?.id === currentRide?.id && currentRide?.status !== 'completed' && currentRide?.status !== 'cancelled';
+  const { location } = useDriverLocation(isRideActive, user?.id, currentRide?.id);
 
   // Busca do Supabase se recarregar a página direto no link
   useEffect(() => {
@@ -120,10 +127,10 @@ export default function DetalheCorrida() {
     );
   }
 
-  const isRideActive = state.activeRide?.id === currentRide.id && currentRide.status !== 'completed' && currentRide.status !== 'cancelled';
   const navAddress = currentRide.status === 'in-progress' ? currentRide.dropoff : currentRide.pickup;
   const navCoords = currentRide.status === 'in-progress' ? currentRide.dropoffCoordinates : currentRide.pickupCoordinates;
   const navLabel = currentRide.status === 'in-progress' ? 'Navegar ao Destino' : 'Navegar ao Embarque';
+  const routeMode = currentRide.status === 'accepted' ? 'to-pickup' : currentRide.status === 'in-progress' ? 'to-dropoff' : 'full';
 
   const handleSendMessage = (msg: string) => {
     console.log('[DetalheCorrida] Mensagem enviada:', msg);
@@ -185,9 +192,15 @@ export default function DetalheCorrida() {
             </div>
             <div className="flex items-center gap-1.5 text-[11px] font-bold">
               {isRideActive ? (
-                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                  <Clock size={11} className="animate-spin" /> Em andamento
-                </span>
+                currentRide.status === 'accepted' ? (
+                  <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                    <Clock size={11} className="animate-spin" /> A caminho do embarque
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <Navigation size={11} className="animate-pulse" /> Em viagem até o destino
+                  </span>
+                )
               ) : currentRide.status === 'completed' ? (
                 <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 size={11} /> Concluída com Sucesso
@@ -209,7 +222,39 @@ export default function DetalheCorrida() {
       </header>
 
       {/* CONTEÚDO PRINCIPAL */}
-      <main className="flex-1 space-y-4 overflow-y-auto p-4 pb-28">
+      <main className="flex-1 space-y-4 overflow-y-auto p-4 pb-36">
+
+        {/* MAPA OPERACIONAL EM TEMPO REAL */}
+        <div className="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 shadow-md">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-dark-800 px-4 py-2.5 bg-slate-50/50 dark:bg-dark-800/40">
+            <div className="flex items-center gap-2 text-xs font-black text-slate-800 dark:text-slate-200">
+              <Navigation size={14} className="text-brand-600 dark:text-brand" />
+              {currentRide.status === 'accepted' ? 'Trajeto até o Ponto de Embarque' : 'Trajeto da Corrida em Tempo Real'}
+            </div>
+            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase">
+              GPS Ativo
+            </span>
+          </div>
+          <div className="h-56 w-full overflow-hidden relative">
+            <DriverMap
+              location={location}
+              pickupLocation={{
+                latitude: currentRide.pickupCoordinates?.latitude ?? -3.1190,
+                longitude: currentRide.pickupCoordinates?.longitude ?? -60.0217,
+                label: 'EMBARQUE',
+                address: currentRide.pickup,
+              }}
+              dropoffLocation={{
+                latitude: currentRide.dropoffCoordinates?.latitude ?? -3.1072,
+                longitude: currentRide.dropoffCoordinates?.longitude ?? -60.0125,
+                label: 'DESTINO',
+                address: currentRide.dropoff,
+              }}
+              showRoute={true}
+              routeMode={routeMode}
+            />
+          </div>
+        </div>
         
         {/* CARD VALOR & TEMPO */}
         <div className="rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 p-5 shadow-sm">

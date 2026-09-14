@@ -228,4 +228,69 @@ export class RideService {
             return false;
         }
     }
+
+    /**
+     * Atualiza a localização em tempo real do motorista no banco de dados e na corrida ativa
+     * para que o app do passageiro veja o carro se movimentando em tempo real.
+     */
+    public static async updateDriverLiveLocation(
+        driverId?: string | null,
+        coords?: { latitude: number; longitude: number; heading?: number | null; speed?: number | null } | null,
+        activeRideId?: string | null
+    ): Promise<void> {
+        if (!coords || !coords.latitude || !coords.longitude) return;
+
+        const supabase = createClient();
+        const nowIso = new Date().toISOString();
+
+        // 1. Atualiza na tabela da corrida ativa (para o passageiro acompanhar)
+        if (activeRideId) {
+            try {
+                await supabase
+                    .from('rides')
+                    .update({
+                        motorista_lat: coords.latitude,
+                        motorista_lng: coords.longitude,
+                        driver_latitude: coords.latitude,
+                        driver_longitude: coords.longitude,
+                        updated_at: nowIso,
+                    })
+                    .eq('id', activeRideId);
+            } catch (err1) {
+                try {
+                    await supabase
+                        .from('rides')
+                        .update({
+                            motorista_lat: coords.latitude,
+                            motorista_lng: coords.longitude,
+                        })
+                        .eq('id', activeRideId);
+                } catch (_) {}
+            }
+        }
+
+        // 2. Atualiza no perfil do motorista
+        if (driverId) {
+            try {
+                await supabase
+                    .from('motoristas')
+                    .update({
+                        latitude: coords.latitude,
+                        longitude: coords.longitude,
+                        updated_at: nowIso,
+                    })
+                    .eq('id', driverId);
+            } catch (err2) {
+                try {
+                    await supabase
+                        .from('motoristas')
+                        .update({
+                            lat: coords.latitude,
+                            lng: coords.longitude,
+                        })
+                        .eq('id', driverId);
+                } catch (_) {}
+            }
+        }
+    }
 }

@@ -1,8 +1,9 @@
 // src/hooks/useDriverLocation.ts
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { LocationCoordinates } from '@/types';
 import { LocationService } from '@/services/location/LocationService';
+import { RideService } from '@/services/ride/RideService';
 
 export const DEFAULT_MANAUS_LOCATION: LocationCoordinates = {
     latitude: -3.119028,
@@ -13,10 +14,15 @@ export const DEFAULT_MANAUS_LOCATION: LocationCoordinates = {
     timestamp: Date.now(),
 };
 
-export function useDriverLocation(isOnline: boolean = false) {
+export function useDriverLocation(
+    isOnline: boolean = false,
+    driverId?: string | null,
+    activeRideId?: string | null
+) {
     const [location, setLocation] = useState<LocationCoordinates | null>(DEFAULT_MANAUS_LOCATION);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const lastBroadcastRef = useRef<number>(0);
 
     const fetchInitialLocation = useCallback(async () => {
         try {
@@ -24,6 +30,10 @@ export function useDriverLocation(isOnline: boolean = false) {
             const coords = await LocationService.getCurrentLocation();
             setLocation(coords);
             setError(null);
+
+            if (driverId || activeRideId) {
+                RideService.updateDriverLiveLocation(driverId, coords, activeRideId);
+            }
         } catch (err: any) {
             console.warn('[useDriverLocation] GPS não disponível, usando Manaus-AM:', err?.message);
             setLocation(DEFAULT_MANAUS_LOCATION);
@@ -31,16 +41,23 @@ export function useDriverLocation(isOnline: boolean = false) {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [driverId, activeRideId]);
 
     useEffect(() => {
         fetchInitialLocation();
 
-        if (isOnline) {
+        if (isOnline || activeRideId) {
             LocationService.startTracking(
                 (newCoords) => {
                     setLocation(newCoords);
                     setError(null);
+
+                    // Transmite posição para o Supabase (máx 1x a cada 4 segundos)
+                    const now = Date.now();
+                    if (now - lastBroadcastRef.current >= 4000) {
+                        lastBroadcastRef.current = now;
+                        RideService.updateDriverLiveLocation(driverId, newCoords, activeRideId);
+                    }
                 },
                 (err) => {
                     setError(err.message);
@@ -53,7 +70,7 @@ export function useDriverLocation(isOnline: boolean = false) {
         return () => {
             LocationService.stopTracking();
         };
-    }, [isOnline, fetchInitialLocation]);
+    }, [isOnline, activeRideId, driverId, fetchInitialLocation]);
 
     return { location, error, isLoading, refreshLocation: fetchInitialLocation };
 }

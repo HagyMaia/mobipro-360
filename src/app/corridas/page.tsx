@@ -35,8 +35,8 @@ export default function CorridasPage() {
 
   const [isOnline, setIsOnline] = useState(false);
   const [isLoadingTurno, setIsLoadingTurno] = useState(false);
-  const isEffectiveOnline = (isOnline || state.status === 'available') && !state.activeRide;
-  const { location } = useDriverLocation(isEffectiveOnline);
+  const isEffectiveOnline = (isOnline || state.status === 'available') || Boolean(state.activeRide);
+  const { location } = useDriverLocation(isEffectiveOnline, user?.id, state.activeRide?.id);
   const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isEffectiveOnline);
 
   useEffect(() => {
@@ -191,8 +191,8 @@ export default function CorridasPage() {
                     }
                   : state.activeRide
                   ? {
-                      latitude: -3.1190,
-                      longitude: -60.0217,
+                      latitude: state.activeRide.pickupCoordinates?.latitude ?? -3.1190,
+                      longitude: state.activeRide.pickupCoordinates?.longitude ?? -60.0217,
                       label: 'EMBARQUE',
                       address: state.activeRide.pickup,
                     }
@@ -208,14 +208,15 @@ export default function CorridasPage() {
                     }
                   : state.activeRide
                   ? {
-                      latitude: -3.1072,
-                      longitude: -60.0125,
+                      latitude: state.activeRide.dropoffCoordinates?.latitude ?? -3.1072,
+                      longitude: state.activeRide.dropoffCoordinates?.longitude ?? -60.0125,
                       label: 'DESTINO',
                       address: state.activeRide.dropoff,
                     }
                   : null
               }
               showRoute={Boolean(currentOffer || state.activeRide)}
+              routeMode={state.activeRide?.status === 'accepted' ? 'to-pickup' : state.activeRide?.status === 'in-progress' ? 'to-dropoff' : 'full'}
             />
           </div>
         </div>

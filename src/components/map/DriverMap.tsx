@@ -1,7 +1,7 @@
 // src/components/map/DriverMap.tsx
 'use client';
 
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -14,11 +14,12 @@ export interface MapPoint {
     address?: string;
 }
 
-interface DriverMapProps {
+export interface DriverMapProps {
     location: LocationCoordinates | null;
     pickupLocation?: MapPoint | null;
     dropoffLocation?: MapPoint | null;
     showRoute?: boolean;
+    routeMode?: 'to-pickup' | 'to-dropoff' | 'full';
 }
 
 // Cache local de trajetos em memória para evitar chamadas repetidas
@@ -30,18 +31,18 @@ const createCarIcon = () =>
         className: 'custom-leaflet-car-marker',
         html: `
             <div style="
-                width: 38px;
-                height: 38px;
+                width: 40px;
+                height: 40px;
                 background: #0f172a;
                 border: 2.5px solid #eab308;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+                box-shadow: 0 4px 16px rgba(0,0,0,0.5);
                 position: relative;
             ">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fef08a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fef08a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
                     <circle cx="7" cy="17" r="2"/>
                     <path d="M9 17h6"/>
@@ -51,16 +52,17 @@ const createCarIcon = () =>
                     position: absolute;
                     top: -3px;
                     right: -3px;
-                    width: 10px;
-                    height: 10px;
+                    width: 11px;
+                    height: 11px;
                     background: #22c55e;
                     border: 2px solid #ffffff;
                     border-radius: 50%;
+                    box-shadow: 0 0 8px #22c55e;
                 "></span>
             </div>
         `,
-        iconSize: [38, 38],
-        iconAnchor: [19, 19],
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
     });
 
 const createPickupIcon = (label?: string) =>
@@ -78,7 +80,7 @@ const createPickupIcon = (label?: string) =>
                     color: #ffffff;
                     font-size: 10px;
                     font-weight: 800;
-                    padding: 2px 7px;
+                    padding: 3px 8px;
                     border-radius: 12px;
                     margin-bottom: 2px;
                     white-space: nowrap;
@@ -93,12 +95,12 @@ const createPickupIcon = (label?: string) =>
                     background: #10b981;
                     border: 3px solid #ffffff;
                     border-radius: 50%;
-                    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.4);
+                    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.4);
                 "></div>
             </div>
         `,
-        iconSize: [80, 42],
-        iconAnchor: [40, 36],
+        iconSize: [90, 44],
+        iconAnchor: [45, 38],
     });
 
 const createDropoffIcon = (label?: string) =>
@@ -116,7 +118,7 @@ const createDropoffIcon = (label?: string) =>
                     color: #ffffff;
                     font-size: 10px;
                     font-weight: 800;
-                    padding: 2px 7px;
+                    padding: 3px 8px;
                     border-radius: 12px;
                     margin-bottom: 2px;
                     white-space: nowrap;
@@ -131,12 +133,12 @@ const createDropoffIcon = (label?: string) =>
                     background: #ef4444;
                     border: 3px solid #ffffff;
                     border-radius: 50%;
-                    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.4);
+                    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.4);
                 "></div>
             </div>
         `,
-        iconSize: [80, 42],
-        iconAnchor: [40, 36],
+        iconSize: [90, 44],
+        iconAnchor: [45, 38],
     });
 
 // Controlador de foco e enquadramento dinâmico do mapa
@@ -145,11 +147,13 @@ function MapBoundsController({
     pickupLocation,
     dropoffLocation,
     roadPath,
+    routeMode,
 }: {
     location: LocationCoordinates | null;
     pickupLocation?: MapPoint | null;
     dropoffLocation?: MapPoint | null;
     roadPath?: [number, number][];
+    routeMode?: 'to-pickup' | 'to-dropoff' | 'full';
 }) {
     const map = useMap();
 
@@ -167,14 +171,16 @@ function MapBoundsController({
             return;
         }
 
-        if (location?.latitude && location?.longitude) {
-            points.push([location.latitude, location.longitude]);
-        }
-        if (pickupLocation?.latitude && pickupLocation?.longitude) {
-            points.push([pickupLocation.latitude, pickupLocation.longitude]);
-        }
-        if (dropoffLocation?.latitude && dropoffLocation?.longitude) {
-            points.push([dropoffLocation.latitude, dropoffLocation.longitude]);
+        if (routeMode === 'to-pickup') {
+            if (location?.latitude && location?.longitude) points.push([location.latitude, location.longitude]);
+            if (pickupLocation?.latitude && pickupLocation?.longitude) points.push([pickupLocation.latitude, pickupLocation.longitude]);
+        } else if (routeMode === 'to-dropoff') {
+            if (location?.latitude && location?.longitude) points.push([location.latitude, location.longitude]);
+            if (dropoffLocation?.latitude && dropoffLocation?.longitude) points.push([dropoffLocation.latitude, dropoffLocation.longitude]);
+        } else {
+            if (location?.latitude && location?.longitude) points.push([location.latitude, location.longitude]);
+            if (pickupLocation?.latitude && pickupLocation?.longitude) points.push([pickupLocation.latitude, pickupLocation.longitude]);
+            if (dropoffLocation?.latitude && dropoffLocation?.longitude) points.push([dropoffLocation.latitude, dropoffLocation.longitude]);
         }
 
         if (points.length >= 2) {
@@ -187,7 +193,7 @@ function MapBoundsController({
         } else if (location?.latitude && location?.longitude) {
             map.setView([location.latitude, location.longitude], 16, { animate: true });
         }
-    }, [location, pickupLocation, dropoffLocation, roadPath, map]);
+    }, [location, pickupLocation, dropoffLocation, roadPath, routeMode, map]);
 
     return null;
 }
@@ -197,6 +203,7 @@ export default function DriverMap({
     pickupLocation,
     dropoffLocation,
     showRoute = true,
+    routeMode = 'full',
 }: DriverMapProps) {
     // Posição padrão: Manaus - AM
     const defaultPosition: [number, number] = [-3.119028, -60.021731];
@@ -210,24 +217,52 @@ export default function DriverMap({
 
     const [roadGeometry, setRoadGeometry] = useState<[number, number][]>([]);
 
+    // Identifica coordenadas de origem e destino da rota com base no modo
+    const routeEndpoints = useMemo(() => {
+        let startLat: number | null = null;
+        let startLng: number | null = null;
+        let endLat: number | null = null;
+        let endLng: number | null = null;
+
+        if (routeMode === 'to-pickup') {
+            // Rota: Carro do motorista -> Ponto de Embarque
+            startLat = location?.latitude ?? pickupLocation?.latitude ?? null;
+            startLng = location?.longitude ?? pickupLocation?.longitude ?? null;
+            endLat = pickupLocation?.latitude ?? null;
+            endLng = pickupLocation?.longitude ?? null;
+        } else if (routeMode === 'to-dropoff') {
+            // Rota: Carro do motorista (ou embarque) -> Destino Final
+            startLat = location?.latitude ?? pickupLocation?.latitude ?? null;
+            startLng = location?.longitude ?? pickupLocation?.longitude ?? null;
+            endLat = dropoffLocation?.latitude ?? null;
+            endLng = dropoffLocation?.longitude ?? null;
+        } else {
+            // Rota completa: Embarque -> Destino
+            startLat = pickupLocation?.latitude ?? location?.latitude ?? null;
+            startLng = pickupLocation?.longitude ?? location?.longitude ?? null;
+            endLat = dropoffLocation?.latitude ?? null;
+            endLng = dropoffLocation?.longitude ?? null;
+        }
+
+        return { startLat, startLng, endLat, endLng };
+    }, [routeMode, location, pickupLocation, dropoffLocation]);
+
     // Busca o trajeto real seguindo as ruas via OSRM Routing API
     useEffect(() => {
-        if (!showRoute || !pickupLocation || !dropoffLocation) {
+        const { startLat, startLng, endLat, endLng } = routeEndpoints;
+
+        if (!showRoute || !startLat || !startLng || !endLat || !endLng) {
             setRoadGeometry([]);
             return;
         }
 
-        const pLat = pickupLocation.latitude;
-        const pLng = pickupLocation.longitude;
-        const dLat = dropoffLocation.latitude;
-        const dLng = dropoffLocation.longitude;
-
-        if (!pLat || !pLng || !dLat || !dLng) {
+        // Se origem e destino forem praticamente idênticos
+        if (Math.abs(startLat - endLat) < 0.0001 && Math.abs(startLng - endLng) < 0.0001) {
             setRoadGeometry([]);
             return;
         }
 
-        const cacheKey = `${pLat.toFixed(5)},${pLng.toFixed(5)}_${dLat.toFixed(5)},${dLng.toFixed(5)}`;
+        const cacheKey = `${startLat.toFixed(5)},${startLng.toFixed(5)}_${endLat.toFixed(5)},${endLng.toFixed(5)}`;
         if (routeGeometryCache.has(cacheKey)) {
             setRoadGeometry(routeGeometryCache.get(cacheKey)!);
             return;
@@ -238,7 +273,7 @@ export default function DriverMap({
 
         async function fetchRoadRoute() {
             try {
-                const url = `https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`;
+                const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
                 const response = await fetch(url, { signal: controller.signal });
                 if (!response.ok) throw new Error(`OSRM Status: ${response.status}`);
                 const data = await response.json();
@@ -257,10 +292,10 @@ export default function DriverMap({
                 }
             } catch (err) {
                 // Fallback para linha direta caso offline ou erro na API OSRM
-                if (isMounted) {
+                if (isMounted && startLat && startLng && endLat && endLng) {
                     setRoadGeometry([
-                        [pLat, pLng],
-                        [dLat, dLng],
+                        [startLat, startLng],
+                        [endLat, endLng],
                     ]);
                 }
             }
@@ -272,22 +307,22 @@ export default function DriverMap({
             isMounted = false;
             controller.abort();
         };
-    }, [pickupLocation?.latitude, pickupLocation?.longitude, dropoffLocation?.latitude, dropoffLocation?.longitude, showRoute]);
+    }, [routeEndpoints, showRoute]);
 
     // Coordenadas finais da rota a desenhar
     const polylinePositions: [number, number][] = useMemo(() => {
         if (!showRoute) return [];
         if (roadGeometry.length >= 2) return roadGeometry;
 
-        const directCoords: [number, number][] = [];
-        if (pickupLocation?.latitude && pickupLocation?.longitude) {
-            directCoords.push([pickupLocation.latitude, pickupLocation.longitude]);
+        const { startLat, startLng, endLat, endLng } = routeEndpoints;
+        if (startLat && startLng && endLat && endLng) {
+            return [
+                [startLat, startLng],
+                [endLat, endLng],
+            ];
         }
-        if (dropoffLocation?.latitude && dropoffLocation?.longitude) {
-            directCoords.push([dropoffLocation.latitude, dropoffLocation.longitude]);
-        }
-        return directCoords.length >= 2 ? directCoords : [];
-    }, [roadGeometry, pickupLocation, dropoffLocation, showRoute]);
+        return [];
+    }, [roadGeometry, routeEndpoints, showRoute]);
 
     return (
         <div className="w-full h-full z-0 relative">
@@ -307,16 +342,19 @@ export default function DriverMap({
                     pickupLocation={pickupLocation}
                     dropoffLocation={dropoffLocation}
                     roadPath={polylinePositions}
+                    routeMode={routeMode}
                 />
 
-                {/* Marcador do Carro do Motorista */}
+                {/* Marcador do Carro do Motorista (Sempre visível se tiver GPS) */}
                 {location && (
                     <Marker
                         position={[location.latitude, location.longitude]}
                         icon={carIcon}
                     >
                         <Popup>
-                            <span className="font-bold text-xs">Sua Localização</span>
+                            <span className="font-bold text-xs">
+                                {routeMode === 'to-pickup' ? 'Você (A caminho do passageiro)' : 'Sua Localização'}
+                            </span>
                         </Popup>
                     </Marker>
                 )}
@@ -358,9 +396,9 @@ export default function DriverMap({
                         <Polyline
                             positions={polylinePositions}
                             pathOptions={{
-                                color: '#0f172a',
+                                color: routeMode === 'to-pickup' ? '#065f46' : '#0f172a',
                                 weight: 7,
-                                opacity: 0.75,
+                                opacity: 0.8,
                                 lineCap: 'round',
                                 lineJoin: 'round',
                             }}
@@ -369,7 +407,7 @@ export default function DriverMap({
                         <Polyline
                             positions={polylinePositions}
                             pathOptions={{
-                                color: '#eab308',
+                                color: routeMode === 'to-pickup' ? '#10b981' : '#eab308',
                                 weight: 4.5,
                                 opacity: 0.95,
                                 lineCap: 'round',
