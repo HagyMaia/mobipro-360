@@ -106,7 +106,40 @@ export class RideService {
     }
 
     /**
-     * Inicia a corrida (motorista chegou ao passageiro e iniciou a viagem)
+     * Motorista chegou ao ponto de embarque (notifica passageiro)
+     */
+    public static async arriveAtPickup(rideId: string): Promise<boolean> {
+        const supabase = createClient();
+        try {
+            const nowIso = new Date().toISOString();
+            let { error } = await supabase
+                .from('rides')
+                .update({
+                    status: 'ARRIVED',
+                    arrived_at: nowIso,
+                    updated_at: nowIso,
+                })
+                .eq('id', rideId);
+
+            if (error && error.message && error.message.toLowerCase().includes('updated_at')) {
+                const retry = await supabase
+                    .from('rides')
+                    .update({
+                        status: 'ARRIVED',
+                    })
+                    .eq('id', rideId);
+                error = retry.error;
+            }
+
+            return !error;
+        } catch (err) {
+            console.error('[RideService] Erro ao registrar chegada no local:', err);
+            return false;
+        }
+    }
+
+    /**
+     * Inicia a corrida (motorista inicia a viagem com o passageiro no veículo)
      */
     public static async startRide(rideId: string): Promise<boolean> {
         const supabase = createClient();

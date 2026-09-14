@@ -11,6 +11,8 @@ import {
   MessageCircle,
   Navigation,
   Phone,
+  Play,
+  Flag,
   Star,
   XCircle,
   QrCode,
@@ -29,7 +31,7 @@ import { useDriverLocation } from '@/hooks/useDriverLocation';
 import { RideService } from '@/services/ride/RideService';
 import { createClient } from '@/lib/supabase';
 import { formatBRL } from '@/lib/utils';
-import type { Ride } from '@/lib/types';
+import type { Ride, RideStatus } from '@/lib/types';
 
 const DriverMap = dynamic(() => import('@/components/map/DriverMap'), { ssr: false });
 
@@ -73,6 +75,13 @@ export default function DetalheCorrida() {
           const data = res?.data;
           const error = res?.error;
           if (!error && data) {
+            const dbStatus = String(data.status || '').toUpperCase();
+            let rideStatus: RideStatus = 'accepted';
+            if (dbStatus === 'CONCLUIDA' || dbStatus === 'COMPLETED') rideStatus = 'completed';
+            else if (dbStatus === 'CANCELADA' || dbStatus === 'CANCELLED') rideStatus = 'cancelled';
+            else if (dbStatus === 'IN_PROGRESS' || dbStatus === 'EM_ANDAMENTO') rideStatus = 'in-progress';
+            else if (dbStatus === 'ARRIVED' || dbStatus === 'NO_LOCAL') rideStatus = 'arrived';
+
             setDbRide({
               id: data.id,
               passengerName: data.cliente_nome || data.passenger_name || 'Passageiro Mobipro',
@@ -85,7 +94,7 @@ export default function DetalheCorrida() {
               estimatedMinutes: Number(data.duracao_min || 12),
               fare: Number(data.valor_total || data.valor || 15.0),
               paymentMethod: (data.forma_pagamento || 'pix') as any,
-              status: (data.status === 'CONCLUIDA' || data.status === 'COMPLETED') ? 'completed' : 'accepted',
+              status: rideStatus,
               requestedAt: data.created_at || new Date().toISOString(),
               source: 'app',
             });
@@ -127,14 +136,30 @@ export default function DetalheCorrida() {
     );
   }
 
-  const navAddress = currentRide.status === 'in-progress' ? currentRide.dropoff : currentRide.pickup;
-  const navCoords = currentRide.status === 'in-progress' ? currentRide.dropoffCoordinates : currentRide.pickupCoordinates;
-  const navLabel = currentRide.status === 'in-progress' ? 'Navegar ao Destino' : 'Navegar ao Embarque';
-  const routeMode = currentRide.status === 'accepted' ? 'to-pickup' : currentRide.status === 'in-progress' ? 'to-dropoff' : 'full';
+  const isGoingToDropoff = currentRide.status === 'arrived' || currentRide.status === 'in-progress';
+  const navAddress = isGoingToDropoff ? currentRide.dropoff : currentRide.pickup;
+  const navCoords = isGoingToDropoff ? currentRide.dropoffCoordinates : currentRide.pickupCoordinates;
+  const navLabel = isGoingToDropoff ? 'Navegar ao Destino' : 'Navegar ao Embarque';
+  const routeMode = currentRide.status === 'accepted' ? 'to-pickup' : isGoingToDropoff ? 'to-dropoff' : 'full';
 
   const handleSendMessage = (msg: string) => {
     console.log('[DetalheCorrida] Mensagem enviada:', msg);
     setMessageModalOpen(false);
+  };
+
+  const handleArriveAtPickup = async () => {
+    setLoadingAction(true);
+    try {
+      if (currentRide.id) {
+        await RideService.arriveAtPickup(currentRide.id);
+      }
+      dispatch({ type: 'ARRIVE_AT_PICKUP' });
+    } catch (err) {
+      console.warn('[DetalheCorrida] Erro ao registrar chegada:', err);
+      dispatch({ type: 'ARRIVE_AT_PICKUP' });
+    } finally {
+      setLoadingAction(false);
+    }
   };
 
   const handleStartTrip = async () => {
@@ -195,6 +220,10 @@ export default function DetalheCorrida() {
                 currentRide.status === 'accepted' ? (
                   <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                     <Clock size={11} className="animate-spin" /> A caminho do embarque
+                  </span>
+                ) : currentRide.status === 'arrived' ? (
+                  <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                    <MapPin size={11} /> No local de embarque (Aguardando passageiro)
                   </span>
                 ) : (
                   <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
@@ -413,21 +442,33 @@ export default function DetalheCorrida() {
           </button>
 
           <div className="grid grid-cols-2 gap-2">
-            {currentRide.status === 'accepted' ? (
+            {currentRide.status === 'accepted' && (
+              <button
+                onClick={handleArriveAtPickup}
+                disabled={loadingAction}
+                className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-amber-500 py-3 text-sm font-black text-slate-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-600 active:scale-95"
+              >
+                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <MapPin size={16} />} Cheguei ao Local
+              </button>
+            )}
+
+            {currentRide.status === 'arrived' && (
               <button
                 onClick={handleStartTrip}
                 disabled={loadingAction}
                 className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600 active:scale-95"
               >
-                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Phone size={16} />} Iniciar Viagem
+                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />} Iniciar Viagem
               </button>
-            ) : (
+            )}
+
+            {currentRide.status === 'in-progress' && (
               <button
                 onClick={() => setCheckoutModalOpen(true)}
                 disabled={loadingAction}
-                className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600 active:scale-95"
+                className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-700 active:scale-95"
               >
-                <CheckCircle2 size={16} /> Finalizar Viagem & Receber PIX
+                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />} Finalizar Viagem & Receber PIX
               </button>
             )}
           </div>

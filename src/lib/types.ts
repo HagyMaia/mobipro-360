@@ -1,6 +1,6 @@
 export type WorkStatus = 'offline' | 'available' | 'en-route' | 'on-ride' | 'break';
 
-export type RideStatus = 'pending' | 'accepted' | 'in-progress' | 'completed' | 'cancelled';
+export type RideStatus = 'pending' | 'accepted' | 'arrived' | 'in-progress' | 'completed' | 'cancelled';
 
 export type PaymentMethod = 'pix' | 'card' | 'cash';
 

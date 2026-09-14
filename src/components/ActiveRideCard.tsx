@@ -1,7 +1,8 @@
+// src/components/ActiveRideCard.tsx
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, ExternalLink, Flag, Loader2, MapPin, Navigation, Phone, XCircle } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Flag, Loader2, MapPin, Navigation, Phone, Play, XCircle } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
 import { RideService } from '@/services/ride/RideService';
@@ -12,7 +13,8 @@ import { PaymentCheckoutModal } from '@/components/Ride/PaymentCheckoutModal';
 
 const STEPS = [
   { key: 'accepted', label: 'A caminho' },
-  { key: 'in-progress', label: 'Em corrida' },
+  { key: 'arrived', label: 'No local' },
+  { key: 'in-progress', label: 'Em viagem' },
   { key: 'completed', label: 'Finalizada' }
 ] as const;
 
@@ -31,10 +33,26 @@ export default function ActiveRideCard() {
 
   // Endereço alvo de navegação:
   // - "accepted" (a caminho) → navegar até o PICKUP (embarque)
-  // - "in-progress" (em corrida) → navegar até o DROPOFF (destino)
-  const navAddress = ride.status === 'in-progress' ? ride.dropoff : ride.pickup;
-  const navLabel = ride.status === 'in-progress' ? 'Navegar ao destino' : 'Navegar ao embarque';
+  // - "arrived" / "in-progress" → navegar até o DROPOFF (destino)
+  const isGoingToDropoff = ride.status === 'arrived' || ride.status === 'in-progress';
+  const navAddress = isGoingToDropoff ? ride.dropoff : ride.pickup;
+  const navCoords = isGoingToDropoff ? ride.dropoffCoordinates : ride.pickupCoordinates;
+  const navLabel = isGoingToDropoff ? 'Navegar ao Destino' : 'Navegar ao Embarque';
   const navAppLabel = navApp === 'waze' ? 'Waze' : 'Google Maps';
+
+  async function handleArrived() {
+    if (ride?.id) {
+      setLoadingAction(true);
+      try {
+        await RideService.arriveAtPickup(ride.id);
+      } catch (err) {
+        console.warn('[ActiveRideCard] Erro ao registrar chegada no local:', err);
+      } finally {
+        setLoadingAction(false);
+      }
+    }
+    dispatch({ type: 'ARRIVE_AT_PICKUP' });
+  }
 
   async function handleStart() {
     if (ride?.id) {
@@ -91,7 +109,14 @@ export default function ActiveRideCard() {
       <Card className="border-2 border-brand/50 shadow-lg shadow-brand/10 p-4 sm:p-5">
         {/* Cabeçalho */}
         <div className="mb-3 flex items-center justify-between">
-          <span className="text-sm font-black text-brand-700 dark:text-brand">Corrida em andamento</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-black text-brand-700 dark:text-brand">
+              {ride.status === 'accepted' && '🚗 A caminho do passageiro'}
+              {ride.status === 'arrived' && '📍 No local de embarque'}
+              {ride.status === 'in-progress' && '🏁 Em viagem até o destino'}
+              {ride.status === 'completed' && '✅ Corrida finalizada'}
+            </span>
+          </div>
           <Badge className="border border-slate-200 dark:border-dark-700 bg-slate-100 dark:bg-dark-800 text-slate-800 dark:text-slate-200 font-bold">
             {ride.passengerName}
           </Badge>
@@ -150,28 +175,41 @@ export default function ActiveRideCard() {
           <ExternalLink size={13} className="opacity-80" />
         </button>
 
-        {/* Ações */}
+        {/* Ações da Corrida */}
         <div className="mt-3.5 grid grid-cols-2 gap-2.5">
           {ride.status === 'accepted' && (
             <>
               <Button variant="outline" onClick={handleCancel} disabled={loadingAction}>
                 {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />} Cancelar
               </Button>
-              <Button variant="success" onClick={handleStart} disabled={loadingAction}>
-                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Phone size={16} />} Iniciar corrida
+              <Button variant="success" onClick={handleArrived} disabled={loadingAction} className="bg-amber-500 hover:bg-amber-600 border-amber-600 text-slate-950 font-black">
+                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <MapPin size={16} />} Cheguei ao Local
               </Button>
             </>
           )}
+
+          {ride.status === 'arrived' && (
+            <>
+              <Button variant="outline" onClick={handleCancel} disabled={loadingAction}>
+                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />} Cancelar
+              </Button>
+              <Button variant="success" onClick={handleStart} disabled={loadingAction} className="bg-emerald-500 hover:bg-emerald-600 font-black">
+                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />} Iniciar Viagem
+              </Button>
+            </>
+          )}
+
           {ride.status === 'in-progress' && (
             <>
               <Button variant="outline" onClick={handleCancel} disabled={loadingAction}>
                 {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />} Cancelar
               </Button>
-              <Button variant="success" onClick={() => setCheckoutModalOpen(true)} disabled={loadingAction}>
-                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />} Finalizar corrida
+              <Button variant="success" onClick={() => setCheckoutModalOpen(true)} disabled={loadingAction} className="bg-emerald-600 hover:bg-emerald-700 font-black">
+                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />} Finalizar Corrida
               </Button>
             </>
           )}
+
           {ride.status === 'completed' && (
             <div className="col-span-2 flex items-center justify-center gap-2 font-bold text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 size={18} /> Corrida finalizada
@@ -185,7 +223,8 @@ export default function ActiveRideCard() {
         isOpen={isNavModalOpen}
         onClose={() => setNavModalOpen(false)}
         address={navAddress}
-        destinationLabel={ride.status === 'in-progress' ? 'Destino' : 'Embarque'}
+        coords={navCoords}
+        destinationLabel={isGoingToDropoff ? 'Destino' : 'Embarque'}
       />
 
       {/* Modal de Checkout / PIX QR Code e Avaliação */}

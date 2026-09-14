@@ -216,7 +216,7 @@ export default function CorridasPage() {
                   : null
               }
               showRoute={Boolean(currentOffer || state.activeRide)}
-              routeMode={state.activeRide?.status === 'accepted' ? 'to-pickup' : state.activeRide?.status === 'in-progress' ? 'to-dropoff' : 'full'}
+              routeMode={state.activeRide?.status === 'accepted' ? 'to-pickup' : (state.activeRide?.status === 'arrived' || state.activeRide?.status === 'in-progress') ? 'to-dropoff' : 'full'}
             />
           </div>
         </div>

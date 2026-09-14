@@ -9,6 +9,7 @@ import {
     Navigation,
     XCircle,
     Phone,
+    Play,
     Flag,
     CheckCircle2,
     MapPin,
@@ -248,6 +249,20 @@ export default function MapaPage() {
         dispatch({ type: 'CANCEL_RIDE' });
     };
 
+    const handleArriveActiveRide = async () => {
+        if (activeRide?.id) {
+            setLoadingRideAction(true);
+            try {
+                await RideService.arriveAtPickup(activeRide.id);
+            } catch (err) {
+                console.warn('[Mapa] Erro ao registrar chegada no local:', err);
+            } finally {
+                setLoadingRideAction(false);
+            }
+        }
+        dispatch({ type: 'ARRIVE_AT_PICKUP' });
+    };
+
     const handleStartActiveRide = async () => {
         if (activeRide?.id) {
             setLoadingRideAction(true);
@@ -324,9 +339,10 @@ export default function MapaPage() {
     }, [activeRide, currentOffer]);
 
     const navApp = state.navApp ?? 'waze';
-    const navAddress = activeRide?.status === 'in-progress' ? activeRide.dropoff : activeRide?.pickup;
-    const navCoords = activeRide?.status === 'in-progress' ? activeRide.dropoffCoordinates : activeRide?.pickupCoordinates;
-    const navLabel = activeRide?.status === 'in-progress' ? 'Navegar ao Destino' : 'Navegar ao Embarque';
+    const isGoingToDropoff = activeRide?.status === 'arrived' || activeRide?.status === 'in-progress';
+    const navAddress = isGoingToDropoff ? activeRide?.dropoff : activeRide?.pickup;
+    const navCoords = isGoingToDropoff ? activeRide?.dropoffCoordinates : activeRide?.pickupCoordinates;
+    const navLabel = isGoingToDropoff ? 'Navegar ao Destino' : 'Navegar ao Embarque';
 
     return (
         <div className="relative w-full h-screen overflow-hidden bg-slate-950 text-white font-sans">
@@ -389,7 +405,9 @@ export default function MapaPage() {
                         <div className="flex items-center justify-between mb-3">
                             <div>
                                 <span className="text-[10px] font-black uppercase tracking-wider text-brand-700 dark:text-brand">
-                                    {activeRide.status === 'in-progress' ? 'Em Viagem' : 'A Caminho do Passageiro'}
+                                    {activeRide.status === 'accepted' && '🚗 A Caminho do Embarque'}
+                                    {activeRide.status === 'arrived' && '📍 No Local de Embarque'}
+                                    {activeRide.status === 'in-progress' && '🏁 Em Viagem até o Destino'}
                                 </span>
                                 <h3 className="text-base font-black truncate">{activeRide.passengerName}</h3>
                             </div>
@@ -447,10 +465,22 @@ export default function MapaPage() {
                                     variant="success"
                                     size="sm"
                                     disabled={loadingRideAction}
-                                    onClick={handleStartActiveRide}
-                                    className="font-black"
+                                    onClick={handleArriveActiveRide}
+                                    className="font-black bg-amber-500 hover:bg-amber-600 border-amber-600 text-slate-950"
                                 >
-                                    {loadingRideAction ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />} Iniciar Viagem
+                                    {loadingRideAction ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} />} Cheguei ao Local
+                                </Button>
+                            )}
+
+                            {activeRide.status === 'arrived' && (
+                                <Button
+                                    variant="success"
+                                    size="sm"
+                                    disabled={loadingRideAction}
+                                    onClick={handleStartActiveRide}
+                                    className="font-black bg-emerald-500 hover:bg-emerald-600"
+                                >
+                                    {loadingRideAction ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />} Iniciar Viagem
                                 </Button>
                             )}
 
@@ -460,7 +490,7 @@ export default function MapaPage() {
                                     size="sm"
                                     disabled={loadingRideAction}
                                     onClick={() => setCheckoutModalOpen(true)}
-                                    className="font-black"
+                                    className="font-black bg-emerald-600 hover:bg-emerald-700"
                                 >
                                     {loadingRideAction ? <Loader2 size={14} className="animate-spin" /> : <Flag size={14} />} Finalizar Viagem
                                 </Button>

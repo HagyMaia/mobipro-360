@@ -48,6 +48,7 @@ type Action =
   | { type: 'SET_STATUS'; status: WorkStatus }
   | { type: 'NEW_RIDE_REQUEST'; ride: RideRequest }
   | { type: 'ACCEPT_RIDE'; ride?: RideRequest }
+  | { type: 'ARRIVE_AT_PICKUP' }
   | { type: 'START_RIDE' }
   | { type: 'COMPLETE_RIDE' }
   | { type: 'CANCEL_RIDE' }
@@ -97,6 +98,15 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         incomingRide: null,
         activeRide: active,
+        status: 'en-route'
+      };
+    }
+
+    case 'ARRIVE_AT_PICKUP': {
+      if (!state.activeRide) return state;
+      return {
+        ...state,
+        activeRide: { ...state.activeRide, status: 'arrived' },
         status: 'en-route'
       };
     }
