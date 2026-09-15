@@ -245,7 +245,7 @@ export default function AjustesPage() {
               <div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Recusar Pagamento em Dinheiro</h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Aceitar apenas PIX, Cartão e Voucher da Empresa
+                  Aceitar apenas PIX e Voucher Corporativo
                 </p>
               </div>
               <input

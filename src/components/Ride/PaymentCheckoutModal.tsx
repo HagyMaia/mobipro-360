@@ -6,14 +6,9 @@ import {
   Copy,
   QrCode,
   Star,
-  Wallet,
-  CreditCard,
-  Banknote,
   FileText,
   X,
   Loader2,
-  Sparkles,
-  ThumbsUp
 } from 'lucide-react';
 import { formatBRL } from '@/lib/utils';
 
@@ -26,7 +21,7 @@ interface PaymentCheckoutModalProps {
   pickupAddress: string;
   dropoffAddress: string;
   onFinishRide: (data: {
-    paymentMethod: 'pix' | 'cash' | 'card' | 'voucher';
+    paymentMethod: 'pix' | 'voucher' | 'cash' | 'card';
     finalAmount: number;
     rating: number;
     ratingFeedback: string[];
@@ -54,7 +49,7 @@ export function PaymentCheckoutModal({
   dropoffAddress,
   onFinishRide,
 }: PaymentCheckoutModalProps) {
-  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cash' | 'card' | 'voucher'>('pix');
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'voucher'>('pix');
   const [rating, setRating] = useState<number>(5);
   const [selectedTags, setSelectedTags] = useState<string[]>(['Pontual ⏱️', 'Educado 🤝']);
   const [comments, setComments] = useState('');
@@ -155,62 +150,36 @@ export function PaymentCheckoutModal({
               </div>
             </div>
 
-            {/* SELETOR DE MÉTODO DE PAGAMENTO */}
+            {/* SELETOR DE MÉTODO DE PAGAMENTO (APENAS PIX E VOUCHER) */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                 Forma de Pagamento
               </label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('pix')}
-                  className={`flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-2xl border text-xs font-bold transition ${
+                  className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border text-xs font-black transition ${
                     paymentMethod === 'pix'
-                      ? 'border-brand bg-brand/15 text-slate-950 dark:text-brand ring-2 ring-brand/40'
-                      : 'border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800 text-slate-600 dark:text-slate-400'
+                      ? 'border-brand bg-brand/15 text-slate-950 dark:text-brand ring-2 ring-brand/40 shadow-sm'
+                      : 'border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-700'
                   }`}
                 >
-                  <QrCode size={18} className="text-teal-500" />
-                  PIX
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('cash')}
-                  className={`flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-2xl border text-xs font-bold transition ${
-                    paymentMethod === 'cash'
-                      ? 'border-brand bg-brand/15 text-slate-950 dark:text-brand ring-2 ring-brand/40'
-                      : 'border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  <Banknote size={18} className="text-emerald-500" />
-                  Dinheiro
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('card')}
-                  className={`flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-2xl border text-xs font-bold transition ${
-                    paymentMethod === 'card'
-                      ? 'border-brand bg-brand/15 text-slate-950 dark:text-brand ring-2 ring-brand/40'
-                      : 'border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  <CreditCard size={18} className="text-sky-500" />
-                  Cartão
+                  <QrCode size={20} className="text-teal-500" />
+                  <span>PIX (Instantâneo)</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('voucher')}
-                  className={`flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-2xl border text-xs font-bold transition ${
+                  className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border text-xs font-black transition ${
                     paymentMethod === 'voucher'
-                      ? 'border-brand bg-brand/15 text-slate-950 dark:text-brand ring-2 ring-brand/40'
-                      : 'border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800 text-slate-600 dark:text-slate-400'
+                      ? 'border-brand bg-brand/15 text-slate-950 dark:text-brand ring-2 ring-brand/40 shadow-sm'
+                      : 'border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-700'
                   }`}
                 >
-                  <FileText size={18} className="text-amber-500" />
-                  Voucher
+                  <FileText size={20} className="text-amber-500" />
+                  <span>Voucher / Convênio</span>
                 </button>
               </div>
             </div>

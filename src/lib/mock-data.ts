@@ -64,15 +64,15 @@ const REQUEST_TEMPLATES: Array<Omit<RideRequest, 'id' | 'requestedAt' | 'source'
   },
   {
     passengerName: 'José M.',
-    passengerRating: 3.2,
-    passengerAccountMonths: 1,
-    passengerTrips: 2,
+    passengerRating: 4.8,
+    passengerAccountMonths: 14,
+    passengerTrips: 82,
     pickup: 'Terminal Rodoviário de Manaus',
     dropoff: 'Ponta Negra',
     distanceKm: 18.2,
     estimatedMinutes: 55,
     fare: 74.0,
-    paymentMethod: 'cash'
+    paymentMethod: 'voucher'
   },
   {
     passengerName: 'Felipe R.',
@@ -84,43 +84,43 @@ const REQUEST_TEMPLATES: Array<Omit<RideRequest, 'id' | 'requestedAt' | 'source'
     distanceKm: 6.8,
     estimatedMinutes: 24,
     fare: 29.5,
-    paymentMethod: 'card'
+    paymentMethod: 'pix'
   },
   {
     passengerName: 'Marina C.',
     passengerRating: 4.95,
     passengerAccountMonths: 48,
     passengerTrips: 512,
-    pickup: 'Faria Lima, 3900',
-    dropoff: 'Parque Ibirapuera',
+    pickup: 'Av. Djalma Batista, 1000',
+    dropoff: 'Parque Dez de Novembro',
     distanceKm: 7.1,
     estimatedMinutes: 25,
     fare: 31.0,
-    paymentMethod: 'pix'
+    paymentMethod: 'voucher'
   },
   {
     passengerName: 'Renato L.',
-    passengerRating: 2.8,
-    passengerAccountMonths: 0,
-    passengerTrips: 0,
-    pickup: 'Av. dos Bandeirantes',
-    dropoff: 'Cidade Tiradentes',
+    passengerRating: 4.9,
+    passengerAccountMonths: 8,
+    passengerTrips: 45,
+    pickup: 'Av. Constantino Nery',
+    dropoff: 'Cidade Nova',
     distanceKm: 22.4,
     estimatedMinutes: 68,
     fare: 88.0,
-    paymentMethod: 'cash'
+    paymentMethod: 'pix'
   },
   {
     passengerName: 'Sofia N.',
     passengerRating: 4.8,
     passengerAccountMonths: 9,
     passengerTrips: 140,
-    pickup: 'Moema, Av. Ibirapuera',
-    dropoff: 'Tatuapé',
+    pickup: 'Av. Coronel Teixeira, Ponta Negra',
+    dropoff: 'Adrianópolis',
     distanceKm: 12.3,
     estimatedMinutes: 38,
     fare: 41.5,
-    paymentMethod: 'card'
+    paymentMethod: 'voucher'
   }
 ];
 

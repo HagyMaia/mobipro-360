@@ -34,14 +34,15 @@ function formatDuration(seconds: number): string {
 }
 
 function getPaymentMethodLabel(
-  paymentMethod: Trip["paymentMethod"],
+  paymentMethod: Trip["paymentMethod"] | string,
 ): string {
-  const labels = {
-    CASH: "Dinheiro",
+  const labels: Record<string, string> = {
     PIX: "PIX",
-    CREDIT_CARD: "Cartão",
+    VOUCHER: "Voucher",
+    pix: "PIX",
+    voucher: "Voucher",
   };
-  return labels[paymentMethod];
+  return labels[paymentMethod] || (String(paymentMethod).toUpperCase() === 'VOUCHER' ? 'Voucher' : 'PIX');
 }
 
 export function TripOfferCard({

@@ -2,7 +2,7 @@ export type WorkStatus = 'offline' | 'available' | 'en-route' | 'on-ride' | 'bre
 
 export type RideStatus = 'pending' | 'accepted' | 'arrived' | 'in-progress' | 'completed' | 'cancelled';
 
-export type PaymentMethod = 'pix' | 'card' | 'cash';
+export type PaymentMethod = 'pix' | 'voucher';
 
 export interface Coordinates {
   latitude: number;

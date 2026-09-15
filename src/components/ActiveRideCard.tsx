@@ -225,8 +225,8 @@ export default function ActiveRideCard() {
             <div className="text-xl font-black tabular-nums text-slate-900 dark:text-white">
               {formatBRL(ride.fare)}
             </div>
-            <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">
-              {ride.paymentMethod || 'PIX'}
+            <div className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">
+              {String(ride.paymentMethod).toLowerCase() === 'voucher' ? 'VOUCHER' : 'PIX'}
             </div>
           </div>
         </div>

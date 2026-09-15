@@ -16,6 +16,7 @@ import {
   Star,
   XCircle,
   QrCode,
+  FileText,
   DollarSign,
   ShieldCheck,
   Calendar,
@@ -585,7 +586,15 @@ export default function DetalheCorrida() {
               <span>Repasse Motorista: <strong>100%</strong></span>
             </div>
             <div className="flex items-center gap-1.5 rounded-full bg-teal-500/15 px-2.5 py-0.5 text-[11px] font-black text-teal-700 dark:text-teal-400 uppercase border border-teal-500/30">
-              <QrCode size={12} /> {currentRide.paymentMethod}
+              {String(currentRide.paymentMethod).toLowerCase() === 'voucher' ? (
+                <>
+                  <FileText size={12} className="text-amber-500" /> VOUCHER
+                </>
+              ) : (
+                <>
+                  <QrCode size={12} /> PIX
+                </>
+              )}
             </div>
           </div>
         </div>

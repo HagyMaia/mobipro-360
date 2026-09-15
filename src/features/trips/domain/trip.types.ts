@@ -7,9 +7,8 @@ export type TripStatus =
   | "COMPLETED";
 
 export type PaymentMethod =
-  | "CASH"
   | "PIX"
-  | "CREDIT_CARD";
+  | "VOUCHER";
 
 export interface GeoPoint {
   latitude: number;

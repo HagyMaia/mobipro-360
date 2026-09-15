@@ -114,8 +114,8 @@ export default function RideRequestCard({
       <div className="mb-3 flex items-end justify-between">
         <div>
           <div className="text-3xl font-black tabular-nums text-slate-900 dark:text-white">{formatBRL(ride.fare)}</div>
-          <div className="mt-0.5 text-xs capitalize text-slate-500 dark:text-slate-400 font-medium">
-            Pagamento via <span className="font-bold text-slate-800 dark:text-slate-200">{ride.paymentMethod}</span>
+          <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+            Pagamento via <span className="font-black uppercase text-slate-800 dark:text-slate-200">{String(ride.paymentMethod).toLowerCase() === 'voucher' ? 'Voucher' : 'PIX'}</span>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
