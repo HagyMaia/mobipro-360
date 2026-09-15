@@ -31,6 +31,20 @@ export interface Ride extends RideRequest {
   status: RideStatus;
   startedAt?: string;
   completedAt?: string;
+  cancelledAt?: string;
+  cancelReason?: string;
+  cancelledBy?: 'passenger' | 'driver' | 'admin' | string;
+}
+
+export interface ChatMessage {
+  id: string;
+  ride_id: string;
+  sender_id?: string;
+  sender_role: 'driver' | 'passenger' | 'system' | 'central';
+  sender_name: string;
+  content: string;
+  created_at: string;
+  read?: boolean;
 }
 
 export type ExpenseCategory = 'combustivel' | 'alimentacao' | 'lavagem' | 'manutencao' | 'outros';

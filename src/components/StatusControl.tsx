@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Coffee, Loader2, Power, Radio, ShieldCheck } from 'lucide-react';
+import { Coffee, Loader2, Lock, Power, Radio, ShieldCheck } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { ProfileService } from '@/services/driver/ProfileService';
 import { requestNotificationPermission } from '@/lib/notifications';
@@ -42,7 +42,8 @@ const STATUS_ITEMS: StatusItem[] = [
 export default function StatusControl({ disabled }: { disabled?: boolean }) {
   const { state, dispatch } = useApp();
   const [updating, setUpdating] = useState(false);
-  const canChange = state.activeRide === null;
+  const isInTrip = state.activeRide !== null || state.status === 'en-route' || state.status === 'on-ride';
+  const canChange = !isInTrip;
 
   const handleStatusChange = async (targetStatus: WorkStatus) => {
     if (!canChange || disabled || updating || state.status === targetStatus) return;
@@ -78,7 +79,7 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
       <div className="relative rounded-2xl p-1 bg-slate-900/80 dark:bg-dark-950/90 border border-slate-800 dark:border-dark-700/80 shadow-md backdrop-blur-xl">
         <div className="grid grid-cols-3 gap-1">
           {STATUS_ITEMS.map(({ status, label, icon: Icon, activeStyles }) => {
-            const active = state.status === status;
+            const active = !isInTrip && state.status === status;
             const isButtonUpdating = updating && active;
 
             return (
@@ -92,7 +93,7 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
                   active
                     ? cn('border', activeStyles)
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 dark:hover:bg-dark-800/50',
-                  (!canChange || disabled || updating) && 'pointer-events-none opacity-50'
+                  (!canChange || disabled || updating) && 'pointer-events-none opacity-40 cursor-not-allowed'
                 )}
               >
                 {/* Indicador pulsante quando online */}
@@ -129,7 +130,14 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
       {/* Mini status indicator em 1 linha compacta */}
       <div className="flex items-center justify-between px-2 text-[10px] text-slate-400">
         <div className="flex items-center gap-1.5 truncate">
-          {state.status === 'available' ? (
+          {isInTrip ? (
+            <>
+              <Lock size={12} className="text-amber-400 shrink-0" />
+              <span className="font-bold text-amber-400 truncate">
+                Em corrida · Status offline bloqueado até a finalização
+              </span>
+            </>
+          ) : state.status === 'available' ? (
             <>
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-semibold text-emerald-400 truncate">Radar ativo · Recebendo chamadas</span>

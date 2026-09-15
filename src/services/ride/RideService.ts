@@ -218,31 +218,47 @@ export class RideService {
     }
 
     /**
-     * Cancela a corrida
+     * Cancela a corrida com identificação clara do autor e motivo
      */
-    public static async cancelRide(rideId: string, driverId?: string, reason?: string): Promise<boolean> {
+    public static async cancelRide(rideId: string, driverId?: string, reason?: string, cancelledBy: 'driver' | 'passenger' | 'admin' = 'driver'): Promise<boolean> {
         const supabase = createClient();
         try {
             const nowIso = new Date().toISOString();
+            const cancelAuthorText = cancelledBy === 'passenger' ? 'Cancelado pelo passageiro' : 'Cancelado pelo motorista';
+            const finalReason = reason || cancelAuthorText;
+
             let { error } = await supabase
                 .from('rides')
                 .update({
                     status: 'CANCELLED',
-                    cancel_reason: reason || 'Cancelado pelo motorista',
+                    cancel_reason: finalReason,
+                    cancelled_by: cancelledBy,
                     updated_at: nowIso,
                 })
                 .eq('id', rideId);
 
-            if (error && error.message && error.message.toLowerCase().includes('updated_at')) {
+            if (error && error.message) {
+                // Tenta sem a coluna cancelled_by caso ela ainda não exista
                 const retry = await supabase
                     .from('rides')
                     .update({
                         status: 'CANCELLED',
-                        cancel_reason: reason || 'Cancelado pelo motorista',
+                        cancel_reason: finalReason,
                     })
                     .eq('id', rideId);
                 error = retry.error;
             }
+
+            // Também tenta atualizar tabela corridas caso ela seja a principal
+            try {
+                await supabase
+                    .from('corridas')
+                    .update({
+                        status: 'CANCELADA',
+                        motivo_cancelamento: finalReason,
+                    })
+                    .eq('id', rideId);
+            } catch (_) {}
 
             if (driverId) {
                 try {
@@ -259,6 +275,145 @@ export class RideService {
         } catch (err) {
             console.error('[RideService] Erro ao cancelar corrida:', err);
             return false;
+        }
+    }
+
+    /**
+     * Converte registro do banco em objeto Ride tipado
+     */
+    public static parseDbRideToRide(r: any): import('@/lib/types').Ride {
+        const dbStatus = String(r.status || '').toUpperCase();
+        let rideStatus: import('@/lib/types').RideStatus = 'accepted';
+        if (dbStatus === 'COMPLETED' || dbStatus === 'CONCLUIDA' || dbStatus === 'FINALIZADA') {
+            rideStatus = 'completed';
+        } else if (dbStatus === 'CANCELLED' || dbStatus === 'CANCELADA' || dbStatus === 'CANCELED' || dbStatus === 'RECUSADA') {
+            rideStatus = 'cancelled';
+        } else if (dbStatus === 'IN_PROGRESS' || dbStatus === 'EM_ANDAMENTO') {
+            rideStatus = 'in-progress';
+        } else if (dbStatus === 'ARRIVED' || dbStatus === 'NO_LOCAL') {
+            rideStatus = 'arrived';
+        } else if (dbStatus === 'ACCEPTED' || dbStatus === 'ACEITA') {
+            rideStatus = 'accepted';
+        } else if (dbStatus === 'SEARCHING' || dbStatus === 'PENDING') {
+            rideStatus = 'pending';
+        }
+
+        const cancelReason = r.cancel_reason || r.motivo_cancelamento || r.cancelamento_motivo || undefined;
+        let cancelledBy: 'passenger' | 'driver' | 'admin' | string | undefined = r.cancelled_by || r.autor_cancelamento;
+
+        if (!cancelledBy && cancelReason) {
+            const lower = cancelReason.toLowerCase();
+            if (lower.includes('passageiro') || lower.includes('cliente') || lower.includes('user')) {
+                cancelledBy = 'passenger';
+            } else if (lower.includes('motorista') || lower.includes('driver')) {
+                cancelledBy = 'driver';
+            } else if (lower.includes('central') || lower.includes('admin') || lower.includes('sistema')) {
+                cancelledBy = 'admin';
+            }
+        }
+
+        const dist = Number(r.distance_km || r.distancia_km || r.distance || 4.2);
+        const estMins = Number(r.estimated_minutes || r.duracao_min || r.estimatedMinutes || Math.round(dist * 2.5) || 12);
+        const fareVal = Number(r.fare_amount || r.valor || r.fare || r.valor_total || r.price || 20.0);
+
+        return {
+            id: String(r.id),
+            passengerName: r.passenger_name || r.cliente_nome || r.nome_passageiro || 'Passageiro Mobipro',
+            passengerRating: Number(r.passenger_rating || r.nota_passageiro || 5.0),
+            passengerAccountMonths: Number(r.passenger_account_months || 6),
+            passengerTrips: Number(r.passenger_trips || 18),
+            pickup: r.pickup_address || r.origem_endereco || r.pickup || r.origem || 'Ponto de Embarque',
+            dropoff: r.dropoff_address || r.destino_endereco || r.dropoff || r.destino || 'Ponto de Destino',
+            pickupCoordinates: {
+                latitude: Number(r.pickup_latitude || r.origem_lat || r.pickup_lat || -3.1190),
+                longitude: Number(r.pickup_longitude || r.origem_lng || r.pickup_lng || -60.0217),
+            },
+            dropoffCoordinates: {
+                latitude: Number(r.dropoff_latitude || r.destino_lat || r.dropoff_lat || -3.1070),
+                longitude: Number(r.dropoff_longitude || r.destino_lng || r.dropoff_lng || -60.0125),
+            },
+            distanceKm: dist,
+            estimatedMinutes: estMins,
+            fare: fareVal,
+            paymentMethod: (r.payment_method || r.forma_pagamento || 'pix') as any,
+            status: rideStatus,
+            requestedAt: r.created_at || new Date().toISOString(),
+            startedAt: r.started_at || undefined,
+            completedAt: r.completed_at || (rideStatus === 'completed' ? r.updated_at : undefined),
+            cancelledAt: rideStatus === 'cancelled' ? (r.updated_at || r.created_at) : undefined,
+            cancelReason,
+            cancelledBy,
+            source: 'app',
+        };
+    }
+
+    /**
+     * Busca o histórico completo de corridas do motorista (concluídas, canceladas e em andamento)
+     */
+    public static async getDriverRidesHistory(driverId?: string): Promise<import('@/lib/types').Ride[]> {
+        const supabase = createClient();
+        const results: import('@/lib/types').Ride[] = [];
+        const seenIds = new Set<string>();
+
+        try {
+            // 1. Busca na tabela rides
+            let query = supabase
+                .from('rides')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if (driverId) {
+                // Busca corridas atribuídas ao motorista ou finalizadas/canceladas recentemente
+                query = query.or(`driver_id.eq.${driverId},driver_id.is.null`);
+            }
+
+            const { data: ridesData, error: ridesErr } = await query;
+
+            if (!ridesErr && Array.isArray(ridesData)) {
+                for (const row of ridesData) {
+                    if (row && row.id && !seenIds.has(String(row.id))) {
+                        seenIds.add(String(row.id));
+                        results.push(this.parseDbRideToRide(row));
+                    }
+                }
+            }
+
+            // 2. Busca na tabela corridas (compatibilidade)
+            try {
+                let corridasQuery = supabase
+                    .from('corridas')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (driverId) {
+                    corridasQuery = corridasQuery.or(`motorista_id.eq.${driverId},driver_id.eq.${driverId}`);
+                }
+
+                const { data: corridasData, error: corridasErr } = await corridasQuery;
+
+                if (!corridasErr && Array.isArray(corridasData)) {
+                    for (const row of corridasData) {
+                        if (row && row.id && !seenIds.has(String(row.id))) {
+                            seenIds.add(String(row.id));
+                            results.push(this.parseDbRideToRide(row));
+                        }
+                    }
+                }
+            } catch (_) {}
+
+            // Ordena por data decrescente
+            results.sort((a, b) => {
+                const timeA = new Date(a.requestedAt || 0).getTime();
+                const timeB = new Date(b.requestedAt || 0).getTime();
+                return timeB - timeA;
+            });
+
+            return results;
+        } catch (err) {
+            console.error('[RideService] Erro ao buscar histórico de corridas:', err);
+            return results;
         }
     }
 

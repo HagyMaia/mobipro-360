@@ -14,7 +14,8 @@ import {
     CheckCircle2,
     MapPin,
     ExternalLink,
-    Loader2
+    Loader2,
+    MessageSquare
 } from "lucide-react";
 import { DriverStatusButton } from "@/features/driver-status/components/DriverStatusButton";
 import { useDriverLocation } from "@/hooks/useDriverLocation";
@@ -30,6 +31,8 @@ import { Card, Button, Badge } from "@/components/ui";
 import { useApp } from "@/lib/store";
 import { NavigationModal } from "@/components/NavigationModal";
 import { PaymentCheckoutModal } from "@/components/Ride/PaymentCheckoutModal";
+import { ChatModal } from "@/components/Ride/ChatModal";
+import { ChatService } from "@/services/chat/ChatService";
 import { requestNotificationPermission } from "@/lib/notifications";
 import { formatBRL } from "@/lib/utils";
 import type { DriverWorkStatus } from "@/types";
@@ -51,20 +54,36 @@ export default function MapaPage() {
     const [loadingRideAction, setLoadingRideAction] = useState(false);
     const [isNavModalOpen, setNavModalOpen] = useState(false);
     const [isCheckoutModalOpen, setCheckoutModalOpen] = useState(false);
+    const [isChatModalOpen, setChatModalOpen] = useState(false);
+    const [unreadMessages, setUnreadMessages] = useState(0);
 
     // Escuta cancelamentos remotos da corrida ativa
     useActiveRideSync();
 
-    const isEffectiveOnline = (isOnline || state.status === 'available') || Boolean(state.activeRide);
-    const { location } = useDriverLocation(isEffectiveOnline, userId, state.activeRide?.id);
+    // Quando o motorista aceita uma corrida, para completamente de buscar/tocar novas chamadas
+    const isAvailableForNewRides = (isOnline || state.status === 'available') && !state.activeRide;
+    const isLocationTrackingActive = Boolean(isOnline || state.status === 'available' || state.activeRide);
+
+    const { location } = useDriverLocation(isLocationTrackingActive, userId, state.activeRide?.id);
 
     const {
         currentOffer,
         clearOffer,
         rejectOffer,
-    } = useRideRequests(isEffectiveOnline);
+    } = useRideRequests(isAvailableForNewRides);
 
     const activeRide = state.activeRide;
+
+    // Monitora mensagens não lidas no mapa
+    useEffect(() => {
+        if (!activeRide?.id) return;
+        const unsubscribe = ChatService.subscribeToRideMessages(activeRide.id, (msg) => {
+            if (msg.sender_role === 'passenger' && !isChatModalOpen) {
+                setUnreadMessages((prev) => prev + 1);
+            }
+        });
+        return () => unsubscribe();
+    }, [activeRide?.id, isChatModalOpen]);
 
     useEffect(() => {
         let isComponentMounted = true;
@@ -142,6 +161,13 @@ export default function MapaPage() {
     }, []);
 
     const handleToggleStatus = async () => {
+        if (state.activeRide) {
+            setStatusError(
+                "Você está com uma corrida em andamento. Não é possível alterar o status para Offline durante a viagem.",
+            );
+            return;
+        }
+
         if (!userId) {
             setStatusError(
                 "Não foi possível identificar o motorista autenticado.",
@@ -238,7 +264,7 @@ export default function MapaPage() {
         if (activeRide?.id) {
             setLoadingRideAction(true);
             try {
-                await RideService.cancelRide(activeRide.id, userId || undefined);
+                await RideService.cancelRide(activeRide.id, userId || undefined, 'Cancelado pelo motorista', 'driver');
             } catch (err) {
                 console.warn('[Mapa] Erro ao cancelar corrida no banco:', err);
             } finally {
@@ -404,19 +430,38 @@ export default function MapaPage() {
                     <Card className="border-2 border-brand/60 bg-white/95 dark:bg-dark-900/95 backdrop-blur-xl shadow-2xl p-4 rounded-3xl text-slate-900 dark:text-white">
                         <div className="flex items-center justify-between mb-3">
                             <div>
-                                <span className="text-[10px] font-black uppercase tracking-wider text-brand-700 dark:text-brand">
-                                    {activeRide.status === 'accepted' && '🚗 A Caminho do Embarque'}
-                                    {activeRide.status === 'arrived' && '📍 No Local de Embarque'}
-                                    {activeRide.status === 'in-progress' && '🏁 Em Viagem até o Destino'}
+                                <span className="text-[10px] font-black uppercase tracking-wider text-brand-700 dark:text-brand flex items-center gap-1.5">
+                                    <span className="h-2 w-2 rounded-full bg-brand animate-ping" />
+                                    {activeRide.status === 'accepted' && 'A Caminho do Embarque'}
+                                    {activeRide.status === 'arrived' && 'No Local de Embarque'}
+                                    {activeRide.status === 'in-progress' && 'Em Viagem até o Destino'}
                                 </span>
-                                <h3 className="text-base font-black truncate">{activeRide.passengerName}</h3>
+                                <h3 className="text-base font-black truncate text-slate-900 dark:text-white">{activeRide.passengerName}</h3>
                             </div>
-                            <div className="text-right">
-                                <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
-                                    {formatBRL(activeRide.fare)}
-                                </div>
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                    {activeRide.distanceKm} km · {activeRide.estimatedMinutes} min
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                        setUnreadMessages(0);
+                                        setChatModalOpen(true);
+                                    }}
+                                    className="relative flex h-9 w-9 items-center justify-center rounded-2xl bg-brand/15 text-slate-900 dark:text-brand hover:bg-brand/25 transition active:scale-95 shadow-sm"
+                                    aria-label="Abrir chat com passageiro"
+                                    title="Chat com passageiro"
+                                >
+                                    <MessageSquare size={17} />
+                                    {unreadMessages > 0 && (
+                                        <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black text-white ring-2 ring-white dark:ring-dark-900 animate-bounce">
+                                            {unreadMessages}
+                                        </span>
+                                    )}
+                                </button>
+                                <div className="text-right">
+                                    <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                                        {formatBRL(activeRide.fare)}
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                        {activeRide.distanceKm} km · {activeRide.estimatedMinutes} min
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -425,11 +470,11 @@ export default function MapaPage() {
                         <div className="rounded-2xl bg-slate-100 dark:bg-dark-800 p-2.5 mb-3 text-xs space-y-1.5">
                             <div className="flex items-center gap-1.5">
                                 <MapPin size={13} className="text-emerald-500 shrink-0" />
-                                <span className="truncate font-semibold">{activeRide.pickup}</span>
+                                <span className="truncate font-semibold text-slate-800 dark:text-slate-200">{activeRide.pickup}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <Navigation size={13} className="text-red-500 shrink-0" />
-                                <span className="truncate font-semibold">{activeRide.dropoff}</span>
+                                <span className="truncate font-semibold text-slate-800 dark:text-slate-200">{activeRide.dropoff}</span>
                             </div>
                         </div>
 
@@ -466,7 +511,7 @@ export default function MapaPage() {
                                     size="sm"
                                     disabled={loadingRideAction}
                                     onClick={handleArriveActiveRide}
-                                    className="font-black bg-amber-500 hover:bg-amber-600 border-amber-600 text-slate-950"
+                                    className="font-black bg-amber-500 hover:bg-amber-600 border-amber-600 text-slate-950 shadow-md shadow-amber-500/20"
                                 >
                                     {loadingRideAction ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} />} Cheguei ao Local
                                 </Button>
@@ -478,7 +523,7 @@ export default function MapaPage() {
                                     size="sm"
                                     disabled={loadingRideAction}
                                     onClick={handleStartActiveRide}
-                                    className="font-black bg-emerald-500 hover:bg-emerald-600"
+                                    className="font-black bg-emerald-500 hover:bg-emerald-600 text-slate-950 shadow-md shadow-emerald-500/20"
                                 >
                                     {loadingRideAction ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />} Iniciar Viagem
                                 </Button>
@@ -490,13 +535,23 @@ export default function MapaPage() {
                                     size="sm"
                                     disabled={loadingRideAction}
                                     onClick={() => setCheckoutModalOpen(true)}
-                                    className="font-black bg-emerald-600 hover:bg-emerald-700"
+                                    className="font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
                                 >
                                     {loadingRideAction ? <Loader2 size={14} className="animate-spin" /> : <Flag size={14} />} Finalizar Viagem
                                 </Button>
                             )}
                         </div>
                     </Card>
+
+                    {/* Modal de Chat em Tempo Real com o Passageiro */}
+                    <ChatModal
+                        isOpen={isChatModalOpen}
+                        onClose={() => setChatModalOpen(false)}
+                        rideId={activeRide.id}
+                        passengerName={activeRide.passengerName}
+                        driverName={driverName || 'Você'}
+                        driverId={userId || undefined}
+                    />
 
                     {/* Modal de Navegação (Waze / Google Maps) */}
                     {navAddress && (

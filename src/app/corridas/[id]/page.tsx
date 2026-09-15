@@ -20,9 +20,12 @@ import {
   ShieldCheck,
   Calendar,
   ExternalLink,
-  Loader2
+  Loader2,
+  AlertTriangle,
+  UserX,
 } from 'lucide-react';
-import { QuickMessagesModal } from '@/components/Ride/QuickMessagesModal';
+import { ChatModal } from '@/components/Ride/ChatModal';
+import { ChatService } from '@/services/chat/ChatService';
 import { PaymentCheckoutModal } from '@/components/Ride/PaymentCheckoutModal';
 import { NavigationModal } from '@/components/NavigationModal';
 import { useApp } from '@/lib/store';
@@ -42,7 +45,8 @@ export default function DetalheCorrida() {
   const { state, dispatch } = useApp();
   const { user } = useAuth();
 
-  const [isMessageModalOpen, setMessageModalOpen] = useState(false);
+  const [isChatModalOpen, setChatModalOpen] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [isCheckoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [isNavModalOpen, setNavModalOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
@@ -58,7 +62,10 @@ export default function DetalheCorrida() {
   const historyRide = state?.rideHistory?.find((r) => r.id === urlId) || null;
   const currentRide: Ride | null = activeRide || historyRide || dbRide;
 
-  const isRideActive = state.activeRide?.id === currentRide?.id && currentRide?.status !== 'completed' && currentRide?.status !== 'cancelled';
+  const isRideActive =
+    state.activeRide?.id === currentRide?.id &&
+    currentRide?.status !== 'completed' &&
+    currentRide?.status !== 'cancelled';
   const { location } = useDriverLocation(isRideActive, user?.id, currentRide?.id);
 
   // Busca do Supabase se recarregar a página direto no link
@@ -66,31 +73,10 @@ export default function DetalheCorrida() {
     if (!currentRide && urlId) {
       setLoadingDbRide(true);
       const supabase = createClient();
-      
-      const parseAndSet = (data: any) => {
-        const dbStatus = String(data.status || '').toUpperCase();
-        let rideStatus: RideStatus = 'accepted';
-        if (dbStatus === 'CONCLUIDA' || dbStatus === 'COMPLETED') rideStatus = 'completed';
-        else if (dbStatus === 'CANCELADA' || dbStatus === 'CANCELLED') rideStatus = 'cancelled';
-        else if (dbStatus === 'IN_PROGRESS' || dbStatus === 'EM_ANDAMENTO') rideStatus = 'in-progress';
-        else if (dbStatus === 'ARRIVED' || dbStatus === 'NO_LOCAL') rideStatus = 'arrived';
 
-        setDbRide({
-          id: data.id,
-          passengerName: data.passenger_name || data.cliente_nome || 'Passageiro Mobipro',
-          passengerRating: 5.0,
-          passengerAccountMonths: 6,
-          passengerTrips: 18,
-          pickup: data.pickup_address || data.origem_endereco || 'Ponto de Embarque',
-          dropoff: data.dropoff_address || data.destino_endereco || 'Ponto de Destino',
-          distanceKm: Number(data.distance_km || data.distancia_km || 3.5),
-          estimatedMinutes: Number(data.estimated_minutes || data.duracao_min || 12),
-          fare: Number(data.fare_amount || data.valor_total || data.valor || 15.0),
-          paymentMethod: (data.payment_method || data.forma_pagamento || 'pix') as any,
-          status: rideStatus,
-          requestedAt: data.created_at || new Date().toISOString(),
-          source: 'app',
-        });
+      const parseAndSet = (data: any) => {
+        const parsed = RideService.parseDbRideToRide(data);
+        setDbRide(parsed);
       };
 
       supabase
@@ -103,7 +89,6 @@ export default function DetalheCorrida() {
             parseAndSet(res.data);
             setLoadingDbRide(false);
           } else {
-            // Fallback para tabela corridas
             supabase
               .from('corridas')
               .select('*')
@@ -134,6 +119,17 @@ export default function DetalheCorrida() {
         });
     }
   }, [currentRide, urlId]);
+
+  // Monitora mensagens do passageiro em tempo real
+  useEffect(() => {
+    if (!currentRide?.id) return;
+    const unsubscribe = ChatService.subscribeToRideMessages(currentRide.id, (msg) => {
+      if (msg.sender_role === 'passenger' && !isChatModalOpen) {
+        setUnreadMessages((prev) => prev + 1);
+      }
+    });
+    return () => unsubscribe();
+  }, [currentRide?.id, isChatModalOpen]);
 
   if (loadingDbRide) {
     return (
@@ -172,10 +168,14 @@ export default function DetalheCorrida() {
   const navLabel = isGoingToDropoff ? 'Navegar ao Destino' : 'Navegar ao Embarque';
   const routeMode = currentRide.status === 'accepted' ? 'to-pickup' : isGoingToDropoff ? 'to-dropoff' : 'full';
 
-  const handleSendMessage = (msg: string) => {
-    console.log('[DetalheCorrida] Mensagem enviada:', msg);
-    setMessageModalOpen(false);
-  };
+  const isCancelled = currentRide.status === 'cancelled';
+  const isCompleted = currentRide.status === 'completed';
+  const isCancelledByPassenger =
+    currentRide.cancelledBy === 'passenger' ||
+    (currentRide.cancelReason && /passageiro|cliente/i.test(currentRide.cancelReason));
+  const isCancelledByDriver =
+    currentRide.cancelledBy === 'driver' ||
+    (currentRide.cancelReason && /motorista/i.test(currentRide.cancelReason));
 
   const handleArriveAtPickup = async () => {
     setLoadingAction(true);
@@ -207,6 +207,26 @@ export default function DetalheCorrida() {
     }
   };
 
+  const handleCancelActiveRide = async () => {
+    const reason = window.prompt('Motivo do cancelamento (opcional):', 'Imprevisto do motorista');
+    if (reason === null) return;
+
+    setLoadingAction(true);
+    try {
+      if (currentRide.id) {
+        await RideService.cancelRide(currentRide.id, user?.id, reason || 'Cancelado pelo motorista', 'driver');
+      }
+      dispatch({ type: 'CANCEL_RIDE' });
+      router.push('/corridas');
+    } catch (err) {
+      console.warn('[DetalheCorrida] Erro ao cancelar:', err);
+      dispatch({ type: 'CANCEL_RIDE' });
+      router.push('/corridas');
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
   const handleFinishCheckout = async (data: {
     paymentMethod: 'pix' | 'cash' | 'card' | 'voucher';
     finalAmount: number;
@@ -231,7 +251,6 @@ export default function DetalheCorrida() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-dark-950 text-slate-900 dark:text-slate-100 transition-colors">
-      
       {/* CABEÇALHO */}
       <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-900/95 px-4 py-3.5 backdrop-blur-xl">
         <div className="flex items-center gap-3">
@@ -260,7 +279,7 @@ export default function DetalheCorrida() {
                     <Navigation size={11} className="animate-pulse" /> Em viagem até o destino
                   </span>
                 )
-              ) : currentRide.status === 'completed' ? (
+              ) : isCompleted ? (
                 <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 size={11} /> Concluída com Sucesso
                 </span>
@@ -282,6 +301,36 @@ export default function DetalheCorrida() {
 
       {/* CONTEÚDO PRINCIPAL */}
       <main className="flex-1 space-y-4 overflow-y-auto p-4 pb-36">
+        {/* BANNER DETALHADO SE CANCELADA */}
+        {isCancelled && (
+          <div className="rounded-3xl border border-red-500/40 bg-red-500/10 p-4 text-red-700 dark:text-red-300 shadow-sm space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={18} className="text-red-500 shrink-0" />
+                <span className="text-xs font-black uppercase tracking-wide">
+                  {isCancelledByPassenger
+                    ? 'Cancelada pelo Passageiro'
+                    : isCancelledByDriver
+                    ? 'Cancelada pelo Motorista'
+                    : 'Cancelada pela Central'}
+                </span>
+              </div>
+              <span className="text-[10px] font-bold rounded-full bg-red-500/20 px-2 py-0.5 text-red-600 dark:text-red-300">
+                Cancelamento Registrado
+              </span>
+            </div>
+            {currentRide.cancelReason && (
+              <p className="text-xs text-slate-700 dark:text-slate-300">
+                <strong>Justificativa:</strong> {currentRide.cancelReason}
+              </p>
+            )}
+            {currentRide.cancelledAt && (
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                Registrado em: {new Date(currentRide.cancelledAt).toLocaleString('pt-BR')}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* MAPA OPERACIONAL EM TEMPO REAL */}
         <div className="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 shadow-md">
@@ -314,7 +363,7 @@ export default function DetalheCorrida() {
             />
           </div>
         </div>
-        
+
         {/* CARD VALOR & TEMPO */}
         <div className="rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 p-5 shadow-sm">
           <div className="flex items-center justify-between">
@@ -322,7 +371,11 @@ export default function DetalheCorrida() {
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Valor da Corrida
               </span>
-              <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+              <div
+                className={`text-3xl font-black tabular-nums ${
+                  isCancelled ? 'text-slate-400 line-through' : 'text-emerald-600 dark:text-emerald-400'
+                }`}
+              >
                 {formatBRL(currentRide.fare)}
               </div>
             </div>
@@ -365,14 +418,24 @@ export default function DetalheCorrida() {
             {isRideActive && (
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setMessageModalOpen(true)}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 dark:bg-dark-800 text-slate-700 dark:text-slate-200 font-bold transition hover:bg-slate-200"
+                  onClick={() => {
+                    setUnreadMessages(0);
+                    setChatModalOpen(true);
+                  }}
+                  className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/15 text-slate-900 dark:text-brand font-bold transition hover:bg-brand/25 active:scale-95"
+                  aria-label="Chat com passageiro"
                 >
                   <MessageCircle size={18} />
+                  {unreadMessages > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black text-white ring-2 ring-white dark:ring-dark-900 animate-bounce">
+                      {unreadMessages}
+                    </span>
+                  )}
                 </button>
                 <a
                   href="tel:+5592982329629"
                   className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand text-slate-950 font-bold shadow-md shadow-brand/20 transition hover:brightness-105"
+                  aria-label="Ligar para o passageiro"
                 >
                   <Phone size={18} />
                 </a>
@@ -411,7 +474,7 @@ export default function DetalheCorrida() {
         </div>
 
         {/* SEÇÃO DE AVALIAÇÃO DO PASSAGEIRO (HISTÓRICO) */}
-        {!isRideActive && (
+        {!isRideActive && !isCancelled && (
           <div className="rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 p-4 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -472,11 +535,19 @@ export default function DetalheCorrida() {
           </button>
 
           <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleCancelActiveRide}
+              disabled={loadingAction}
+              className="flex items-center justify-center gap-1.5 rounded-2xl border border-red-300 dark:border-red-900/50 bg-red-50 dark:bg-red-950/40 py-3 text-xs font-bold text-red-600 dark:text-red-400 transition hover:bg-red-100 active:scale-95"
+            >
+              <XCircle size={15} /> Cancelar
+            </button>
+
             {currentRide.status === 'accepted' && (
               <button
                 onClick={handleArriveAtPickup}
                 disabled={loadingAction}
-                className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-amber-500 py-3 text-sm font-black text-slate-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-600 active:scale-95"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-amber-500 py-3 text-xs font-black text-slate-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-600 active:scale-95"
               >
                 {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <MapPin size={16} />} Cheguei ao Local
               </button>
@@ -486,7 +557,7 @@ export default function DetalheCorrida() {
               <button
                 onClick={handleStartTrip}
                 disabled={loadingAction}
-                className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600 active:scale-95"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600 active:scale-95"
               >
                 {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />} Iniciar Viagem
               </button>
@@ -496,22 +567,26 @@ export default function DetalheCorrida() {
               <button
                 onClick={() => setCheckoutModalOpen(true)}
                 disabled={loadingAction}
-                className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-700 active:scale-95"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 text-xs font-black text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-700 active:scale-95"
               >
-                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />} Finalizar Viagem & Receber PIX
+                {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />} Finalizar Viagem
               </button>
             )}
           </div>
         </footer>
       )}
 
-      {/* Modais de Mensagem, Navegação e Pagamento */}
-      <QuickMessagesModal
-        isOpen={isMessageModalOpen}
-        onClose={() => setMessageModalOpen(false)}
-        onSendMessage={handleSendMessage}
+      {/* Modal de Chat em Tempo Real com o Passageiro */}
+      <ChatModal
+        isOpen={isChatModalOpen}
+        onClose={() => setChatModalOpen(false)}
+        rideId={currentRide.id}
+        passengerName={currentRide.passengerName}
+        driverName={(user as any)?.user_metadata?.displayName || (user as any)?.user_metadata?.name || 'Motorista'}
+        driverId={user?.id}
       />
 
+      {/* Modal de Navegação (Waze / Google Maps) */}
       <NavigationModal
         isOpen={isNavModalOpen}
         onClose={() => setNavModalOpen(false)}
@@ -520,6 +595,7 @@ export default function DetalheCorrida() {
         destinationLabel={currentRide.status === 'in-progress' ? 'Destino' : 'Embarque'}
       />
 
+      {/* Modal de Checkout / PIX QR Code e Avaliação */}
       <PaymentCheckoutModal
         isOpen={isCheckoutModalOpen}
         onClose={() => setCheckoutModalOpen(false)}
