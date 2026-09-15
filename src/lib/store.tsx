@@ -19,7 +19,8 @@ import type {
   PassengerFilters,
   DestinationFilter,
   Ride,
-  RideRequest
+  RideRequest,
+  RideStatus
 } from './types';
 import {
   DEFAULT_CONTACTS,
@@ -97,12 +98,14 @@ function reducer(state: AppState, action: Action): AppState {
     case 'ACCEPT_RIDE': {
       const ride = action.ride || state.incomingRide;
       if (!ride) return state;
-      const active: Ride = { ...ride, status: 'accepted' };
+      const rideStatus = 'status' in ride ? (ride as Ride).status : 'accepted';
+      const status: RideStatus = (rideStatus === 'arrived' || rideStatus === 'in-progress') ? rideStatus : 'accepted';
+      const active: Ride = { ...ride, status };
       return {
         ...state,
         incomingRide: null,
         activeRide: active,
-        status: 'en-route'
+        status: status === 'in-progress' ? 'on-ride' : 'en-route'
       };
     }
 
@@ -206,8 +209,30 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SET_NAV_APP':
       return { ...state, navApp: action.navApp };
 
-    case 'HYDRATE':
-      return { ...action.state, incomingRide: null, activeRide: null };
+    case 'HYDRATE': {
+      const active = action.state.activeRide;
+      const isValidActiveRide =
+        active &&
+        active.id &&
+        (active.status === 'accepted' || active.status === 'arrived' || active.status === 'in-progress');
+
+      let nextStatus: WorkStatus = action.state.status || 'offline';
+      if (isValidActiveRide) {
+        nextStatus = active.status === 'in-progress' ? 'on-ride' : 'en-route';
+      } else {
+        // Se NÃO há corrida ativa válida, status NUNCA deve ser 'en-route' ou 'on-ride'
+        if (nextStatus === 'en-route' || nextStatus === 'on-ride') {
+          nextStatus = 'available';
+        }
+      }
+
+      return {
+        ...action.state,
+        incomingRide: null,
+        activeRide: isValidActiveRide ? active : null,
+        status: nextStatus,
+      };
+    }
 
     default:
       return state;

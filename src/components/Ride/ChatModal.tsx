@@ -84,7 +84,9 @@ export const ChatModal: React.FC<ChatModalProps> = ({
                 if (newMsg.sender_role !== 'driver') {
                     playMessageReceivedChime();
                 }
-                return [...prev, newMsg];
+                const next = [...prev, newMsg];
+                next.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                return next;
             });
             setTimeout(() => scrollToBottom(true), 50);
         });

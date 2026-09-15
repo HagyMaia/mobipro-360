@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Coffee, Loader2, Lock, Power, Radio, ShieldCheck } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { ProfileService } from '@/services/driver/ProfileService';
@@ -42,7 +43,12 @@ const STATUS_ITEMS: StatusItem[] = [
 export default function StatusControl({ disabled }: { disabled?: boolean }) {
   const { state, dispatch } = useApp();
   const [updating, setUpdating] = useState(false);
-  const isInTrip = state.activeRide !== null || state.status === 'en-route' || state.status === 'on-ride';
+  const isInTrip = Boolean(
+    state.activeRide &&
+    state.activeRide.id &&
+    state.activeRide.status !== 'cancelled' &&
+    state.activeRide.status !== 'completed'
+  );
   const canChange = !isInTrip;
 
   const handleStatusChange = async (targetStatus: WorkStatus) => {
@@ -79,7 +85,7 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
       <div className="relative rounded-2xl p-1 bg-slate-900/80 dark:bg-dark-950/90 border border-slate-800 dark:border-dark-700/80 shadow-md backdrop-blur-xl">
         <div className="grid grid-cols-3 gap-1">
           {STATUS_ITEMS.map(({ status, label, icon: Icon, activeStyles }) => {
-            const active = !isInTrip && state.status === status;
+            const active = !isInTrip && (state.status === status || (!isInTrip && state.status === 'en-route' && status === 'available'));
             const isButtonUpdating = updating && active;
 
             return (
@@ -165,7 +171,19 @@ export default function StatusControl({ disabled }: { disabled?: boolean }) {
 }
 
 export function StatusPill() {
+  const router = useRouter();
   const { state } = useApp();
+  const hasActiveRide = Boolean(
+    state.activeRide &&
+    state.activeRide.id &&
+    state.activeRide.status !== 'cancelled' &&
+    state.activeRide.status !== 'completed'
+  );
+
+  const displayStatus: WorkStatus = hasActiveRide
+    ? (state.activeRide?.status === 'in-progress' ? 'on-ride' : 'en-route')
+    : (state.status === 'en-route' || state.status === 'on-ride' ? 'available' : state.status);
+
   const map: Record<WorkStatus, { label: string; dot: string; text: string; bg: string }> = {
     offline: {
       label: 'Offline',
@@ -183,13 +201,13 @@ export function StatusPill() {
       label: 'A caminho',
       dot: 'bg-amber-400 animate-ping',
       text: 'text-amber-300 font-bold',
-      bg: 'bg-amber-950/60 border-amber-500/40',
+      bg: 'bg-amber-950/60 border-amber-500/40 hover:bg-amber-900/80 cursor-pointer active:scale-95 shadow-sm',
     },
     'on-ride': {
       label: 'Em corrida',
       dot: 'bg-brand animate-pulse shadow-[0_0_6px_rgba(255,200,0,0.8)]',
       text: 'text-brand font-bold',
-      bg: 'bg-brand/15 border-brand/40',
+      bg: 'bg-brand/15 border-brand/40 hover:bg-brand/25 cursor-pointer active:scale-95 shadow-sm',
     },
     break: {
       label: 'Pausa',
@@ -198,17 +216,34 @@ export function StatusPill() {
       bg: 'bg-amber-950/60 border-amber-500/40',
     },
   };
-  const info = map[state.status];
+  const info = map[displayStatus] || map.offline;
+
+  const handleClick = () => {
+    if (hasActiveRide) {
+      if (state.activeRide?.id) {
+        router.push(`/corridas/${state.activeRide.id}`);
+      } else {
+        router.push('/mapa');
+      }
+    }
+  };
+
   return (
-    <div
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={!hasActiveRide}
+      title={hasActiveRide ? 'Toque para ir para a corrida em andamento' : undefined}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold backdrop-blur-md transition-all',
         info.bg,
-        info.text
+        info.text,
+        !hasActiveRide && 'cursor-default'
       )}
     >
       <span className={cn('h-1.5 w-1.5 rounded-full', info.dot)} />
       <span>{info.label}</span>
-    </div>
+      {hasActiveRide && <span className="text-[9px] opacity-80">↗</span>}
+    </button>
   );
 }

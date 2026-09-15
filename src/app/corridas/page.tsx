@@ -154,9 +154,11 @@ export default function CorridasPage() {
       const nextStatus = !isOnline;
       await ProfileService.toggleWorkStatus(nextStatus ? 'ONLINE' : 'OFFLINE');
       setIsOnline(nextStatus);
+      dispatch({ type: 'SET_STATUS', status: nextStatus ? 'available' : 'offline' });
     } catch (err) {
       console.warn('[Corridas] Falha ao atualizar status no banco:', err);
       setIsOnline((v) => !v);
+      dispatch({ type: 'SET_STATUS', status: !isOnline ? 'available' : 'offline' });
     } finally {
       setIsLoadingTurno(false);
     }

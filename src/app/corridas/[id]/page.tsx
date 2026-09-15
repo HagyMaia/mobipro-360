@@ -34,6 +34,7 @@ import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
 import { useDriverLocation } from '@/hooks/useDriverLocation';
 import { RideService } from '@/services/ride/RideService';
+import { ProfileService } from '@/services/driver/ProfileService';
 import { createClient } from '@/lib/supabase';
 import { formatBRL } from '@/lib/utils';
 import type { Ride, RideStatus } from '@/lib/types';
@@ -83,13 +84,18 @@ export default function DetalheCorrida() {
       setDbRide(parsed);
       
       const s = String(data.status || '').toUpperCase();
-      if (s === 'CANCELLED' || s === 'CANCELADA' || s === 'CANCELED' || s === 'RECUSADA') {
+      if (s === 'CANCELLED' || s === 'CANCELADA' || s === 'CANCELED' || s === 'RECUSADA' || s === 'REJECTED') {
         dispatch({
           type: 'CANCEL_RIDE',
           ride: parsed,
           reason: parsed.cancelReason || 'Cancelada pelo passageiro',
           cancelledBy: (parsed.cancelledBy as any) || 'passenger',
         });
+        ProfileService.toggleWorkStatus('ONLINE').catch(() => {});
+      } else if (s === 'ACCEPTED' || s === 'ARRIVED' || s === 'IN-PROGRESS' || s === 'EM_ANDAMENTO' || s === 'A_CAMINHO' || s === 'NO_LOCAL' || s === 'EM_VIAGEM' || s === 'ACEITA') {
+        if (!state.activeRide || state.activeRide.id !== parsed.id) {
+          dispatch({ type: 'ACCEPT_RIDE', ride: parsed });
+        }
       }
     };
 

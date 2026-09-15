@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
@@ -46,6 +47,7 @@ const DriverMap = dynamic(
 );
 
 export default function MapaPage() {
+    const router = useRouter();
     const { state, dispatch } = useApp();
     const [isOnline, setIsOnline] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
@@ -62,6 +64,13 @@ export default function MapaPage() {
 
     // Escuta cancelamentos remotos da corrida ativa
     useActiveRideSync();
+
+    // Se houver corrida ativa no store, motorista está obrigatoriamente online e ativo
+    useEffect(() => {
+        if (state.activeRide) {
+            setIsOnline(true);
+        }
+    }, [state.activeRide]);
 
     // Quando o motorista aceita uma corrida, para completamente de buscar/tocar novas chamadas
     const isAvailableForNewRides = (isOnline || state.status === 'available') && !state.activeRide;
@@ -109,8 +118,9 @@ export default function MapaPage() {
                 return;
             }
 
+            const currentUserId = authData.user.id;
             if (isComponentMounted) {
-                setUserId(authData.user.id);
+                setUserId(currentUserId);
             }
 
             const {
@@ -119,7 +129,7 @@ export default function MapaPage() {
             } = await supabase
                 .from("motoristas")
                 .select("nome, status, work_status")
-                .eq("id", authData.user.id)
+                .eq("id", currentUserId)
                 .maybeSingle();
 
             if (motoristaError || !motorista) {
@@ -151,10 +161,69 @@ export default function MapaPage() {
 
             setIsApproved(driverIsApproved);
 
-            setIsOnline(
+            const driverOnline =
                 driverIsApproved &&
-                motorista.work_status === "ONLINE",
-            );
+                (motorista.work_status === "ONLINE" || Boolean(state.activeRide));
+
+            setIsOnline(driverOnline);
+
+            // Se houver corrida ativa localmente, valida se ainda está ativa no Supabase
+            if (state.activeRide?.id) {
+                try {
+                    const { data: currentDbRide } = await supabase
+                        .from('rides')
+                        .select('*')
+                        .eq('id', state.activeRide.id)
+                        .maybeSingle();
+
+                    const s = String(currentDbRide?.status || '').toUpperCase();
+                    if (currentDbRide && (s === 'CANCELLED' || s === 'CANCELADA' || s === 'CANCELED' || s === 'RECUSADA' || s === 'REJECTED')) {
+                        dispatch({
+                            type: 'CANCEL_RIDE',
+                            ride: RideService.parseDbRideToRide(currentDbRide),
+                            reason: currentDbRide.cancel_reason || currentDbRide.motivo_cancelamento || 'Cancelada pelo passageiro',
+                            cancelledBy: 'passenger'
+                        });
+                    } else if (currentDbRide && (s === 'COMPLETED' || s === 'FINALIZADA')) {
+                        dispatch({ type: 'COMPLETE_RIDE' });
+                    }
+                } catch (_) {}
+            } else {
+                // Se não houver corrida ativa no estado local, busca no Supabase para restaurar
+                try {
+                    const { data: dbRide } = await supabase
+                        .from('rides')
+                        .select('*')
+                        .eq('driver_id', currentUserId)
+                        .in('status', ['accepted', 'arrived', 'in-progress', 'ACCEPTED', 'EM_ANDAMENTO', 'A_CAMINHO', 'NO_LOCAL', 'EM_VIAGEM', 'ACEITA'])
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (dbRide && isComponentMounted) {
+                        const parsed = RideService.parseDbRideToRide(dbRide);
+                        dispatch({ type: 'ACCEPT_RIDE', ride: parsed });
+                        setIsOnline(true);
+                    } else {
+                        const { data: corridaData } = await supabase
+                            .from('corridas')
+                            .select('*')
+                            .or(`motorista_id.eq.${currentUserId},driver_id.eq.${currentUserId}`)
+                            .in('status', ['accepted', 'arrived', 'in-progress', 'ACCEPTED', 'EM_ANDAMENTO', 'A_CAMINHO', 'NO_LOCAL', 'EM_VIAGEM', 'ACEITA'])
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
+
+                        if (corridaData && isComponentMounted) {
+                            const parsed = RideService.parseDbRideToRide(corridaData);
+                            dispatch({ type: 'ACCEPT_RIDE', ride: parsed });
+                            setIsOnline(true);
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[MapaPage] Erro ao sincronizar corrida ativa no carregamento:', err);
+                }
+            }
         };
 
         loadDriverData();
@@ -162,7 +231,7 @@ export default function MapaPage() {
         return () => {
             isComponentMounted = false;
         };
-    }, []);
+    }, [dispatch, state.activeRide]);
 
     const handleToggleStatus = async () => {
         if (state.activeRide) {
@@ -453,7 +522,17 @@ export default function MapaPage() {
                                     {activeRide.status === 'arrived' && 'No Local de Embarque'}
                                     {activeRide.status === 'in-progress' && 'Em Viagem até o Destino'}
                                 </span>
-                                <h3 className="text-base font-black truncate text-slate-900 dark:text-white">{activeRide.passengerName}</h3>
+                                <button
+                                    type="button"
+                                    onClick={() => router.push(`/corridas/${activeRide.id}`)}
+                                    className="text-left group flex items-center gap-1.5"
+                                    title="Ver tela completa de detalhes da corrida"
+                                >
+                                    <h3 className="text-base font-black truncate text-slate-900 dark:text-white group-hover:text-brand transition">
+                                        {activeRide.passengerName}
+                                    </h3>
+                                    <ExternalLink size={13} className="text-slate-400 group-hover:text-brand transition" />
+                                </button>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button

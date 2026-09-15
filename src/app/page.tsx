@@ -83,6 +83,31 @@ export default function HomePage() {
             return;
           }
 
+          // Se houver corrida ativa registrada localmente, valida se ainda está ativa no Supabase
+          if (state.activeRide?.id) {
+            try {
+              const { data: dbRide } = await supabase
+                .from('rides')
+                .select('*')
+                .eq('id', state.activeRide.id)
+                .maybeSingle();
+
+              const s = String(dbRide?.status || '').toUpperCase();
+              if (dbRide && (s === 'CANCELLED' || s === 'CANCELADA' || s === 'CANCELED' || s === 'RECUSADA' || s === 'REJECTED')) {
+                dispatch({
+                  type: 'CANCEL_RIDE',
+                  ride: RideService.parseDbRideToRide(dbRide),
+                  reason: dbRide.cancel_reason || dbRide.motivo_cancelamento || 'Cancelada pelo passageiro',
+                  cancelledBy: 'passenger'
+                });
+              } else if (dbRide && (s === 'COMPLETED' || s === 'FINALIZADA')) {
+                dispatch({ type: 'COMPLETE_RIDE' });
+              }
+            } catch (_) {}
+          } else if (state.status === 'en-route' || state.status === 'on-ride') {
+            dispatch({ type: 'SET_STATUS', status: 'available' });
+          }
+
           if (motorista?.work_status === 'ONLINE' && state.status !== 'available' && state.activeRide === null) {
             dispatch({ type: 'SET_STATUS', status: 'available' });
           } else if (motorista?.work_status === 'OFFLINE' && state.status === 'available' && state.activeRide === null) {

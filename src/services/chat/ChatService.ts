@@ -159,7 +159,7 @@ export class ChatService {
                 const { data, error } = await supabase
                     .from('ride_messages')
                     .select('*')
-                    .or(`ride_id.eq.${rideId},corrida_id.eq.${rideId}`)
+                    .eq('ride_id', rideId)
                     .order('created_at', { ascending: true });
 
                 if (!error && Array.isArray(data)) {
@@ -170,18 +170,16 @@ export class ChatService {
                             saveLocalMessage(parsed);
                         }
                     }
-                }
-            } catch (err1) {
-                // Tenta busca simples por ride_id
-                try {
-                    const { data } = await supabase
+                } else if (error) {
+                    // Fallback com busca OR
+                    const { data: orData } = await supabase
                         .from('ride_messages')
                         .select('*')
-                        .eq('ride_id', rideId)
+                        .or(`ride_id.eq.${rideId},corrida_id.eq.${rideId}`)
                         .order('created_at', { ascending: true });
 
-                    if (Array.isArray(data)) {
-                        for (const item of data) {
+                    if (Array.isArray(orData)) {
+                        for (const item of orData) {
                             const parsed = parseRawMessage(item);
                             if (parsed) {
                                 messageMap.set(parsed.id, parsed);
@@ -189,19 +187,55 @@ export class ChatService {
                             }
                         }
                     }
-                } catch (_) {}
+                }
+            } catch (err1) {
+                console.warn('[ChatService] Erro ao buscar ride_messages:', err1);
             }
 
             // 3. Busca na tabela alternativa 'messages'
             try {
-                const { data: altData } = await supabase
+                const { data: altData, error: altErr } = await supabase
                     .from('messages')
                     .select('*')
-                    .or(`ride_id.eq.${rideId},corrida_id.eq.${rideId}`)
+                    .eq('ride_id', rideId)
                     .order('created_at', { ascending: true });
 
-                if (Array.isArray(altData) && altData.length > 0) {
+                if (!altErr && Array.isArray(altData) && altData.length > 0) {
                     for (const item of altData) {
+                        const parsed = parseRawMessage(item);
+                        if (parsed) {
+                            messageMap.set(parsed.id, parsed);
+                            saveLocalMessage(parsed);
+                        }
+                    }
+                } else if (altErr) {
+                    const { data: altOrData } = await supabase
+                        .from('messages')
+                        .select('*')
+                        .or(`ride_id.eq.${rideId},corrida_id.eq.${rideId}`)
+                        .order('created_at', { ascending: true });
+                    if (Array.isArray(altOrData)) {
+                        for (const item of altOrData) {
+                            const parsed = parseRawMessage(item);
+                            if (parsed) {
+                                messageMap.set(parsed.id, parsed);
+                                saveLocalMessage(parsed);
+                            }
+                        }
+                    }
+                }
+            } catch (_) {}
+
+            // 4. Busca na tabela 'chat_messages' se existir
+            try {
+                const { data: chatData } = await supabase
+                    .from('chat_messages')
+                    .select('*')
+                    .eq('ride_id', rideId)
+                    .order('created_at', { ascending: true });
+
+                if (Array.isArray(chatData)) {
+                    for (const item of chatData) {
                         const parsed = parseRawMessage(item);
                         if (parsed) {
                             messageMap.set(parsed.id, parsed);
@@ -389,10 +423,16 @@ export class ChatService {
             const parsed = parseRawMessage(raw);
             if (!parsed) return;
 
-            // Se for de outra corrida, ignora
-            if (parsed.ride_id && parsed.ride_id !== rideId && !rideId.includes(parsed.ride_id) && !parsed.ride_id.includes(rideId)) {
-                return;
-            }
+            // Se o ride_id for de outra corrida específica diferente, ignora
+            const isMatchingRide =
+                !parsed.ride_id ||
+                parsed.ride_id === rideId ||
+                rideId.includes(parsed.ride_id) ||
+                parsed.ride_id.includes(rideId) ||
+                raw?.corrida_id === rideId ||
+                raw?.ride_id === rideId;
+
+            if (!isMatchingRide) return;
 
             if (!processedIds.has(parsed.id)) {
                 processedIds.add(parsed.id);
@@ -473,48 +513,12 @@ export class ChatService {
         // 4. Polling proativo a cada 1.5s (garante entrega mesmo com rede instável ou sem WebSockets)
         const pollMessages = async () => {
             try {
-                // Tenta ride_messages
-                const { data } = await supabase
-                    .from('ride_messages')
-                    .select('*')
-                    .or(`ride_id.eq.${rideId},corrida_id.eq.${rideId}`)
-                    .order('created_at', { ascending: false })
-                    .limit(10);
-
-                if (Array.isArray(data)) {
-                    for (const item of data) {
-                        handleIncoming(item);
-                    }
-                }
-            } catch (_) {
-                try {
-                    const { data } = await supabase
-                        .from('ride_messages')
-                        .select('*')
-                        .eq('ride_id', rideId)
-                        .order('created_at', { ascending: false })
-                        .limit(10);
-
-                    if (Array.isArray(data)) {
-                        for (const item of data) {
-                            handleIncoming(item);
-                        }
-                    }
-                } catch (_) {}
-            }
-
-            // Tenta messages
-            try {
-                const { data: altData } = await supabase
-                    .from('messages')
-                    .select('*')
-                    .or(`ride_id.eq.${rideId},corrida_id.eq.${rideId}`)
-                    .order('created_at', { ascending: false })
-                    .limit(10);
-
-                if (Array.isArray(altData)) {
-                    for (const item of altData) {
-                        handleIncoming(item);
+                const latestList = await ChatService.getMessages(rideId);
+                for (const item of latestList) {
+                    if (!processedIds.has(item.id)) {
+                        processedIds.add(item.id);
+                        saveLocalMessage(item);
+                        onNewMessage(item);
                     }
                 }
             } catch (_) {}

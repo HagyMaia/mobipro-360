@@ -4,6 +4,7 @@ import { useApp } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
 import { showRideCancelledNotification } from '@/lib/notifications';
 import { RideService } from '@/services/ride/RideService';
+import { ProfileService } from '@/services/driver/ProfileService';
 import type { Ride } from '@/lib/types';
 
 function isCancelledStatus(status?: string | null): boolean {
@@ -127,6 +128,11 @@ export function useActiveRideSync() {
                 cancelledBy: 'passenger',
             });
 
+            // Reativa status ONLINE no banco de dados para o motorista voltar a receber chamadas
+            ProfileService.toggleWorkStatus('ONLINE').catch((err) => {
+                console.warn('[useActiveRideSync] Erro ao restaurar work_status ONLINE:', err);
+            });
+
             // Notifica abas secundárias via BroadcastChannel
             if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
                 try {
@@ -142,6 +148,13 @@ export function useActiveRideSync() {
         },
         [dispatch]
     );
+
+    // Auto-correção de consistência: se não há corrida ativa, o status de trabalho não pode permanecer em 'en-route' ou 'on-ride'
+    useEffect(() => {
+        if (!state.activeRide && (state.status === 'en-route' || state.status === 'on-ride')) {
+            dispatch({ type: 'SET_STATUS', status: 'available' });
+        }
+    }, [state.activeRide, state.status, dispatch]);
 
     useEffect(() => {
         if (!activeRideId) return;
@@ -245,8 +258,7 @@ export function useActiveRideSync() {
             } catch (_) {}
         }
 
-        // 5. Polling ativo a cada 1.5s para garantia absoluta em redes móveis 3G/4G
-        const pollInterval = setInterval(async () => {
+        const checkRideStatus = async () => {
             const currentId = activeRideIdRef.current;
             if (!currentId) return;
 
@@ -267,6 +279,10 @@ export function useActiveRideSync() {
                         );
                         return;
                     }
+                    if (rideData.status === 'completed' || rideData.status === 'finalizada') {
+                        dispatch({ type: 'COMPLETE_RIDE' });
+                        return;
+                    }
                 }
 
                 // Tenta tabela corridas
@@ -285,11 +301,21 @@ export function useActiveRideSync() {
                         );
                         return;
                     }
+                    if (corridaData.status === 'completed' || corridaData.status === 'finalizada') {
+                        dispatch({ type: 'COMPLETE_RIDE' });
+                        return;
+                    }
                 }
             } catch (_) {
                 // silencia erros normais de conexão
             }
-        }, 1500);
+        };
+
+        // Verificação imediata no carregamento
+        checkRideStatus();
+
+        // 5. Polling ativo a cada 1.5s para garantia absoluta em redes móveis 3G/4G
+        const pollInterval = setInterval(checkRideStatus, 1500);
 
         return () => {
             clearInterval(pollInterval);
@@ -314,7 +340,7 @@ export function useActiveRideSync() {
                 } catch (_) {}
             }
         };
-    }, [activeRideId, handleRideCancelled]);
+    }, [activeRideId, handleRideCancelled, dispatch]);
 
     const closeCancellationModal = useCallback(() => {
         setCancellationState({ isOpen: false });
