@@ -134,12 +134,18 @@ function reducer(state: AppState, action: Action): AppState {
         status: 'completed',
         completedAt: new Date().toISOString()
       };
+      
+      // Regra de Negócio: Corrida particular tem 20% de desconto retido pela plataforma
+      // Exemplo: R$ 100,00 -> Carteira: R$ 80,00. Corrida Voucher (Empresa) -> R$ 100,00 (100% repasse).
+      const isVoucher = String(completed.paymentMethod || '').toLowerCase() === 'voucher';
+      const netAmount = isVoucher ? completed.fare : Number((completed.fare * 0.80).toFixed(2));
+
       const earning: Earning = {
         id: uid('earn'),
-        amount: completed.fare,
+        amount: netAmount,
         date: new Date().toISOString().slice(0, 10),
         source: 'ride',
-        note: `${completed.passengerName} · ${completed.pickup} → ${completed.dropoff}`
+        note: `${completed.passengerName} · ${completed.pickup} → ${completed.dropoff}${isVoucher ? ' (Voucher 100%)' : ' (Desc. 20%)'}`
       };
       return {
         ...state,

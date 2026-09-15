@@ -98,6 +98,10 @@ export default function RideRequestCard({
     }
   };
 
+  const isVoucher = String(ride.paymentMethod || '').toLowerCase() === 'voucher';
+  const grossFare = Number(ride.fare ?? 0);
+  const netFare = isVoucher ? grossFare : Number((grossFare * 0.80).toFixed(2));
+
   return (
     <Card className="animate-[pulse-in_.3s_ease-out] border-2 border-brand shadow-xl shadow-brand/15 p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between">
@@ -113,9 +117,20 @@ export default function RideRequestCard({
 
       <div className="mb-3 flex items-end justify-between">
         <div>
-          <div className="text-3xl font-black tabular-nums text-slate-900 dark:text-white">{formatBRL(ride.fare)}</div>
-          <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-            Pagamento via <span className="font-black uppercase text-slate-800 dark:text-slate-200">{String(ride.paymentMethod).toLowerCase() === 'voucher' ? 'Voucher' : 'PIX'}</span>
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            {isVoucher ? 'Ganho Carteira (Voucher)' : 'Ganho Líquido na Carteira'}
+          </div>
+          <div className="text-3xl font-black tabular-nums text-emerald-600 dark:text-emerald-400">
+            {formatBRL(netFare)}
+          </div>
+          <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            {isVoucher ? (
+              <span className="font-bold text-teal-600 dark:text-teal-400">Voucher Empresa (100% repasse)</span>
+            ) : (
+              <span>
+                Valor bruto: <strong>{formatBRL(grossFare)}</strong> · <span className="text-amber-600 dark:text-amber-400 font-bold">-20% taxa plataforma</span>
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">

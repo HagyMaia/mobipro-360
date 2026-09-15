@@ -2,6 +2,7 @@
 
 export type DriverStatus = 'Pendente' | 'Aprovado' | 'Reprovado' | 'Bloqueado';
 export type DriverWorkStatus = 'OFFLINE' | 'ONLINE' | 'BUSY';
+export type DriverType = 'EMPRESA' | 'PARTICULAR';
 
 export type DocumentType = 'CNH' | 'CRLV' | 'PROFILE_PICTURE' | 'PROOF_OF_RESIDENCE';
 export type DocumentStatus = 'Pendente' | 'Aprovado' | 'Reprovado';
@@ -35,6 +36,7 @@ export interface DriverProfile {
     avatarUrl?: string | null;
     status: DriverStatus;
     workStatus: DriverWorkStatus;
+    driverType?: DriverType;
     rating: number;
     totalRides: number;
     vehicle?: {
@@ -82,6 +84,10 @@ export interface RideOffer {
     dropoffAddress: string;
     dropoffLocation: LocationCoordinates;
     fareAmount: number;
+    netFareAmount?: number;
+    discountRate?: number;
+    isParticular?: boolean;
+    paymentMethod?: 'pix' | 'voucher';
     distanceKm: number;
     estimatedMinutes: number;
     expiresInSeconds: number;

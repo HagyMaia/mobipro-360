@@ -43,6 +43,7 @@ export default function PerfilPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [driverType, setDriverType] = useState<'EMPRESA' | 'PARTICULAR'>('PARTICULAR');
 
   useEffect(() => {
     ProfileService.getCurrentProfile().then((p) => {
@@ -52,6 +53,7 @@ export default function PerfilPage() {
         setPhone(p.phone || '(92) 99123-4567');
         setEmail(p.email || user?.email || 'hagy.maia19@gmail.com');
         setAvatarUrl(p.avatarUrl || null);
+        setDriverType(p.driverType || 'PARTICULAR');
       } else if (user?.email) {
         setEmail(user.email);
         const metaName = (user as any)?.user_metadata?.full_name || (user as any)?.user_metadata?.name;
@@ -115,7 +117,10 @@ export default function PerfilPage() {
         displayName: fullName.trim(),
         phone: phone.trim(),
         avatarUrl: avatarUrl || undefined,
+        driverType,
       });
+
+      await ProfileService.updateDriverType(driverType);
 
       dispatch({
         type: 'UPDATE_PROFILE',
@@ -123,6 +128,7 @@ export default function PerfilPage() {
           ...mockProfile,
           name: fullName.trim(),
           phone: phone.trim(),
+          driverType,
         }
       });
 
@@ -223,10 +229,89 @@ export default function PerfilPage() {
                 </span>
               )}
 
+              {/* Tag de Perfil do Motorista */}
+              <span className={`inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border ${
+                driverType === 'EMPRESA'
+                  ? 'bg-teal-500/10 border-teal-500/30 text-teal-700 dark:text-teal-400'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400'
+              }`}>
+                {driverType === 'EMPRESA' ? '🏢 Empresa (Voucher)' : '🚗 Particular (-20%)'}
+              </span>
+
               <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
                 {totalRides} viagens
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* Card: PERFIL OPERACIONAL DO MOTORISTA (EMPRESA vs PARTICULAR) */}
+        <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-5 border border-slate-100 dark:border-dark-700/80 shadow-sm space-y-3.5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              PERFIL DE ATENDIMENTO
+            </h3>
+            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+              Regras do App
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Opção 1: Motorista Particular */}
+            <button
+              type="button"
+              onClick={() => setDriverType('PARTICULAR')}
+              className={`p-4 rounded-2xl border text-left transition relative flex flex-col justify-between ${
+                driverType === 'PARTICULAR'
+                  ? 'border-[#F59E0B] bg-amber-500/10 ring-2 ring-amber-500/30'
+                  : 'border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800/60 opacity-75 hover:opacity-100'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                    🚗 Motorista Particular
+                  </span>
+                  {driverType === 'PARTICULAR' && (
+                    <CheckCircle2 size={16} className="text-amber-500" />
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Atende corridas particulares normalmente.
+                </p>
+              </div>
+              <div className="mt-3 pt-2 border-t border-slate-200/60 dark:border-dark-700/60 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                ⚡ 20% taxa retida na carteira (Ex: R$ 100 → R$ 80)
+              </div>
+            </button>
+
+            {/* Opção 2: Motorista de Empresa */}
+            <button
+              type="button"
+              onClick={() => setDriverType('EMPRESA')}
+              className={`p-4 rounded-2xl border text-left transition relative flex flex-col justify-between ${
+                driverType === 'EMPRESA'
+                  ? 'border-teal-500 bg-teal-500/10 ring-2 ring-teal-500/30'
+                  : 'border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800/60 opacity-75 hover:opacity-100'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                    🏢 Motorista de Empresa
+                  </span>
+                  {driverType === 'EMPRESA' && (
+                    <CheckCircle2 size={16} className="text-teal-500" />
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Atende <strong>exclusivamente</strong> corridas por voucher corporativo.
+                </p>
+              </div>
+              <div className="mt-3 pt-2 border-t border-slate-200/60 dark:border-dark-700/60 text-[11px] font-semibold text-teal-700 dark:text-teal-400">
+                🛡️ 100% Repasse Voucher Corporativo
+              </div>
+            </button>
           </div>
         </div>
 

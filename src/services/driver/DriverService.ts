@@ -17,6 +17,7 @@ export interface DriverRegistrationData {
     neighborhood: string;
     city: string;
     state: string;
+    driverType?: 'EMPRESA' | 'PARTICULAR';
     // Passo 4 - Veículo
     vehicleMake: string;
     vehicleModel: string;
@@ -65,6 +66,13 @@ export class DriverService {
         const supabase = createClient();
 
         const chosenDisplayName = data.displayName?.trim() || data.fullName.trim().split(' ')[0] || 'Motorista';
+        const dType = data.driverType || 'PARTICULAR';
+
+        if (typeof window !== 'undefined') {
+            try {
+                window.localStorage.setItem('mobipro_driver_type', dType);
+            } catch (e) {}
+        }
 
         // 1. Cadastra ou atualiza o perfil do motorista (upsert evita conflito se usuário já iniciou processo)
         const userShortId = userId.replace(/\D/g, '').slice(0, 8) || userId.slice(0, 8) || String(Date.now()).slice(-8);
@@ -82,6 +90,9 @@ export class DriverService {
             telefone: safePhone,
             phone: safePhone,
             email: data.email?.trim() || '',
+            tipo_motorista: dType,
+            driver_type: dType,
+            perfil_motorista: dType,
             marca_veiculo: data.vehicleMake?.trim() || 'Chevrolet',
             modelo_veiculo: data.vehicleModel?.trim() || 'Onix Plus',
             ano_veiculo: String(data.vehicleYear || 2024),

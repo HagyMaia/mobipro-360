@@ -29,6 +29,7 @@ export default function RegisterWizard() {
     neighborhood: '',
     city: 'Manaus',
     state: 'AM',
+    driverType: 'PARTICULAR',
     vehicleMake: '',
     vehicleModel: '',
     vehicleYear: new Date().getFullYear(),
@@ -231,7 +232,46 @@ export default function RegisterWizard() {
       <main className="flex-1 overflow-y-auto py-2">
         {step === 1 && (
           <section className="space-y-4">
-            <h2 className="text-xl font-bold">1. Dados Pessoais</h2>
+            <h2 className="text-xl font-bold">1. Dados Pessoais & Perfil</h2>
+
+            {/* SELEÇÃO DO PERFIL DE ATENDIMENTO */}
+            <div>
+              <label className="text-xs font-semibold text-brand-400 block mb-1">
+                Modalidade de Motorista <span className="text-amber-400">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => handleInputChange('driverType', 'PARTICULAR')}
+                  className={`p-3 rounded-xl border text-left transition ${
+                    formData.driverType === 'PARTICULAR'
+                      ? 'border-brand bg-brand/15 text-white ring-1 ring-brand font-bold'
+                      : 'border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="text-xs font-black text-white">🚗 Particular</div>
+                  <div className="text-[10px] text-zinc-400 mt-1 leading-tight">
+                    Corridas particulares (-20% de taxa da plataforma).
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInputChange('driverType', 'EMPRESA')}
+                  className={`p-3 rounded-xl border text-left transition ${
+                    formData.driverType === 'EMPRESA'
+                      ? 'border-brand bg-brand/15 text-white ring-1 ring-brand font-bold'
+                      : 'border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="text-xs font-black text-white">🏢 Empresa</div>
+                  <div className="text-[10px] text-zinc-400 mt-1 leading-tight">
+                    Exclusivo corridas por Voucher corporativo (100% repasse).
+                  </div>
+                </button>
+              </div>
+            </div>
+
             <div>
               <label className="text-xs font-semibold text-brand-400 block mb-1">
                 Como deseja ser chamado no aplicativo? <span className="text-amber-400">*</span>
@@ -487,6 +527,7 @@ export default function RegisterWizard() {
             <h2 className="text-xl font-bold">5. Revisão e Envio</h2>
             <div className="bg-brand-surface p-4 rounded-lg space-y-2 text-sm border border-brand-border">
               <p><strong className="text-zinc-400">Como deseja ser chamado:</strong> <span className="text-brand-300 font-bold">{formData.displayName || formData.fullName.split(' ')[0] || 'Motorista'}</span></p>
+              <p><strong className="text-zinc-400">Modalidade:</strong> <span className="text-amber-400 font-bold">{formData.driverType === 'EMPRESA' ? 'Motorista de Empresa (Voucher Exclusivo)' : 'Motorista Particular (-20%)'}</span></p>
               <p><strong className="text-zinc-400">Nome Completo:</strong> {formData.fullName}</p>
               <p><strong className="text-zinc-400">CPF:</strong> {formData.cpf}</p>
               <p><strong className="text-zinc-400">E-mail:</strong> {formData.email}</p>

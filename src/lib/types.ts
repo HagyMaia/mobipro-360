@@ -85,10 +85,13 @@ export interface EmergencyContact {
   relationship: string;
 }
 
+export type DriverType = 'EMPRESA' | 'PARTICULAR';
+
 export interface DriverProfile {
   name: string;
   phone: string;
   city: string;
+  driverType?: DriverType;
   rating: number;
   totalRides: number;
   vehicle: {

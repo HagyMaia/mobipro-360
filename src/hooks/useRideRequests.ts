@@ -220,6 +220,18 @@ function parseRideToOffer(r: any, destFilter?: DestinationFilter | null): RideOf
         ? Number(r.estimated_minutes)
         : Math.max(5, Math.round(dist * 2.5)) || 12;
 
+    const rawPayment = String(
+        r.payment_method ||
+        r.metodo_pagamento ||
+        r.forma_pagamento ||
+        'pix'
+    ).toLowerCase();
+
+    const paymentMethod: 'pix' | 'voucher' = rawPayment.includes('voucher') ? 'voucher' : 'pix';
+    const isParticular = paymentMethod !== 'voucher';
+    const discountRate = isParticular ? 0.20 : 0.0;
+    const netFare = isParticular ? Number((fareVal * 0.80).toFixed(2)) : fareVal;
+
     // Avaliação de Zonas de Risco / Segurança no Embarque e Desembarque
     const pickupRisk = RiskZoneService.checkAddressRisk(pPickup, {
         latitude: pPickupLat,
@@ -249,6 +261,10 @@ function parseRideToOffer(r: any, destFilter?: DestinationFilter | null): RideOf
             longitude: pDropoffLng,
         },
         fareAmount: fareVal,
+        netFareAmount: netFare,
+        discountRate,
+        isParticular,
+        paymentMethod,
         distanceKm: dist,
         estimatedMinutes: estMinutes,
         expiresInSeconds: 40,
@@ -263,7 +279,11 @@ function parseRideToOffer(r: any, destFilter?: DestinationFilter | null): RideOf
     };
 }
 
-export function useRideRequests(isOnline: boolean, destinationFilter?: DestinationFilter | null) {
+export function useRideRequests(
+    isOnline: boolean,
+    destinationFilter?: DestinationFilter | null,
+    driverType?: 'EMPRESA' | 'PARTICULAR'
+) {
     const [currentOffer, setCurrentOffer] = useState<RideOffer | null>(null);
     const lastNotifiedOfferId = useRef<string | null>(null);
 
@@ -279,9 +299,11 @@ export function useRideRequests(isOnline: boolean, destinationFilter?: Destinati
         setCurrentOffer(null);
     }, [currentOffer]);
 
-    const acceptOffer = useCallback((_rideId?: string) => {
+    const acceptOffer = useCallback(async (rideId?: string) => {
+        const targetId = rideId || currentOffer?.id;
+        if (!targetId) return;
         setCurrentOffer(null);
-    }, []);
+    }, [currentOffer]);
 
     // Expiração automática por tempo da oferta atual (40s)
     useEffect(() => {
@@ -297,14 +319,14 @@ export function useRideRequests(isOnline: boolean, destinationFilter?: Destinati
 
     useEffect(() => {
         if (!isOnline) {
-            disableScreenWakeLock();
             setCurrentOffer(null);
+            disableScreenWakeLock();
             return;
         }
 
         // Ativa permissão de notificação e previne tela de apagar enquanto estiver online
-        requestNotificationPermission();
         enableScreenWakeLock();
+        requestNotificationPermission().catch(() => {});
 
         let isMounted = true;
         let channel1: any = null;
@@ -317,6 +339,13 @@ export function useRideRequests(isOnline: boolean, destinationFilter?: Destinati
             if (!isMounted || !Array.isArray(rides) || rides.length === 0) return;
             const rejected = getRejectedRideIds();
 
+            // Identifica se o motorista é Perfil Empresa
+            const activeDriverType = driverType || (
+                typeof window !== 'undefined'
+                    ? (window.localStorage.getItem('mobipro_driver_type') as 'EMPRESA' | 'PARTICULAR' || 'PARTICULAR')
+                    : 'PARTICULAR'
+            );
+
             const candidate = rides.find((r: any) => {
                 if (!r || !r.id) return false;
                 if (rejected.has(String(r.id))) return false;
@@ -328,6 +357,20 @@ export function useRideRequests(isOnline: boolean, destinationFilter?: Destinati
                     r.driver_id !== '00000000-0000-0000-0000-000000000000' &&
                     String(r.status).toUpperCase() === 'ACCEPTED'
                 ) {
+                    return false;
+                }
+
+                // REGRA DO MOTORISTA DE EMPRESA: Atende EXCLUSIVAMENTE corridas por voucher
+                const rawPay = String(
+                    r.payment_method ||
+                    r.metodo_pagamento ||
+                    r.forma_pagamento ||
+                    ''
+                ).toLowerCase();
+                const isVoucher = rawPay.includes('voucher');
+
+                if (activeDriverType === 'EMPRESA' && !isVoucher) {
+                    // Motorista de Empresa não recebe corridas particulares
                     return false;
                 }
 

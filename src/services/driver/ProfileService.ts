@@ -87,6 +87,18 @@ export class ProfileService {
             authData.user.app_metadata?.role === 'admin' ||
             authData.user.app_metadata?.claims_admin === true;
 
+        const rawDriverType = cleanString(
+            profile.driver_type,
+            cleanString(
+                profile.tipo_motorista,
+                cleanString(
+                    profile.perfil_motorista,
+                    typeof window !== 'undefined' ? (window.localStorage.getItem('mobipro_driver_type') || 'PARTICULAR') : 'PARTICULAR'
+                )
+            )
+        ).toUpperCase();
+        const driverType: 'EMPRESA' | 'PARTICULAR' = rawDriverType === 'EMPRESA' ? 'EMPRESA' : 'PARTICULAR';
+
         return {
             id: profile.id,
             fullName: cleanString(profile.nome_completo, cleanString(profile.nome, resolvedName)),
@@ -97,6 +109,7 @@ export class ProfileService {
             avatarUrl: profile.avatar_url ?? null,
             status: this.normalizeDriverStatus(profile.status),
             workStatus: profile.work_status ?? "OFFLINE",
+            driverType,
             rating: Number(profile.rating ?? 4.95),
             totalRides: Number(profile.total_rides ?? 128),
             role: rawRole || (isAdmin ? 'admin' : 'motorista'),
@@ -116,6 +129,47 @@ export class ProfileService {
     }
 
     /**
+     * Atualiza o tipo/perfil do motorista (EMPRESA ou PARTICULAR)
+     */
+    public static async updateDriverType(driverType: 'EMPRESA' | 'PARTICULAR') {
+        const supabase = createClient();
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !authData.user) {
+            if (typeof window !== 'undefined') {
+                window.localStorage.setItem('mobipro_driver_type', driverType);
+            }
+            return driverType;
+        }
+
+        const updates: Record<string, any> = {
+            tipo_motorista: driverType,
+            driver_type: driverType,
+            perfil_motorista: driverType,
+            updated_at: new Date().toISOString()
+        };
+
+        const { error: mError } = await supabase
+            .from("motoristas")
+            .update(updates)
+            .eq("id", authData.user.id);
+
+        if (mError) {
+            console.warn('[ProfileService] Erro ao atualizar tipo no motoristas, tentando drivers:', mError);
+            await supabase
+                .from("drivers")
+                .update(updates)
+                .eq("id", authData.user.id);
+        }
+
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem('mobipro_driver_type', driverType);
+        }
+
+        return driverType;
+    }
+
+    /**
      * Atualiza as informações pessoais do motorista (nome de exibição, telefone, avatar)
      */
     public static async updateProfile(data: {
@@ -123,6 +177,7 @@ export class ProfileService {
         fullName?: string;
         phone?: string;
         avatarUrl?: string;
+        driverType?: 'EMPRESA' | 'PARTICULAR';
     }) {
         const supabase = createClient();
         const { data: authData, error: authError } = await supabase.auth.getUser();

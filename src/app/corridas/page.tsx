@@ -380,35 +380,55 @@ export default function CorridasPage() {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-slate-200/80 dark:border-dark-700/80 bg-slate-50 dark:bg-dark-800/60 p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Valor</div>
-                <div className="mt-1 text-xl font-black text-emerald-600 dark:text-emerald-400">{formatBRL(Number(currentOffer.fareAmount ?? 0))}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200/80 dark:border-dark-700/80 bg-slate-50 dark:bg-dark-800/60 p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Tempo</div>
-                <div className="mt-1 text-xl font-black text-slate-900 dark:text-white">{currentOffer.estimatedMinutes} min</div>
-              </div>
-            </div>
+            {(() => {
+              const isVoucher = String(currentOffer.paymentMethod).toLowerCase() === 'voucher';
+              const grossFare = Number(currentOffer.fareAmount ?? 0);
+              const netFare = isVoucher ? grossFare : Number((grossFare * 0.80).toFixed(2));
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                full
-                onClick={() => {
-                  if (currentOffer?.id) {
-                    rejectOffer(currentOffer.id);
-                  } else {
-                    clearOffer();
-                  }
-                }}
-              >
-                Recusar
-              </Button>
-              <Button full onClick={() => handleAccept(currentOffer.id)}>
-                Aceitar
-              </Button>
-            </div>
+              return (
+                <>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-dark-700/80 bg-slate-50 dark:bg-dark-800/60 p-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                        {isVoucher ? 'Ganho (Voucher)' : 'Ganho Líquido (-20%)'}
+                      </div>
+                      <div className="mt-1 text-xl font-black text-emerald-600 dark:text-emerald-400">
+                        {formatBRL(netFare)}
+                      </div>
+                      {!isVoucher && (
+                        <div className="text-[10px] text-slate-400 font-medium">
+                          Bruto: {formatBRL(grossFare)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-dark-700/80 bg-slate-50 dark:bg-dark-800/60 p-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Tempo</div>
+                      <div className="mt-1 text-xl font-black text-slate-900 dark:text-white">{currentOffer.estimatedMinutes} min</div>
+                      <div className="text-[10px] text-slate-400 font-medium">{currentOffer.distanceKm} km</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <Button
+                      variant="outline"
+                      full
+                      onClick={() => {
+                        if (currentOffer?.id) {
+                          rejectOffer(currentOffer.id);
+                        } else {
+                          clearOffer();
+                        }
+                      }}
+                    >
+                      Recusar
+                    </Button>
+                    <Button full onClick={() => handleAccept(currentOffer.id)}>
+                      Aceitar
+                    </Button>
+                  </div>
+                </>
+              );
+            })()}
           </Card>
         ) : !state.activeRide ? (
           <Card className="p-4">
@@ -585,22 +605,39 @@ export default function CorridasPage() {
                       )}
 
                       {/* Linha inferior com Valor e Distância */}
-                      <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 dark:border-dark-800 pt-2 text-[11px]">
-                        <span className="font-semibold text-slate-500 dark:text-slate-400">
-                          {ride.distanceKm} km · {ride.estimatedMinutes} min
-                        </span>
-                        <span
-                          className={`font-black tabular-nums text-sm ${
-                            isCompleted
-                              ? 'text-emerald-600 dark:text-emerald-400'
-                              : isCancelled
-                              ? 'text-slate-400 line-through'
-                              : 'text-slate-900 dark:text-white'
-                          }`}
-                        >
-                          {formatBRL(Number(ride.fare ?? 0))}
-                        </span>
-                      </div>
+                      {(() => {
+                        const isVoucher = String(ride.paymentMethod).toLowerCase() === 'voucher';
+                        const grossFare = Number(ride.fare ?? 0);
+                        const netFare = isVoucher ? grossFare : Number((grossFare * 0.80).toFixed(2));
+
+                        return (
+                          <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 dark:border-dark-800 pt-2 text-[11px]">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold text-slate-500 dark:text-slate-400">
+                                {ride.distanceKm} km · {ride.estimatedMinutes} min
+                              </span>
+                              {isCompleted && (
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                  isVoucher ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                                }`}>
+                                  {isVoucher ? 'Voucher' : '-20% taxa'}
+                                </span>
+                              )}
+                            </div>
+                            <span
+                              className={`font-black tabular-nums text-sm ${
+                                isCompleted
+                                  ? 'text-emerald-600 dark:text-emerald-400'
+                                  : isCancelled
+                                  ? 'text-slate-400 line-through'
+                                  : 'text-slate-900 dark:text-white'
+                              }`}
+                            >
+                              {formatBRL(isCompleted ? netFare : grossFare)}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </Card>
                   </button>
                 );

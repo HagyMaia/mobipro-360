@@ -555,49 +555,69 @@ export default function DetalheCorrida() {
         </div>
 
         {/* CARD VALOR & TEMPO */}
-        <div className="rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Valor da Corrida
-              </span>
-              <div
-                className={`text-3xl font-black tabular-nums ${
-                  isCancelled ? 'text-slate-400' : 'text-emerald-600 dark:text-emerald-400'
-                }`}
-              >
-                {formatBRL(currentRide.fare)}
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Distância & Tempo
-              </span>
-              <div className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
-                {currentRide.distanceKm} km · {currentRide.estimatedMinutes} min
-              </div>
-            </div>
-          </div>
+        {(() => {
+          const isVoucher = String(currentRide.paymentMethod).toLowerCase() === 'voucher';
+          const grossFare = Number(currentRide.fare ?? 0);
+          const netFare = isVoucher ? grossFare : Number((grossFare * 0.80).toFixed(2));
+          const discountVal = isVoucher ? 0 : Number((grossFare * 0.20).toFixed(2));
 
-          {/* Repasse e Método */}
-          <div className="mt-4 flex items-center justify-between border-t border-slate-100 dark:border-dark-800 pt-3 text-xs">
-            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-              <ShieldCheck size={14} className="text-emerald-500" />
-              <span>Repasse Motorista: <strong>100%</strong></span>
+          return (
+            <div className="rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    {isVoucher ? 'Valor da Corrida (Voucher)' : 'Ganho Líquido na Carteira (-20%)'}
+                  </span>
+                  <div
+                    className={`text-3xl font-black tabular-nums ${
+                      isCancelled ? 'text-slate-400' : 'text-emerald-600 dark:text-emerald-400'
+                    }`}
+                  >
+                    {formatBRL(netFare)}
+                  </div>
+                  {!isVoucher && !isCancelled && (
+                    <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                      Bruto: <strong>{formatBRL(grossFare)}</strong> · Taxa: -{formatBRL(discountVal)}
+                    </div>
+                  )}
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Distância & Tempo
+                  </span>
+                  <div className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                    {currentRide.distanceKm} km · {currentRide.estimatedMinutes} min
+                  </div>
+                </div>
+              </div>
+
+              {/* Repasse e Método */}
+              <div className="mt-4 flex items-center justify-between border-t border-slate-100 dark:border-dark-800 pt-3 text-xs">
+                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                  <ShieldCheck size={14} className="text-emerald-500" />
+                  <span>
+                    {isVoucher ? (
+                      <>Repasse Motorista: <strong className="text-teal-600 dark:text-teal-400">100% (Voucher)</strong></>
+                    ) : (
+                      <>Repasse Líquido: <strong className="text-emerald-600 dark:text-emerald-400">80% (Particular)</strong></>
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 rounded-full bg-teal-500/15 px-2.5 py-0.5 text-[11px] font-black text-teal-700 dark:text-teal-400 uppercase border border-teal-500/30">
+                  {isVoucher ? (
+                    <>
+                      <FileText size={12} className="text-amber-500" /> VOUCHER
+                    </>
+                  ) : (
+                    <>
+                      <QrCode size={12} /> PIX
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 rounded-full bg-teal-500/15 px-2.5 py-0.5 text-[11px] font-black text-teal-700 dark:text-teal-400 uppercase border border-teal-500/30">
-              {String(currentRide.paymentMethod).toLowerCase() === 'voucher' ? (
-                <>
-                  <FileText size={12} className="text-amber-500" /> VOUCHER
-                </>
-              ) : (
-                <>
-                  <QrCode size={12} /> PIX
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* CARD PASSAGEIRO */}
         <div className="rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 p-4 shadow-sm">

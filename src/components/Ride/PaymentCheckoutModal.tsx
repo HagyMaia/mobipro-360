@@ -20,6 +20,7 @@ interface PaymentCheckoutModalProps {
   passengerName: string;
   pickupAddress: string;
   dropoffAddress: string;
+  driverType?: 'EMPRESA' | 'PARTICULAR';
   onFinishRide: (data: {
     paymentMethod: 'pix' | 'voucher' | 'cash' | 'card';
     finalAmount: number;
@@ -47,9 +48,20 @@ export function PaymentCheckoutModal({
   passengerName,
   pickupAddress,
   dropoffAddress,
+  driverType: propDriverType,
   onFinishRide,
 }: PaymentCheckoutModalProps) {
-  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'voucher'>('pix');
+  // Se for motorista de empresa, o único método permitido é voucher
+  const activeDriverType: 'EMPRESA' | 'PARTICULAR' = propDriverType || (
+    typeof window !== 'undefined'
+      ? (window.localStorage.getItem('mobipro_driver_type') as 'EMPRESA' | 'PARTICULAR' || 'PARTICULAR')
+      : 'PARTICULAR'
+  );
+
+  const isEmpresaDriver = activeDriverType === 'EMPRESA';
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'voucher'>(
+    isEmpresaDriver ? 'voucher' : 'pix'
+  );
   const [rating, setRating] = useState<number>(5);
   const [selectedTags, setSelectedTags] = useState<string[]>(['Pontual ⏱️', 'Educado 🤝']);
   const [comments, setComments] = useState('');
@@ -60,8 +72,14 @@ export function PaymentCheckoutModal({
 
   if (!isOpen) return null;
 
-  const formattedAmount = formatBRL(fareAmount);
-  const cleanAmountDigits = Number(fareAmount).toFixed(2).replace('.', '');
+  const grossFare = Number(fareAmount || 0);
+  const isParticular = paymentMethod !== 'voucher';
+  const discountAmount = isParticular ? Number((grossFare * 0.20).toFixed(2)) : 0;
+  const netWalletAmount = isParticular ? Number((grossFare * 0.80).toFixed(2)) : grossFare;
+
+  const formattedGrossAmount = formatBRL(grossFare);
+  const formattedNetAmount = formatBRL(netWalletAmount);
+  const cleanAmountDigits = grossFare.toFixed(2).replace('.', '');
 
   // Código PIX Copia e Cola Dinâmico (Padrão BR Code Mobipro)
   const pixCopiaECola = `00020126580014BR.GOV.BCB.PIX0136mobipro360-logistica@mobipro.com.br520400005303986540${cleanAmountDigits.length}${cleanAmountDigits}5802BR5915SR LOGISTICA6006MANAUS62070503***6304`;
@@ -90,7 +108,7 @@ export function PaymentCheckoutModal({
     try {
       await onFinishRide({
         paymentMethod,
-        finalAmount: fareAmount,
+        finalAmount: netWalletAmount,
         rating,
         ratingFeedback: selectedTags,
         comments,
@@ -140,46 +158,63 @@ export function PaymentCheckoutModal({
         {/* ETAPA 1: PAGAMENTO & PIX QR CODE */}
         {step === 'payment' && (
           <div className="space-y-4 pt-3">
-            {/* CARD DE VALOR TOTAL */}
+            {/* CARD DE VALOR LÍQUIDO E DESCONTO */}
             <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center">
               <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                Valor Total a Receber
+                {isParticular ? 'Valor Líquido na Carteira (-20%)' : 'Valor a Receber (Voucher)'}
               </span>
               <div className="text-3xl font-black tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
-                {formattedAmount}
+                {formattedNetAmount}
               </div>
+              {isParticular && (
+                <div className="mt-1 text-xs text-slate-600 dark:text-slate-400 font-medium">
+                  Valor bruto cobrado: <strong>{formattedGrossAmount}</strong> · Taxa plataforma (20%): -{formatBRL(discountAmount)}
+                </div>
+              )}
             </div>
 
-            {/* SELETOR DE MÉTODO DE PAGAMENTO (APENAS PIX E VOUCHER) */}
+            {/* SELETOR DE MÉTODO DE PAGAMENTO (RESTRITO PARA MOTORISTA DE EMPRESA) */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-                Forma de Pagamento
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Forma de Pagamento
+                </label>
+                {isEmpresaDriver && (
+                  <span className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                    Perfil Empresa (Voucher Exclusivo)
+                  </span>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('pix')}
-                  className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border text-xs font-black transition ${
-                    paymentMethod === 'pix'
-                      ? 'border-brand bg-brand/15 text-slate-950 dark:text-brand ring-2 ring-brand/40 shadow-sm'
-                      : 'border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-700'
-                  }`}
-                >
-                  <QrCode size={20} className="text-teal-500" />
-                  <span>PIX (Instantâneo)</span>
-                </button>
+                {!isEmpresaDriver && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('pix')}
+                    className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border text-xs font-black transition ${
+                      paymentMethod === 'pix'
+                        ? 'border-brand bg-brand/15 text-slate-950 dark:text-brand ring-2 ring-brand/40 shadow-sm'
+                        : 'border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-700'
+                    }`}
+                  >
+                    <QrCode size={20} className="text-teal-500" />
+                    <span>PIX Particular</span>
+                  </button>
+                )}
 
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('voucher')}
                   className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border text-xs font-black transition ${
+                    isEmpresaDriver ? 'col-span-2' : ''
+                  } ${
                     paymentMethod === 'voucher'
                       ? 'border-brand bg-brand/15 text-slate-950 dark:text-brand ring-2 ring-brand/40 shadow-sm'
                       : 'border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-700'
                   }`}
                 >
                   <FileText size={20} className="text-amber-500" />
-                  <span>Voucher / Convênio</span>
+                  <span>Voucher / Convênio Empresa</span>
                 </button>
               </div>
             </div>
@@ -354,9 +389,17 @@ export function PaymentCheckoutModal({
 
             <div className="rounded-2xl border border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-800 p-4 text-left space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-slate-400">Valor Recebido:</span>
-                <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">{formattedAmount}</span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  {isParticular ? 'Valor Líquido Creditado:' : 'Valor Recebido (Voucher):'}
+                </span>
+                <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">{formattedNetAmount}</span>
               </div>
+              {isParticular && (
+                <div className="flex justify-between text-[11px] text-slate-400">
+                  <span>Valor Bruto:</span>
+                  <span>{formattedGrossAmount} (-20%)</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-slate-500 dark:text-slate-400">Método de Pagamento:</span>
                 <span className="font-bold text-slate-800 dark:text-slate-200 uppercase">{paymentMethod}</span>

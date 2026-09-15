@@ -135,21 +135,33 @@ export function TripOfferCard({
           </div>
         </div>
 
-        <div className="flex items-center justify-between rounded-2xl border border-brand/20 bg-brand/10 p-4">
-          <div>
-            <span className="block text-xs font-bold uppercase tracking-wider text-brand-700 dark:text-brand">
-              Ganho estimado
-            </span>
+        {(() => {
+          const isVoucher = String(trip.paymentMethod || '').toLowerCase() === 'voucher';
+          const grossFare = trip.estimatedFare;
+          const netFare = isVoucher ? grossFare : Number((grossFare * 0.80).toFixed(2));
 
-            <strong className="mt-1 block text-2xl font-black text-slate-900 dark:text-white">
-              {formatCurrency(
-                trip.estimatedFare,
-              )}
-            </strong>
-          </div>
+          return (
+            <div className="flex items-center justify-between rounded-2xl border border-brand/20 bg-brand/10 p-4">
+              <div>
+                <span className="block text-xs font-bold uppercase tracking-wider text-brand-700 dark:text-brand">
+                  {isVoucher ? 'Ganho Carteira (Voucher)' : 'Ganho Líquido na Carteira'}
+                </span>
 
-          <Wallet size={28} className="text-brand-600 dark:text-brand" />
-        </div>
+                <strong className="mt-1 block text-2xl font-black text-slate-900 dark:text-white">
+                  {formatCurrency(netFare)}
+                </strong>
+
+                {!isVoucher && (
+                  <span className="mt-0.5 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    Bruto: {formatCurrency(grossFare)} · <strong className="text-amber-600 dark:text-amber-400">-20% taxa</strong>
+                  </span>
+                )}
+              </div>
+
+              <Wallet size={28} className="text-brand-600 dark:text-brand" />
+            </div>
+          );
+        })()}
 
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Pagamento:{" "}

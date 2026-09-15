@@ -267,9 +267,18 @@ export default function HomePage() {
       <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-950/90 px-4 pb-3 pt-4 backdrop-blur-xl shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-white">
-              Olá, <span className="text-brand-600 dark:text-brand">{driverName}</span> 👋
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-black text-slate-900 dark:text-white">
+                Olá, <span className="text-brand-600 dark:text-brand">{driverName}</span> 👋
+              </h1>
+              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                state.profile?.driverType === 'EMPRESA'
+                  ? 'bg-teal-500/10 border-teal-500/30 text-teal-700 dark:text-teal-400'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400'
+              }`}>
+                {state.profile?.driverType === 'EMPRESA' ? '🏢 Empresa' : '🚗 Particular'}
+              </span>
+            </div>
             <p className="text-[11px] capitalize text-slate-500 dark:text-slate-400">{dateLabel}</p>
           </div>
           <div className="flex items-center gap-2">

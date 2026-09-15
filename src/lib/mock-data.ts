@@ -11,6 +11,7 @@ export const DEFAULT_PROFILE: DriverProfile = {
   name: 'Carlos Silva',
   phone: '(11) 98765-4321',
   city: 'Manaus - AM',
+  driverType: 'PARTICULAR',
   rating: 4.92,
   totalRides: 1843,
   vehicle: {
