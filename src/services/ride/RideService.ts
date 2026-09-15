@@ -1,6 +1,33 @@
 // src/services/ride/RideService.ts
 import { createClient } from '@/lib/supabase';
 
+// Helper para enviar broadcast imediato em todos os canais de sincronia
+function broadcastRideEvent(rideId: string, event: string, payload: any) {
+    if (!rideId) return;
+    try {
+        const supabase = createClient();
+        const channels = [
+            `passenger-ride-${rideId}`,
+            `chat_realtime_${rideId}`,
+            `sync_rides_${rideId}`,
+            `sync_corridas_${rideId}`,
+            `trip:${rideId}`,
+            `ride:${rideId}`,
+        ];
+
+        for (const chName of channels) {
+            try {
+                const ch = supabase.channel(chName);
+                ch.send({
+                    type: 'broadcast',
+                    event,
+                    payload,
+                }).catch(() => {});
+            } catch (_) {}
+        }
+    } catch (_) {}
+}
+
 export class RideService {
     /**
      * Tenta aceitar uma corrida com verificação resiliente de concorrência e compatibilidade de colunas.
@@ -24,7 +51,6 @@ export class RideService {
                         console.warn('[RideService] Corrida já cancelada pelo passageiro.');
                         return false;
                     }
-                    // Se já estiver aceita por outro motorista com ID válido diferente
                     if (
                         existing.status === 'ACCEPTED' &&
                         existing.driver_id &&
@@ -40,11 +66,9 @@ export class RideService {
                 console.warn('[RideService] Aviso ao verificar status prévio:', checkErr);
             }
 
-            // 2. Executa a atribuição do motorista e status ACCEPTED
-            const nowIso = new Date().toISOString();
+            // 2. Executa a atribuição do motorista e status ACCEPTED (colunas seguras)
             const updatePayload: Record<string, any> = {
                 status: 'ACCEPTED',
-                updated_at: nowIso,
             };
             if (driverId) {
                 updatePayload.driver_id = driverId;
@@ -55,20 +79,6 @@ export class RideService {
                 .update(updatePayload)
                 .eq('id', rideId);
 
-            // Fallback caso a coluna updated_at não exista na tabela
-            if (error && error.message && error.message.toLowerCase().includes('updated_at')) {
-                console.info('[RideService] Tentando update sem updated_at...');
-                const retry = await supabase
-                    .from('rides')
-                    .update({
-                        status: 'ACCEPTED',
-                        ...(driverId ? { driver_id: driverId } : {}),
-                    })
-                    .eq('id', rideId);
-                error = retry.error;
-            }
-
-            // Fallback caso driver_id gere erro de tipo ou FK
             if (error) {
                 console.warn('[RideService] Tentando atualizar apenas status:', error.message);
                 const statusOnly = await supabase
@@ -80,10 +90,11 @@ export class RideService {
                 }
             }
 
-            if (error) {
-                console.error('[RideService] Erro final ao atualizar corrida no Supabase:', error);
-                return false;
-            }
+            // Notifica passageiro via Realtime Broadcast
+            broadcastRideEvent(rideId, 'status_update', {
+                status: 'ACCEPTED',
+                driver_id: driverId,
+            });
 
             // 3. Atualiza work_status do motorista para BUSY
             if (driverId) {
@@ -106,32 +117,42 @@ export class RideService {
     }
 
     /**
-     * Motorista chegou ao ponto de embarque (notifica passageiro)
+     * Motorista chegou ao ponto de embarque (notifica passageiro imediatamente)
      */
-    public static async arriveAtPickup(rideId: string): Promise<boolean> {
+    public static async arriveAtPickup(rideId: string, driverId?: string): Promise<boolean> {
         const supabase = createClient();
         try {
-            const nowIso = new Date().toISOString();
+            // 1. Atualização direta e segura no banco
             let { error } = await supabase
                 .from('rides')
-                .update({
-                    status: 'ARRIVED',
-                    arrived_at: nowIso,
-                    updated_at: nowIso,
-                })
+                .update({ status: 'ARRIVED' })
                 .eq('id', rideId);
 
-            if (error && error.message && error.message.toLowerCase().includes('updated_at')) {
-                const retry = await supabase
-                    .from('rides')
-                    .update({
-                        status: 'ARRIVED',
-                    })
-                    .eq('id', rideId);
-                error = retry.error;
+            if (error) {
+                console.warn('[RideService] Erro ao atualizar status ARRIVED em rides:', error.message);
             }
 
-            return !error;
+            // 2. Atualiza tabela alternativa corridas
+            try {
+                await supabase
+                    .from('corridas')
+                    .update({ status: 'CHEGOU' })
+                    .eq('id', rideId);
+            } catch (_) {}
+
+            // 3. Notificação instantânea via Broadcast para o app do passageiro
+            broadcastRideEvent(rideId, 'driver_arrived', {
+                status: 'DRIVER_ARRIVED',
+                ride_id: rideId,
+                driver_id: driverId,
+            });
+            broadcastRideEvent(rideId, 'status_update', {
+                status: 'DRIVER_ARRIVED',
+                ride_id: rideId,
+                driver_id: driverId,
+            });
+
+            return true;
         } catch (err) {
             console.error('[RideService] Erro ao registrar chegada no local:', err);
             return false;
@@ -141,31 +162,40 @@ export class RideService {
     /**
      * Inicia a corrida (motorista inicia a viagem com o passageiro no veículo)
      */
-    public static async startRide(rideId: string): Promise<boolean> {
+    public static async startRide(rideId: string, driverId?: string): Promise<boolean> {
         const supabase = createClient();
         try {
-            const nowIso = new Date().toISOString();
+            // 1. Atualização direta e segura no banco
             let { error } = await supabase
                 .from('rides')
-                .update({
-                    status: 'IN_PROGRESS',
-                    started_at: nowIso,
-                    updated_at: nowIso,
-                })
+                .update({ status: 'IN_PROGRESS' })
                 .eq('id', rideId);
 
-            if (error && error.message && error.message.toLowerCase().includes('updated_at')) {
-                const retry = await supabase
-                    .from('rides')
-                    .update({
-                        status: 'IN_PROGRESS',
-                        started_at: nowIso,
-                    })
-                    .eq('id', rideId);
-                error = retry.error;
+            if (error) {
+                console.warn('[RideService] Erro ao atualizar status IN_PROGRESS em rides:', error.message);
             }
 
-            return !error;
+            // 2. Atualiza tabela alternativa corridas
+            try {
+                await supabase
+                    .from('corridas')
+                    .update({ status: 'EM_ANDAMENTO' })
+                    .eq('id', rideId);
+            } catch (_) {}
+
+            // 3. Notificação instantânea via Broadcast para o app do passageiro
+            broadcastRideEvent(rideId, 'ride_started', {
+                status: 'IN_PROGRESS',
+                ride_id: rideId,
+                driver_id: driverId,
+            });
+            broadcastRideEvent(rideId, 'status_update', {
+                status: 'IN_PROGRESS',
+                ride_id: rideId,
+                driver_id: driverId,
+            });
+
+            return true;
         } catch (err) {
             console.error('[RideService] Erro ao iniciar corrida:', err);
             return false;
@@ -178,26 +208,33 @@ export class RideService {
     public static async completeRide(rideId: string, driverId?: string, _fareAmount?: number): Promise<boolean> {
         const supabase = createClient();
         try {
-            const nowIso = new Date().toISOString();
+            // 1. Atualização direta e segura no banco
             let { error } = await supabase
                 .from('rides')
-                .update({
-                    status: 'COMPLETED',
-                    completed_at: nowIso,
-                    updated_at: nowIso,
-                })
+                .update({ status: 'COMPLETED' })
                 .eq('id', rideId);
 
-            if (error && error.message && error.message.toLowerCase().includes('updated_at')) {
-                const retry = await supabase
-                    .from('rides')
-                    .update({
-                        status: 'COMPLETED',
-                        completed_at: nowIso,
-                    })
-                    .eq('id', rideId);
-                error = retry.error;
+            if (error) {
+                console.warn('[RideService] Erro ao atualizar status COMPLETED em rides:', error.message);
             }
+
+            // 2. Atualiza tabela alternativa corridas
+            try {
+                await supabase
+                    .from('corridas')
+                    .update({ status: 'FINALIZADA' })
+                    .eq('id', rideId);
+            } catch (_) {}
+
+            // 3. Notificação instantânea via Broadcast
+            broadcastRideEvent(rideId, 'ride_completed', {
+                status: 'COMPLETED',
+                ride_id: rideId,
+            });
+            broadcastRideEvent(rideId, 'status_update', {
+                status: 'COMPLETED',
+                ride_id: rideId,
+            });
 
             if (driverId) {
                 try {
@@ -210,7 +247,7 @@ export class RideService {
                 }
             }
 
-            return !error;
+            return true;
         } catch (err) {
             console.error('[RideService] Erro ao finalizar corrida:', err);
             return false;
@@ -223,33 +260,16 @@ export class RideService {
     public static async cancelRide(rideId: string, driverId?: string, reason?: string, cancelledBy: 'driver' | 'passenger' | 'admin' = 'driver'): Promise<boolean> {
         const supabase = createClient();
         try {
-            const nowIso = new Date().toISOString();
             const cancelAuthorText = cancelledBy === 'passenger' ? 'Cancelado pelo passageiro' : 'Cancelado pelo motorista';
             const finalReason = reason || cancelAuthorText;
 
+            // 1. Atualiza status no banco
             let { error } = await supabase
                 .from('rides')
-                .update({
-                    status: 'CANCELLED',
-                    cancel_reason: finalReason,
-                    cancelled_by: cancelledBy,
-                    updated_at: nowIso,
-                })
+                .update({ status: 'CANCELLED' })
                 .eq('id', rideId);
 
-            if (error && error.message) {
-                // Tenta sem a coluna cancelled_by caso ela ainda não exista
-                const retry = await supabase
-                    .from('rides')
-                    .update({
-                        status: 'CANCELLED',
-                        cancel_reason: finalReason,
-                    })
-                    .eq('id', rideId);
-                error = retry.error;
-            }
-
-            // Também tenta atualizar tabela corridas caso ela seja a principal
+            // 2. Atualiza tabela alternativa corridas
             try {
                 await supabase
                     .from('corridas')
@@ -259,6 +279,20 @@ export class RideService {
                     })
                     .eq('id', rideId);
             } catch (_) {}
+
+            // 3. Notificação instantânea via Broadcast
+            broadcastRideEvent(rideId, 'ride_cancelled', {
+                status: 'CANCELLED',
+                ride_id: rideId,
+                cancelled_by: cancelledBy,
+                reason: finalReason,
+            });
+            broadcastRideEvent(rideId, 'status_update', {
+                status: 'CANCELLED',
+                ride_id: rideId,
+                cancelled_by: cancelledBy,
+                reason: finalReason,
+            });
 
             if (driverId) {
                 try {
@@ -271,7 +305,7 @@ export class RideService {
                 }
             }
 
-            return !error;
+            return true;
         } catch (err) {
             console.error('[RideService] Erro ao cancelar corrida:', err);
             return false;
@@ -290,7 +324,7 @@ export class RideService {
             rideStatus = 'cancelled';
         } else if (dbStatus === 'IN_PROGRESS' || dbStatus === 'EM_ANDAMENTO') {
             rideStatus = 'in-progress';
-        } else if (dbStatus === 'ARRIVED' || dbStatus === 'NO_LOCAL') {
+        } else if (dbStatus === 'ARRIVED' || dbStatus === 'NO_LOCAL' || dbStatus === 'CHEGOU') {
             rideStatus = 'arrived';
         } else if (dbStatus === 'ACCEPTED' || dbStatus === 'ACEITA') {
             rideStatus = 'accepted';
@@ -364,7 +398,6 @@ export class RideService {
                 .limit(50);
 
             if (driverId) {
-                // Busca corridas atribuídas ao motorista ou finalizadas/canceladas recentemente
                 query = query.or(`driver_id.eq.${driverId},driver_id.is.null`);
             }
 
@@ -429,35 +462,18 @@ export class RideService {
         if (!coords || !coords.latitude || !coords.longitude) return;
 
         const supabase = createClient();
-        const nowIso = new Date().toISOString();
 
-        // 1. Atualiza na tabela da corrida ativa (para o passageiro acompanhar)
+        // 1. Notificação instantânea via Realtime broadcast para o passageiro
         if (activeRideId) {
-            try {
-                await supabase
-                    .from('rides')
-                    .update({
-                        motorista_lat: coords.latitude,
-                        motorista_lng: coords.longitude,
-                        driver_latitude: coords.latitude,
-                        driver_longitude: coords.longitude,
-                        updated_at: nowIso,
-                    })
-                    .eq('id', activeRideId);
-            } catch (err1) {
-                try {
-                    await supabase
-                        .from('rides')
-                        .update({
-                            motorista_lat: coords.latitude,
-                            motorista_lng: coords.longitude,
-                        })
-                        .eq('id', activeRideId);
-                } catch (_) {}
-            }
+            broadcastRideEvent(activeRideId, 'driver_location', {
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+                heading: coords.heading,
+                speed: coords.speed,
+            });
         }
 
-        // 2. Atualiza no perfil do motorista
+        // 2. Atualiza no perfil do motorista na tabela motoristas
         if (driverId) {
             try {
                 await supabase
@@ -465,20 +481,11 @@ export class RideService {
                     .update({
                         latitude: coords.latitude,
                         longitude: coords.longitude,
-                        updated_at: nowIso,
+                        lat: coords.latitude,
+                        lng: coords.longitude,
                     })
                     .eq('id', driverId);
-            } catch (err2) {
-                try {
-                    await supabase
-                        .from('motoristas')
-                        .update({
-                            lat: coords.latitude,
-                            lng: coords.longitude,
-                        })
-                        .eq('id', driverId);
-                } catch (_) {}
-            }
+            } catch (_) {}
         }
     }
 }

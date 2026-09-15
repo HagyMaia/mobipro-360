@@ -4,7 +4,7 @@ import { CheckCircle2, ExternalLink, Flag, Loader2, MapPin, Navigation, Phone, P
 import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
 import { RideService } from '@/services/ride/RideService';
-import { ChatService } from '@/services/chat/ChatService';
+import { ChatService, playMessageReceivedChime } from '@/services/chat/ChatService';
 import { RiskZoneService } from '@/services/safety/RiskZoneService';
 import { formatBRL } from '@/lib/utils';
 import { Badge, Button, Card } from '@/components/ui';
@@ -31,12 +31,13 @@ export default function ActiveRideCard() {
 
   const ride = state.activeRide;
 
-  // Escuta novas mensagens do chat para mostrar o badge de não lidas
+  // Escuta novas mensagens do chat para mostrar o badge de não lidas e tocar alerta sonoro
   useEffect(() => {
     if (!ride?.id) return;
     const unsubscribe = ChatService.subscribeToRideMessages(ride.id, (msg) => {
-      if (msg.sender_role === 'passenger' && !isChatModalOpen) {
+      if (msg.sender_role !== 'driver' && !isChatModalOpen) {
         setUnreadMessages((prev) => prev + 1);
+        playMessageReceivedChime();
       }
     });
     return () => unsubscribe();

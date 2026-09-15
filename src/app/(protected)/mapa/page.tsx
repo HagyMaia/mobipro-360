@@ -34,7 +34,7 @@ import { useApp } from "@/lib/store";
 import { NavigationModal } from "@/components/NavigationModal";
 import { PaymentCheckoutModal } from "@/components/Ride/PaymentCheckoutModal";
 import { ChatModal } from "@/components/Ride/ChatModal";
-import { ChatService } from "@/services/chat/ChatService";
+import { ChatService, playMessageReceivedChime } from "@/services/chat/ChatService";
 import { requestNotificationPermission } from "@/lib/notifications";
 import { formatBRL } from "@/lib/utils";
 import type { DriverWorkStatus } from "@/types";
@@ -77,12 +77,13 @@ export default function MapaPage() {
 
     const activeRide = state.activeRide;
 
-    // Monitora mensagens não lidas no mapa
+    // Monitora mensagens não lidas no mapa e toca aviso sonoro
     useEffect(() => {
         if (!activeRide?.id) return;
         const unsubscribe = ChatService.subscribeToRideMessages(activeRide.id, (msg) => {
-            if (msg.sender_role === 'passenger' && !isChatModalOpen) {
+            if (msg.sender_role !== 'driver' && !isChatModalOpen) {
                 setUnreadMessages((prev) => prev + 1);
+                playMessageReceivedChime();
             }
         });
         return () => unsubscribe();

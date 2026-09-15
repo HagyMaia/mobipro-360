@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, X, MessageSquare, Check, CheckCheck, Loader2, Sparkles } from 'lucide-react';
+import { Send, X, MessageSquare, Check, CheckCheck, Loader2, Sparkles, UserCheck, RefreshCw } from 'lucide-react';
 import { ChatService, playMessageReceivedChime } from '@/services/chat/ChatService';
 import type { ChatMessage } from '@/lib/types';
 
@@ -24,6 +24,14 @@ const QUICK_RESPONSES = [
     'Ok, tudo certo!',
 ];
 
+const SIMULATED_PASSENGER_MESSAGES = [
+    'Estou aguardando no portão principal!',
+    'Estou de camisa preta com uma mala pequena.',
+    'Pode avisar quando chegar? Já estou descendo.',
+    'Estou na recepção do prédio.',
+    'Perfeito, muito obrigado!',
+];
+
 export const ChatModal: React.FC<ChatModalProps> = ({
     isOpen,
     onClose,
@@ -37,12 +45,26 @@ export const ChatModal: React.FC<ChatModalProps> = ({
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [showSimulateMenu, setShowSimulateMenu] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = (smooth = true) => {
         messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
     };
+
+    const loadChatHistory = useCallback(async () => {
+        if (!rideId) return;
+        try {
+            const data = await ChatService.getMessages(rideId);
+            setMessages(data);
+            setTimeout(() => scrollToBottom(false), 50);
+        } catch (err) {
+            console.warn('[ChatModal] Erro ao carregar histórico:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [rideId]);
 
     // 1. Carrega histórico inicial ao abrir o modal
     useEffect(() => {
@@ -51,22 +73,15 @@ export const ChatModal: React.FC<ChatModalProps> = ({
         let isMounted = true;
         setLoading(true);
 
-        ChatService.getMessages(rideId).then((data) => {
-            if (isMounted) {
-                setMessages(data);
-                setLoading(false);
-                setTimeout(() => scrollToBottom(false), 50);
-            }
-        });
-
+        loadChatHistory();
         ChatService.markAsRead(rideId, 'driver');
 
-        // 2. Inscreve no Realtime para novas mensagens
+        // 2. Inscreve no Realtime para novas mensagens do passageiro e motorista
         const unsubscribe = ChatService.subscribeToRideMessages(rideId, (newMsg) => {
             if (!isMounted) return;
             setMessages((prev) => {
                 if (prev.some((m) => m.id === newMsg.id)) return prev;
-                if (newMsg.sender_role === 'passenger') {
+                if (newMsg.sender_role !== 'driver') {
                     playMessageReceivedChime();
                 }
                 return [...prev, newMsg];
@@ -78,7 +93,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
             isMounted = false;
             unsubscribe();
         };
-    }, [isOpen, rideId]);
+    }, [isOpen, rideId, loadChatHistory]);
 
     // Foca o input ao abrir
     useEffect(() => {
@@ -126,6 +141,23 @@ export const ChatModal: React.FC<ChatModalProps> = ({
         [input, sending, rideId, driverId, driverName, onSendMessage]
     );
 
+    const handleSimulatePassenger = async (text: string) => {
+        setShowSimulateMenu(false);
+        try {
+            const sent = await ChatService.simulatePassengerMessage(rideId, passengerName, text);
+            if (sent) {
+                playMessageReceivedChime();
+                setMessages((prev) => {
+                    if (prev.some((m) => m.id === sent.id)) return prev;
+                    return [...prev, sent];
+                });
+                setTimeout(() => scrollToBottom(true), 50);
+            }
+        } catch (err) {
+            console.error('[ChatModal] Erro ao simular mensagem do passageiro:', err);
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -142,22 +174,70 @@ export const ChatModal: React.FC<ChatModalProps> = ({
                                 <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">
                                     {passengerName}
                                 </h3>
-                                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                             </div>
                             <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                                Chat da Corrida · Resposta rápida
+                                Chat da Corrida · Tempo real ativo
                             </p>
                         </div>
                     </div>
 
-                    <button
-                        onClick={onClose}
-                        className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-200/60 dark:bg-dark-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-dark-700 transition"
-                        aria-label="Fechar chat"
-                    >
-                        <X size={18} />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            onClick={() => loadChatHistory()}
+                            className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-200/60 dark:bg-dark-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-dark-700 transition"
+                            title="Atualizar mensagens"
+                            aria-label="Atualizar mensagens"
+                        >
+                            <RefreshCw size={15} />
+                        </button>
+
+                        <button
+                            onClick={() => setShowSimulateMenu(!showSimulateMenu)}
+                            className="flex h-9 px-2.5 items-center gap-1.5 rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition"
+                            title="Testar resposta do passageiro"
+                        >
+                            <UserCheck size={14} />
+                            <span className="hidden sm:inline">Simular</span>
+                        </button>
+
+                        <button
+                            onClick={onClose}
+                            className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-200/60 dark:bg-dark-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-dark-700 transition"
+                            aria-label="Fechar chat"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
                 </div>
+
+                {/* Menu de simulação de mensagens do passageiro */}
+                {showSimulateMenu && (
+                    <div className="border-b border-emerald-500/30 bg-emerald-500/10 p-3 animate-[fadeIn_.2s_ease-out]">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-[11px] font-black uppercase text-emerald-700 dark:text-emerald-300">
+                                💬 Simular envio pelo passageiro:
+                            </span>
+                            <button
+                                onClick={() => setShowSimulateMenu(false)}
+                                className="text-xs text-slate-500 hover:text-slate-700"
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                            {SIMULATED_PASSENGER_MESSAGES.map((msg, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => handleSimulatePassenger(msg)}
+                                    className="rounded-xl border border-emerald-500/30 bg-white dark:bg-dark-900 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500 hover:text-slate-950 transition"
+                                >
+                                    {msg}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Lista de Mensagens */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50 dark:bg-dark-950/40">
@@ -174,7 +254,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
                                 Nenhuma mensagem ainda
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs">
-                                Envie uma mensagem rápida ou digite abaixo para avisar o passageiro.
+                                Envie uma mensagem rápida ou digite abaixo para falar com {passengerName}.
                             </p>
                         </div>
                     ) : (

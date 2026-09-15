@@ -25,7 +25,7 @@ import {
   UserX,
 } from 'lucide-react';
 import { ChatModal } from '@/components/Ride/ChatModal';
-import { ChatService } from '@/services/chat/ChatService';
+import { ChatService, playMessageReceivedChime } from '@/services/chat/ChatService';
 import { PaymentCheckoutModal } from '@/components/Ride/PaymentCheckoutModal';
 import { NavigationModal } from '@/components/NavigationModal';
 import { ReportIncidentModal } from '@/components/Ride/ReportIncidentModal';
@@ -123,12 +123,13 @@ export default function DetalheCorrida() {
     }
   }, [currentRide, urlId]);
 
-  // Monitora mensagens do passageiro em tempo real
+  // Monitora mensagens do passageiro em tempo real e toca aviso sonoro
   useEffect(() => {
     if (!currentRide?.id) return;
     const unsubscribe = ChatService.subscribeToRideMessages(currentRide.id, (msg) => {
-      if (msg.sender_role === 'passenger' && !isChatModalOpen) {
+      if (msg.sender_role !== 'driver' && !isChatModalOpen) {
         setUnreadMessages((prev) => prev + 1);
+        playMessageReceivedChime();
       }
     });
     return () => unsubscribe();

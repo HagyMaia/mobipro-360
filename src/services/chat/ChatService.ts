@@ -21,7 +21,7 @@ export function playMessageReceivedChime() {
         osc.frequency.setValueAtTime(880.00, now + 0.08); // A5
         osc.frequency.setValueAtTime(1046.50, now + 0.16); // C6
 
-        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.setValueAtTime(0.2, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
 
         osc.connect(gain);
@@ -38,66 +38,190 @@ export function playMessageReceivedChime() {
     }
 }
 
+/**
+ * Normaliza qualquer formato de remetente (passageiro, passageira, cliente, user, motorista, etc.)
+ */
+export function normalizeSenderRole(item: any): 'driver' | 'passenger' | 'system' | 'central' {
+    const raw = String(
+        item?.sender_role ||
+        item?.sender_type ||
+        item?.role ||
+        item?.remetente ||
+        item?.tipo_remetente ||
+        item?.autor ||
+        (item?.is_driver ? 'driver' : '') ||
+        (item?.is_passenger ? 'passenger' : '') ||
+        ''
+    ).toLowerCase().trim();
+
+    if (raw.includes('driver') || raw.includes('motorista') || raw.includes('condutor') || raw.includes('taxista')) {
+        return 'driver';
+    }
+    if (raw.includes('system') || raw.includes('sistema') || raw.includes('bot')) {
+        return 'system';
+    }
+    if (raw.includes('central') || raw.includes('suporte') || raw.includes('admin') || raw.includes('atendente')) {
+        return 'central';
+    }
+    // Qualquer outro papel é considerado passageiro
+    return 'passenger';
+}
+
+/**
+ * Normaliza registro bruto de banco ou payload Realtime em ChatMessage tipado
+ */
+export function parseRawMessage(item: any): ChatMessage | null {
+    if (!item || typeof item !== 'object') return null;
+
+    const content = String(
+        item.content ??
+        item.message ??
+        item.mensagem ??
+        item.text ??
+        item.texto ??
+        item.body ??
+        item.msg ??
+        ''
+    ).trim();
+
+    if (!content) return null;
+
+    const id = String(item.id || item.message_id || `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
+    const ride_id = String(item.ride_id || item.corrida_id || item.trip_id || item.rideId || '');
+    const sender_role = normalizeSenderRole(item);
+    const sender_name = String(
+        item.sender_name ||
+        item.nome_remetente ||
+        item.nome ||
+        (sender_role === 'driver' ? 'Motorista' : sender_role === 'passenger' ? 'Passageiro' : 'Central')
+    );
+
+    return {
+        id,
+        ride_id,
+        sender_id: item.sender_id ? String(item.sender_id) : undefined,
+        sender_role,
+        sender_name,
+        content,
+        created_at: item.created_at || item.enviada_em || item.data || item.timestamp || new Date().toISOString(),
+        read: Boolean(item.read || item.is_read || item.lida || item.visualizada),
+    };
+}
+
+const LOCAL_STORAGE_CHAT_PREFIX = 'mobipro_chat_messages_';
+
+function getLocalMessages(rideId: string): ChatMessage[] {
+    if (typeof window === 'undefined' || !rideId) return [];
+    try {
+        const raw = window.localStorage.getItem(`${LOCAL_STORAGE_CHAT_PREFIX}${rideId}`);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+            return parsed.map(parseRawMessage).filter((m): m is ChatMessage => m !== null);
+        }
+    } catch {
+        // ignore
+    }
+    return [];
+}
+
+function saveLocalMessage(msg: ChatMessage): void {
+    if (typeof window === 'undefined' || !msg.ride_id) return;
+    try {
+        const existing = getLocalMessages(msg.ride_id);
+        if (!existing.some((m) => m.id === msg.id)) {
+            const updated = [...existing, msg];
+            window.localStorage.setItem(`${LOCAL_STORAGE_CHAT_PREFIX}${msg.ride_id}`, JSON.stringify(updated));
+        }
+    } catch {
+        // ignore
+    }
+}
+
 export class ChatService {
     /**
-     * Busca todas as mensagens da corrida no Supabase
+     * Busca todas as mensagens da corrida com tolerância a múltiplos schemas e fallbacks
      */
     public static async getMessages(rideId: string): Promise<ChatMessage[]> {
         if (!rideId) return [];
         const supabase = createClient();
+        const messageMap = new Map<string, ChatMessage>();
+
+        // 1. Carrega do armazenamento local primeiro (resiliente e instantâneo)
+        const localList = getLocalMessages(rideId);
+        for (const msg of localList) {
+            messageMap.set(msg.id, msg);
+        }
 
         try {
-            // 1. Tenta buscar na tabela ride_messages
-            const { data, error } = await supabase
-                .from('ride_messages')
-                .select('*')
-                .eq('ride_id', rideId)
-                .order('created_at', { ascending: true });
+            // 2. Busca na tabela ride_messages
+            try {
+                const { data, error } = await supabase
+                    .from('ride_messages')
+                    .select('*')
+                    .or(`ride_id.eq.${rideId},corrida_id.eq.${rideId}`)
+                    .order('created_at', { ascending: true });
 
-            if (!error && Array.isArray(data)) {
-                return data.map((item: any) => ({
-                    id: String(item.id),
-                    ride_id: String(item.ride_id),
-                    sender_id: item.sender_id ? String(item.sender_id) : undefined,
-                    sender_role: item.sender_role || (item.sender_type === 'passenger' ? 'passenger' : 'driver'),
-                    sender_name: item.sender_name || (item.sender_role === 'passenger' ? 'Passageiro' : 'Motorista'),
-                    content: item.content || item.message || item.text || '',
-                    created_at: item.created_at || new Date().toISOString(),
-                    read: Boolean(item.read || item.is_read),
-                }));
+                if (!error && Array.isArray(data)) {
+                    for (const item of data) {
+                        const parsed = parseRawMessage(item);
+                        if (parsed) {
+                            messageMap.set(parsed.id, parsed);
+                            saveLocalMessage(parsed);
+                        }
+                    }
+                }
+            } catch (err1) {
+                // Tenta busca simples por ride_id
+                try {
+                    const { data } = await supabase
+                        .from('ride_messages')
+                        .select('*')
+                        .eq('ride_id', rideId)
+                        .order('created_at', { ascending: true });
+
+                    if (Array.isArray(data)) {
+                        for (const item of data) {
+                            const parsed = parseRawMessage(item);
+                            if (parsed) {
+                                messageMap.set(parsed.id, parsed);
+                                saveLocalMessage(parsed);
+                            }
+                        }
+                    }
+                } catch (_) {}
             }
 
-            // 2. Fallback para tabela alternativa 'messages' ou 'mensagens'
+            // 3. Busca na tabela alternativa 'messages'
             try {
                 const { data: altData } = await supabase
                     .from('messages')
                     .select('*')
-                    .eq('ride_id', rideId)
+                    .or(`ride_id.eq.${rideId},corrida_id.eq.${rideId}`)
                     .order('created_at', { ascending: true });
 
                 if (Array.isArray(altData) && altData.length > 0) {
-                    return altData.map((item: any) => ({
-                        id: String(item.id),
-                        ride_id: String(item.ride_id),
-                        sender_id: item.sender_id ? String(item.sender_id) : undefined,
-                        sender_role: item.sender_role || 'passenger',
-                        sender_name: item.sender_name || 'Passageiro',
-                        content: item.content || item.message || item.text || '',
-                        created_at: item.created_at || new Date().toISOString(),
-                        read: Boolean(item.read),
-                    }));
+                    for (const item of altData) {
+                        const parsed = parseRawMessage(item);
+                        if (parsed) {
+                            messageMap.set(parsed.id, parsed);
+                            saveLocalMessage(parsed);
+                        }
+                    }
                 }
             } catch (_) {}
 
-            return [];
+            const results = Array.from(messageMap.values());
+            results.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            return results;
         } catch (err) {
             console.error('[ChatService] Erro ao buscar mensagens:', err);
-            return [];
+            return Array.from(messageMap.values());
         }
     }
 
     /**
-     * Envia uma mensagem no chat da corrida
+     * Envia uma mensagem no chat da corrida (suporta motorista e passageiro)
      */
     public static async sendMessage(params: {
         rideId: string;
@@ -110,13 +234,41 @@ export class ChatService {
         const supabase = createClient();
         const nowIso = new Date().toISOString();
 
-        const payload = {
+        const localMessage: ChatMessage = {
+            id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             ride_id: params.rideId,
-            sender_id: params.senderId || null,
+            sender_id: params.senderId,
             sender_role: params.senderRole,
             sender_name: params.senderName,
             content: params.content.trim(),
+            created_at: nowIso,
             read: false,
+        };
+
+        // Salva localmente de imediato
+        saveLocalMessage(localMessage);
+
+        // Notifica canais de broadcast locais (multi-abas ou simulação)
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+            try {
+                const bc = new BroadcastChannel(`mobipro_chat_${params.rideId}`);
+                bc.postMessage(localMessage);
+                bc.close();
+            } catch (_) {}
+        }
+
+        const payload: Record<string, any> = {
+            ride_id: params.rideId,
+            corrida_id: params.rideId,
+            sender_id: params.senderId || null,
+            sender_role: params.senderRole,
+            sender_type: params.senderRole,
+            sender_name: params.senderName,
+            content: params.content.trim(),
+            message: params.content.trim(),
+            mensagem: params.content.trim(),
+            read: false,
+            is_read: false,
             created_at: nowIso,
         };
 
@@ -126,11 +278,10 @@ export class ChatService {
                 .from('ride_messages')
                 .insert([payload])
                 .select()
-                .single();
+                .maybeSingle();
 
+            // 2. Fallback com payload enxuto
             if (error) {
-                console.warn('[ChatService] Tentando inserção com payload adaptado:', error.message);
-                // Tenta sem sender_id se falhar por FK
                 const { data: retryData, error: retryErr } = await supabase
                     .from('ride_messages')
                     .insert([{
@@ -140,40 +291,45 @@ export class ChatService {
                         content: params.content.trim(),
                     }])
                     .select()
-                    .single();
+                    .maybeSingle();
 
                 if (!retryErr && retryData) {
                     data = retryData;
+                    error = null;
                 }
             }
 
-            if (data) {
-                return {
-                    id: String(data.id),
-                    ride_id: String(data.ride_id),
-                    sender_id: data.sender_id ? String(data.sender_id) : undefined,
-                    sender_role: data.sender_role || params.senderRole,
-                    sender_name: data.sender_name || params.senderName,
-                    content: data.content || params.content,
-                    created_at: data.created_at || nowIso,
-                    read: false,
-                };
+            // 3. Fallback para tabela messages
+            if (error) {
+                try {
+                    const { data: altData } = await supabase
+                        .from('messages')
+                        .insert([{
+                            ride_id: params.rideId,
+                            sender_role: params.senderRole,
+                            sender_name: params.senderName,
+                            content: params.content.trim(),
+                        }])
+                        .select()
+                        .maybeSingle();
+                    if (altData) {
+                        data = altData;
+                    }
+                } catch (_) {}
             }
 
-            // Mock local fallback se o banco estiver offline
-            return {
-                id: `local-${Date.now()}`,
-                ride_id: params.rideId,
-                sender_id: params.senderId,
-                sender_role: params.senderRole,
-                sender_name: params.senderName,
-                content: params.content.trim(),
-                created_at: nowIso,
-                read: false,
-            };
+            if (data) {
+                const parsed = parseRawMessage(data);
+                if (parsed) {
+                    saveLocalMessage(parsed);
+                    return parsed;
+                }
+            }
+
+            return localMessage;
         } catch (err) {
-            console.error('[ChatService] Erro ao enviar mensagem:', err);
-            return null;
+            console.error('[ChatService] Erro ao enviar mensagem no banco, retornado local:', err);
+            return localMessage;
         }
     }
 
@@ -188,16 +344,32 @@ export class ChatService {
         try {
             await supabase
                 .from('ride_messages')
-                .update({ read: true })
+                .update({ read: true, is_read: true })
                 .eq('ride_id', rideId)
-                .eq('sender_role', oppositeRole);
+                .or(`sender_role.eq.${oppositeRole},sender_type.eq.${oppositeRole}`);
         } catch {
             // ignore
         }
     }
 
     /**
-     * Escuta em tempo real as mensagens da corrida via WebSocket e Polling fallback
+     * Envia uma mensagem simulada do passageiro (útil para testes, homologação e demonstração)
+     */
+    public static async simulatePassengerMessage(
+        rideId: string,
+        passengerName = 'Passageiro',
+        content = 'Olá motorista, estou aguardando no portão principal!'
+    ): Promise<ChatMessage | null> {
+        return this.sendMessage({
+            rideId,
+            senderRole: 'passenger',
+            senderName: passengerName,
+            content,
+        });
+    }
+
+    /**
+     * Escuta em tempo real as mensagens da corrida via Realtime WebSocket, BroadcastChannel e Polling proativo
      */
     public static subscribeToRideMessages(
         rideId: string,
@@ -207,6 +379,29 @@ export class ChatService {
         const supabase = createClient();
         const processedIds = new Set<string>();
 
+        // Preenche IDs locais já conhecidos para não duplicar
+        const initialLocals = getLocalMessages(rideId);
+        for (const m of initialLocals) {
+            processedIds.add(m.id);
+        }
+
+        const handleIncoming = (raw: any) => {
+            const parsed = parseRawMessage(raw);
+            if (!parsed) return;
+
+            // Se for de outra corrida, ignora
+            if (parsed.ride_id && parsed.ride_id !== rideId && !rideId.includes(parsed.ride_id) && !parsed.ride_id.includes(rideId)) {
+                return;
+            }
+
+            if (!processedIds.has(parsed.id)) {
+                processedIds.add(parsed.id);
+                saveLocalMessage(parsed);
+                onNewMessage(parsed);
+            }
+        };
+
+        // 1. Canal Realtime do Supabase (WebSocket)
         let channel: any = null;
         try {
             channel = supabase
@@ -214,66 +409,131 @@ export class ChatService {
                 .on(
                     'postgres_changes',
                     {
-                        event: 'INSERT',
+                        event: '*',
                         schema: 'public',
                         table: 'ride_messages',
-                        filter: `ride_id=eq.${rideId}`,
                     },
                     (payload: any) => {
-                        const item = payload.new;
-                        if (item && item.id && !processedIds.has(String(item.id))) {
-                            processedIds.add(String(item.id));
-                            const parsed: ChatMessage = {
-                                id: String(item.id),
-                                ride_id: String(item.ride_id),
-                                sender_id: item.sender_id ? String(item.sender_id) : undefined,
-                                sender_role: item.sender_role || 'passenger',
-                                sender_name: item.sender_name || 'Passageiro',
-                                content: item.content || item.message || '',
-                                created_at: item.created_at || new Date().toISOString(),
-                                read: Boolean(item.read),
-                            };
-                            onNewMessage(parsed);
-                        }
+                        const row = payload.new || payload.old;
+                        if (row) handleIncoming(row);
                     }
                 )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'messages',
+                    },
+                    (payload: any) => {
+                        const row = payload.new || payload.old;
+                        if (row) handleIncoming(row);
+                    }
+                )
+                .on('broadcast', { event: 'new_message' }, (payload: any) => {
+                    if (payload.payload) handleIncoming(payload.payload);
+                })
+                .on('broadcast', { event: 'message' }, (payload: any) => {
+                    if (payload.payload) handleIncoming(payload.payload);
+                })
                 .subscribe();
         } catch (err) {
             console.warn('[ChatService] Erro ao criar canal Realtime:', err);
         }
 
-        // Polling fallback a cada 2.5s para conexões instáveis
-        const interval = setInterval(async () => {
+        // 2. BroadcastChannel para comunicação instantânea entre abas no mesmo navegador
+        let bc: BroadcastChannel | null = null;
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
             try {
+                bc = new BroadcastChannel(`mobipro_chat_${rideId}`);
+                bc.onmessage = (event) => {
+                    if (event.data) handleIncoming(event.data);
+                };
+            } catch (_) {}
+        }
+
+        // 3. Listener de Storage Event (fallback multi-abas)
+        const storageListener = (e: StorageEvent) => {
+            if (e.key === `${LOCAL_STORAGE_CHAT_PREFIX}${rideId}` && e.newValue) {
+                try {
+                    const parsedArray = JSON.parse(e.newValue);
+                    if (Array.isArray(parsedArray)) {
+                        for (const item of parsedArray) {
+                            handleIncoming(item);
+                        }
+                    }
+                } catch (_) {}
+            }
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('storage', storageListener);
+        }
+
+        // 4. Polling proativo a cada 1.5s (garante entrega mesmo com rede instável ou sem WebSockets)
+        const pollMessages = async () => {
+            try {
+                // Tenta ride_messages
                 const { data } = await supabase
                     .from('ride_messages')
                     .select('*')
-                    .eq('ride_id', rideId)
+                    .or(`ride_id.eq.${rideId},corrida_id.eq.${rideId}`)
                     .order('created_at', { ascending: false })
-                    .limit(5);
+                    .limit(10);
 
                 if (Array.isArray(data)) {
                     for (const item of data) {
-                        if (item && item.id && !processedIds.has(String(item.id))) {
-                            processedIds.add(String(item.id));
-                            onNewMessage({
-                                id: String(item.id),
-                                ride_id: String(item.ride_id),
-                                sender_id: item.sender_id ? String(item.sender_id) : undefined,
-                                sender_role: item.sender_role || 'passenger',
-                                sender_name: item.sender_name || 'Passageiro',
-                                content: item.content || item.message || '',
-                                created_at: item.created_at || new Date().toISOString(),
-                                read: Boolean(item.read),
-                            });
+                        handleIncoming(item);
+                    }
+                }
+            } catch (_) {
+                try {
+                    const { data } = await supabase
+                        .from('ride_messages')
+                        .select('*')
+                        .eq('ride_id', rideId)
+                        .order('created_at', { ascending: false })
+                        .limit(10);
+
+                    if (Array.isArray(data)) {
+                        for (const item of data) {
+                            handleIncoming(item);
                         }
+                    }
+                } catch (_) {}
+            }
+
+            // Tenta messages
+            try {
+                const { data: altData } = await supabase
+                    .from('messages')
+                    .select('*')
+                    .or(`ride_id.eq.${rideId},corrida_id.eq.${rideId}`)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+
+                if (Array.isArray(altData)) {
+                    for (const item of altData) {
+                        handleIncoming(item);
                     }
                 }
             } catch (_) {}
-        }, 2500);
+        };
+
+        // Executa primeira busca logo após montar
+        pollMessages();
+        const interval = setInterval(pollMessages, 1500);
 
         return () => {
             clearInterval(interval);
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('storage', storageListener);
+            }
+            if (bc) {
+                try {
+                    bc.close();
+                } catch {}
+            }
             if (channel) {
                 try {
                     supabase.removeChannel(channel);
