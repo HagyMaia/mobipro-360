@@ -1,11 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useApp } from "@/lib/store";
 import { Card, SectionTitle } from "@/components/ui";
-import { Users, Clock, DollarSign, Activity, Check, X, Shield, ExternalLink, ArrowLeft } from "lucide-react";
+import {
+  Users,
+  Clock,
+  DollarSign,
+  Activity,
+  Check,
+  X,
+  Shield,
+  ExternalLink,
+  ArrowLeft,
+  FileText,
+  Filter,
+  Download,
+  Printer,
+  Calendar,
+  Car,
+  TrendingUp,
+  UserCheck
+} from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
 type Driver = {
@@ -23,11 +41,37 @@ type Driver = {
   categoria?: string;
 };
 
+type AdminRide = {
+  id: string;
+  pickup_address: string;
+  dropoff_address: string;
+  fare_amount: number;
+  distance_km: number;
+  status: string;
+  created_at: string;
+  driver_id?: string;
+  passenger_id?: string;
+  passenger_name?: string;
+  driver_name?: string;
+  payment_method?: string;
+};
+
+type PeriodFilter = 'ALL' | 'Q1' | 'Q2' | 'CURRENT_MONTH' | 'LAST_MONTH' | 'CUSTOM';
+
 export default function AdminPage() {
   const { state, todayEarnings, todayRides } = useApp();
+  const [activeTab, setActiveTab] = useState<'DRIVERS' | 'REPORTS'>('DRIVERS');
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loadingDrivers, setLoadingDrivers] = useState(true);
   const [error, setError] = useState("");
+
+  // Relatório Geral de Corridas (Todos os Passageiros)
+  const [allRides, setAllRides] = useState<AdminRide[]>([]);
+  const [loadingRides, setLoadingRides] = useState(false);
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('CURRENT_MONTH');
+  const [selectedPassenger, setSelectedPassenger] = useState<string>('ALL');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   const loadDrivers = async () => {
     setLoadingDrivers(true);
@@ -46,9 +90,7 @@ export default function AdminPage() {
     }
 
     if (driversError) {
-      setError(
-        "Não foi possível carregar os motoristas. Verifique a tabela e as políticas RLS."
-      );
+      setError("Não foi possível carregar os motoristas.");
     } else {
       setDrivers(data || []);
       setError("");
@@ -56,16 +98,57 @@ export default function AdminPage() {
     setLoadingDrivers(false);
   };
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const hash = window.location.hash || '';
-      const search = window.location.search || '';
-      if (hash.includes('type=recovery') || search.includes('type=recovery') || search.includes('mode=reset')) {
-        window.location.href = '/login' + search + hash;
-        return;
+  const loadAllRides = async () => {
+    setLoadingRides(true);
+    try {
+      const { data: rawRides } = await supabase
+        .from("rides")
+        .select("id, pickup_address, dropoff_address, fare_amount, distance_km, status, created_at, driver_id, passenger_id, payment_method")
+        .order("created_at", { ascending: false })
+        .limit(300);
+
+      if (rawRides && Array.isArray(rawRides)) {
+        // Carrega motoristas para mapear nomes
+        const driverIds = Array.from(new Set(rawRides.map((r) => r.driver_id).filter(Boolean)));
+        const driverMap: Record<string, string> = {};
+        if (driverIds.length > 0) {
+          const { data: dData } = await supabase
+            .from("motoristas")
+            .select("id, nome, nome_social, nome_completo")
+            .in("id", driverIds);
+          if (dData) {
+            dData.forEach((d: any) => {
+              driverMap[d.id] = d.nome || d.nome_social || d.nome_completo || "Motorista SR";
+            });
+          }
+        }
+
+        const mapped: AdminRide[] = rawRides.map((r) => ({
+          id: r.id,
+          pickup_address: r.pickup_address || "Manaus",
+          dropoff_address: r.dropoff_address || "Manaus",
+          fare_amount: Number(r.fare_amount) || 0,
+          distance_km: Number(r.distance_km) || 0,
+          status: String(r.status || "COMPLETED").toUpperCase(),
+          created_at: r.created_at || new Date().toISOString(),
+          driver_id: r.driver_id,
+          passenger_id: r.passenger_id,
+          passenger_name: r.passenger_id ? `Passageiro (${r.passenger_id.slice(0, 6)})` : "Passageiro SR",
+          driver_name: r.driver_id ? driverMap[r.driver_id] || "Motorista Parceiro" : "Motorista SR",
+          payment_method: r.payment_method || "PIX / Voucher"
+        }));
+        setAllRides(mapped);
       }
+    } catch (e) {
+      console.warn("Erro ao carregar relatório geral de corridas:", e);
+    } finally {
+      setLoadingRides(false);
     }
+  };
+
+  useEffect(() => {
     loadDrivers();
+    loadAllRides();
   }, []);
 
   const updateDriverStatus = async (
@@ -88,9 +171,7 @@ export default function AdminPage() {
     }
 
     if (updateError) {
-      setError(
-        "Não foi possível atualizar este motorista: " + updateError.message
-      );
+      setError("Não foi possível atualizar este motorista: " + updateError.message);
       return;
     }
     setDrivers((current) =>
@@ -100,16 +181,196 @@ export default function AdminPage() {
     );
   };
 
-  const totalTime = state.rideHistory.reduce((acc, ride) => {
-    if (ride.startedAt && ride.completedAt) {
-      const start = new Date(ride.startedAt).getTime();
-      const end = new Date(ride.completedAt).getTime();
-      return acc + (end - start);
-    }
-    return acc;
-  }, 0);
+  // Filtragem de Corridas do Relatório
+  const filteredRides = useMemo(() => {
+    return allRides.filter((ride) => {
+      // Filtro por Passageiro
+      if (selectedPassenger !== 'ALL' && ride.passenger_id !== selectedPassenger) {
+        return false;
+      }
 
-  const totalMinutes = Math.round(totalTime / 60000);
+      // Filtro por Período
+      if (periodFilter === 'ALL') return true;
+
+      const rideDate = new Date(ride.created_at);
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+
+      if (periodFilter === 'CURRENT_MONTH') {
+        return rideDate.getFullYear() === currentYear && rideDate.getMonth() === currentMonth;
+      }
+
+      if (periodFilter === 'LAST_MONTH') {
+        const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
+        return (
+          rideDate.getFullYear() === lastMonthDate.getFullYear() &&
+          rideDate.getMonth() === lastMonthDate.getMonth()
+        );
+      }
+
+      if (periodFilter === 'Q1') {
+        return (
+          rideDate.getFullYear() === currentYear &&
+          rideDate.getMonth() === currentMonth &&
+          rideDate.getDate() >= 1 &&
+          rideDate.getDate() <= 15
+        );
+      }
+
+      if (periodFilter === 'Q2') {
+        return (
+          rideDate.getFullYear() === currentYear &&
+          rideDate.getMonth() === currentMonth &&
+          rideDate.getDate() >= 16
+        );
+      }
+
+      if (periodFilter === 'CUSTOM') {
+        if (!customStartDate && !customEndDate) return true;
+        const start = customStartDate ? new Date(customStartDate + 'T00:00:00') : new Date(0);
+        const end = customEndDate ? new Date(customEndDate + 'T23:59:59') : new Date(8640000000000000);
+        return rideDate >= start && rideDate <= end;
+      }
+
+      return true;
+    });
+  }, [allRides, periodFilter, selectedPassenger, customStartDate, customEndDate]);
+
+  // Totais Consolidados
+  const summary = useMemo(() => {
+    const completed = filteredRides.filter((r) =>
+      ['COMPLETED', 'FINISHED', 'FINALIZADA', 'CONCLUIDA', 'PAID'].includes(r.status)
+    );
+    const totalFare = completed.reduce((acc, r) => acc + r.fare_amount, 0);
+    const totalKm = filteredRides.reduce((acc, r) => acc + (r.distance_km || 0), 0);
+    const avgFare = completed.length > 0 ? totalFare / completed.length : 0;
+
+    return {
+      totalRides: filteredRides.length,
+      completedCount: completed.length,
+      totalFare,
+      totalKm,
+      avgFare
+    };
+  }, [filteredRides]);
+
+  // Exportar Relatório PDF Geral
+  const handleExportPDF = () => {
+    if (typeof window === 'undefined') return;
+
+    const printWindow = window.open('', '_blank', 'width=950,height=800');
+    if (!printWindow) {
+      alert('Por favor, permita pop-ups para imprimir o relatório.');
+      return;
+    }
+
+    const rowsHtml = filteredRides.map((ride, idx) => `
+      <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+        <td style="padding: 8px 6px; text-align: center; font-weight: bold;">${idx + 1}</td>
+        <td style="padding: 8px 6px; white-space: nowrap;">${new Date(ride.created_at).toLocaleString('pt-BR')}</td>
+        <td style="padding: 8px 6px;">${ride.passenger_name || 'Passageiro'}</td>
+        <td style="padding: 8px 6px;">${ride.pickup_address}</td>
+        <td style="padding: 8px 6px;">${ride.dropoff_address}</td>
+        <td style="padding: 8px 6px;">${ride.driver_name}</td>
+        <td style="padding: 8px 6px; text-align: center;">${ride.distance_km ? `${ride.distance_km.toFixed(1)} km` : '-'}</td>
+        <td style="padding: 8px 6px; text-align: center; font-weight: bold;">${ride.status}</td>
+        <td style="padding: 8px 6px; text-align: right; font-weight: bold;">R$ ${ride.fare_amount.toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <title>Relatório Geral de Faturamento - SR Logística</title>
+        <style>
+          @page { size: A4 landscape; margin: 10mm; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; padding: 15px; }
+          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 15px; }
+          .title { font-size: 18px; font-weight: 900; }
+          .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
+          .box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; text-align: center; border-radius: 8px; }
+          table { width: 100%; border-collapse: collapse; }
+          th { background: #f1f5f9; text-align: left; padding: 8px 6px; font-size: 11px; border-bottom: 2px solid #cbd5e1; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="title">SR LOGÍSTICA & TRANSPORTE CORPORATIVO</div>
+            <div style="font-size: 11px; color: #64748b;">Relatório Consolidado de Faturamento e Corridas</div>
+          </div>
+          <div style="text-align: right; font-size: 11px;">
+            <div>Emissão: ${new Date().toLocaleString('pt-BR')}</div>
+            <div><strong>Filtro: ${periodFilter}</strong></div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="box"><div style="font-size:10px; color:#64748b;">Total de Corridas</div><div style="font-size:16px; font-weight:bold;">${summary.totalRides}</div></div>
+          <div class="box"><div style="font-size:10px; color:#64748b;">Corridas Concluídas</div><div style="font-size:16px; font-weight:bold; color:#10b981;">${summary.completedCount}</div></div>
+          <div class="box"><div style="font-size:10px; color:#64748b;">Quilometragem Total</div><div style="font-size:16px; font-weight:bold;">${summary.totalKm.toFixed(1)} km</div></div>
+          <div class="box" style="background:#0f172a; color:#fff;"><div style="font-size:10px; color:#94a3b8;">Faturamento Total</div><div style="font-size:16px; font-weight:bold; color:#38bdf8;">R$ ${summary.totalFare.toFixed(2)}</div></div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:center;">#</th>
+              <th>Data/Hora</th>
+              <th>Passageiro</th>
+              <th>Origem</th>
+              <th>Destino</th>
+              <th>Motorista</th>
+              <th style="text-align:center;">Km</th>
+              <th style="text-align:center;">Status</th>
+              <th style="text-align:right;">Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+
+        <script>
+          window.onload = function() { setTimeout(function() { window.print(); }, 300); }
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  // Exportar CSV
+  const handleExportCSV = () => {
+    if (filteredRides.length === 0) {
+      alert("Não há dados para exportar.");
+      return;
+    }
+    const headers = ["ID", "Data_Hora", "Passageiro", "Origem", "Destino", "Motorista", "KM", "Status", "Forma_Pagamento", "Valor_R$"];
+    const rows = filteredRides.map((r) => [
+      `"${r.id}"`,
+      `"${new Date(r.created_at).toLocaleString('pt-BR')}"`,
+      `"${r.passenger_name || 'Passageiro'}"`,
+      `"${(r.pickup_address || '').replace(/"/g, '""')}"`,
+      `"${(r.dropoff_address || '').replace(/"/g, '""')}"`,
+      `"${(r.driver_name || '').replace(/"/g, '""')}"`,
+      `"${r.distance_km || 0}"`,
+      `"${r.status}"`,
+      `"${r.payment_method || 'PIX'}"`,
+      `"${r.fare_amount.toFixed(2).replace('.', ',')}"`
+    ]);
+    const csvContent = "\uFEFF" + [headers.join(";"), ...rows.map((e) => e.join(";"))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `relatorio_geral_corridas_sr_${Date.now()}.csv`;
+    link.click();
+  };
 
   return (
     <div className="flex flex-col space-y-6 p-4 text-slate-900 dark:text-slate-100 min-h-screen bg-[color:var(--bg)] pb-28 transition-colors select-none font-sans">
@@ -126,9 +387,9 @@ export default function AdminPage() {
             <div>
               <h1 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-1.5">
                 <Shield size={20} className="text-brand-600 dark:text-brand" />
-                <span>Painel Gerencial</span>
+                <span>Painel Gerencial SR</span>
               </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Controle operacional e aprovações</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Controle operacional, motoristas e faturamento</p>
             </div>
           </div>
           <a
@@ -141,153 +402,262 @@ export default function AdminPage() {
             <ExternalLink size={14} />
           </a>
         </div>
-
-        {/* Banner com link direto para o painel oficial da Central */}
-        <div className="rounded-2xl border border-brand/30 bg-gradient-to-r from-brand/15 via-brand/10 to-transparent p-3.5 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1">
-              <span>Portal de Gestão SR Logística</span>
-            </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
-              Abra a plataforma web completa para relatórios e despacho avançado
-            </p>
-          </div>
-          <a
-            href="https://www.srlogisticatrasporte.com.br/admin.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-brand text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs hover:brightness-105 shrink-0 flex items-center gap-1"
-          >
-            <span>Acessar</span>
-            <ExternalLink size={12} />
-          </a>
-        </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Card className="flex flex-col gap-1 p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-brand-700 dark:text-brand">
-            <DollarSign size={20} />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Faturamento (Hoje)</span>
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">R$ {Number(todayEarnings ?? 0).toFixed(2)}</div>
-        </Card>
+      {/* Tabs Principais do Painel */}
+      <div className="flex rounded-2xl bg-slate-200/70 dark:bg-dark-800 p-1 border border-slate-200 dark:border-dark-700">
+        <button
+          onClick={() => setActiveTab('DRIVERS')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition ${
+            activeTab === 'DRIVERS'
+              ? 'bg-white dark:bg-dark-900 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Users size={16} />
+          <span>Motoristas & Aprovações ({drivers.length})</span>
+        </button>
 
-        <Card className="flex flex-col gap-1 p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-            <Activity size={20} />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Corridas (Hoje)</span>
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">{todayRides}</div>
-        </Card>
-
-        <Card className="flex flex-col gap-1 p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-            <Clock size={20} />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Tempo Total</span>
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">{totalMinutes} min</div>
-        </Card>
-
-        <Card className="flex flex-col gap-1 p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-            <Users size={20} />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Cadastrados</span>
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">{drivers.length}</div>
-        </Card>
+        <button
+          onClick={() => setActiveTab('REPORTS')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition ${
+            activeTab === 'REPORTS'
+              ? 'bg-brand text-slate-950 shadow-sm font-black'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <FileText size={16} />
+          <span>Relatórios Quinzenal / Mensal</span>
+        </button>
       </div>
 
-      <div>
-        <SectionTitle className="mb-3">Últimas Corridas</SectionTitle>
-        <Card className="overflow-hidden p-0 shadow-sm">
-          {state.rideHistory.length === 0 ? (
-            <div className="p-6 text-center text-sm text-slate-500">Nenhuma corrida registrada hoje.</div>
-          ) : (
-            <div className="divide-y divide-slate-100 dark:divide-dark-700">
-              {state.rideHistory.slice(0, 5).map((ride) => {
-                let timeStr = "--";
-                if (ride.startedAt && ride.completedAt) {
-                  const s = new Date(ride.startedAt).getTime();
-                  const c = new Date(ride.completedAt).getTime();
-                  timeStr = `${Math.round((c - s) / 60000)} min`;
-                }
-                return (
-                  <div key={ride.id} className="flex items-center justify-between p-4">
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-white">R$ {Number(ride.fare ?? 0).toFixed(2)}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">{ride.passengerName}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-bold text-brand-700 dark:text-brand">{ride.status.toUpperCase()}</div>
-                      <div className="text-[10px] text-slate-400">Tempo: {timeStr}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-      </div>
+      {/* ABA 1: MOTORISTAS & DASHBOARD OPERACIONAL */}
+      {activeTab === 'DRIVERS' && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <Card className="flex flex-col gap-1 p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-brand-700 dark:text-brand">
+                <DollarSign size={20} />
+                <span className="text-[11px] font-bold uppercase tracking-wider">Faturamento (Hoje)</span>
+              </div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white">R$ {Number(todayEarnings ?? 0).toFixed(2)}</div>
+            </Card>
 
-      <div className="pb-6">
-        <SectionTitle className="mb-3">Aprovações de Motoristas & Veículos</SectionTitle>
-        <Card className="p-0 shadow-sm overflow-hidden">
-          {error && <div className="border-b border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 p-4 text-sm font-semibold text-red-600 dark:text-red-400">{error}</div>}
-          {loadingDrivers ? (
-            <div className="p-6 text-center text-sm text-slate-500">Carregando solicitações...</div>
-          ) : drivers.length === 0 ? (
-            <div className="p-6 text-center text-sm text-slate-500">Nenhum motorista cadastrado.</div>
-          ) : (
-            <div className="divide-y divide-slate-100 dark:divide-dark-700">
-              {drivers.map((driver) => {
-                const isPendingVehicle = driver.vehicle_status === "Pendente" && driver.status === "Aprovado";
-                const isPending = driver.status === "Pendente" || driver.vehicle_status === "Pendente";
-                const displayName = driver.nome_social || driver.nome || "Motorista";
+            <Card className="flex flex-col gap-1 p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                <Activity size={20} />
+                <span className="text-[11px] font-bold uppercase tracking-wider">Corridas (Hoje)</span>
+              </div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white">{todayRides}</div>
+            </Card>
+          </div>
 
-                return (
-                  <div key={driver.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 dark:text-white">{displayName}</span>
-                        {isPendingVehicle && (
-                          <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                            Troca de Carro
+          <div className="pb-6">
+            <SectionTitle className="mb-3">Aprovações de Motoristas & Veículos</SectionTitle>
+            <Card className="p-0 shadow-sm overflow-hidden">
+              {error && <div className="border-b border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-600">{error}</div>}
+              {loadingDrivers ? (
+                <div className="p-6 text-center text-sm text-slate-500">Carregando solicitações...</div>
+              ) : drivers.length === 0 ? (
+                <div className="p-6 text-center text-sm text-slate-500">Nenhum motorista cadastrado.</div>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-dark-700">
+                  {drivers.map((driver) => {
+                    const isPendingVehicle = driver.vehicle_status === "Pendente" && driver.status === "Aprovado";
+                    const isPending = driver.status === "Pendente" || driver.vehicle_status === "Pendente";
+                    const displayName = driver.nome_social || driver.nome || "Motorista";
+
+                    return (
+                      <div key={driver.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900 dark:text-white">{displayName}</span>
+                            {isPendingVehicle && (
+                              <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                Troca de Carro
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            {driver.marca_veiculo || ''} {driver.modelo_veiculo || ''} {driver.placa_veiculo ? `(${driver.placa_veiculo})` : ''} {driver.telefone ? `• ${driver.telefone}` : ''}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
+                            !isPending && driver.status === 'Aprovado'
+                              ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30'
+                              : driver.status === 'Reprovado' || driver.vehicle_status === 'Reprovado'
+                              ? 'bg-red-500/15 text-red-600 border border-red-500/30'
+                              : 'bg-amber-500/15 text-amber-700 border border-amber-500/30'
+                          }`}>
+                            {isPendingVehicle ? 'Carro em Análise' : driver.status}
                           </span>
-                        )}
+                          {isPending && (
+                            <>
+                              <button type="button" aria-label={`Aprovar ${displayName}`} onClick={() => updateDriverStatus(driver.id, 'Aprovado')} className="rounded-xl bg-emerald-600 p-2 text-white hover:bg-emerald-700 transition" title="Aprovar">
+                                <Check size={16} />
+                              </button>
+                              <button type="button" aria-label={`Reprovar ${displayName}`} onClick={() => updateDriverStatus(driver.id, 'Reprovado')} className="rounded-xl bg-red-600 p-2 text-white hover:bg-red-700 transition" title="Reprovar">
+                                <X size={16} />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
-                        {driver.marca_veiculo || ''} {driver.modelo_veiculo || ''} {driver.placa_veiculo ? `(${driver.placa_veiculo})` : ''} {driver.telefone ? `• ${driver.telefone}` : ''}
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </div>
+        </>
+      )}
+
+      {/* ABA 2: RELATÓRIO GERAL DE FATURAMENTO & MULTI-PASSAGEIROS */}
+      {activeTab === 'REPORTS' && (
+        <div className="space-y-4">
+          {/* Card de Filtros */}
+          <Card className="p-4 space-y-3 shadow-sm">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-dark-700">
+              <div className="flex items-center gap-2 font-black text-xs uppercase text-slate-700 dark:text-slate-300">
+                <Filter size={16} className="text-brand" />
+                <span>Filtro de Faturamento & Período</span>
+              </div>
+              <button onClick={() => loadAllRides()} className="text-xs font-bold text-brand hover:underline">
+                Atualizar Dados
+              </button>
+            </div>
+
+            {/* Períodos */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              <button
+                onClick={() => setPeriodFilter('Q1')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition border ${
+                  periodFilter === 'Q1' ? 'bg-brand text-slate-950 border-brand font-black' : 'bg-slate-50 dark:bg-dark-900 border-slate-200 dark:border-dark-700'
+                }`}
+              >
+                1ª Quinzena
+              </button>
+              <button
+                onClick={() => setPeriodFilter('Q2')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition border ${
+                  periodFilter === 'Q2' ? 'bg-brand text-slate-950 border-brand font-black' : 'bg-slate-50 dark:bg-dark-900 border-slate-200 dark:border-dark-700'
+                }`}
+              >
+                2ª Quinzena
+              </button>
+              <button
+                onClick={() => setPeriodFilter('CURRENT_MONTH')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition border ${
+                  periodFilter === 'CURRENT_MONTH' ? 'bg-brand text-slate-950 border-brand font-black' : 'bg-slate-50 dark:bg-dark-900 border-slate-200 dark:border-dark-700'
+                }`}
+              >
+                Este Mês
+              </button>
+              <button
+                onClick={() => setPeriodFilter('LAST_MONTH')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition border ${
+                  periodFilter === 'LAST_MONTH' ? 'bg-brand text-slate-950 border-brand font-black' : 'bg-slate-50 dark:bg-dark-900 border-slate-200 dark:border-dark-700'
+                }`}
+              >
+                Mês Anterior
+              </button>
+              <button
+                onClick={() => setPeriodFilter('ALL')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition border ${
+                  periodFilter === 'ALL' ? 'bg-brand text-slate-950 border-brand font-black' : 'bg-slate-50 dark:bg-dark-900 border-slate-200 dark:border-dark-700'
+                }`}
+              >
+                Todas
+              </button>
+              <button
+                onClick={() => setPeriodFilter('CUSTOM')}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition border ${
+                  periodFilter === 'CUSTOM' ? 'bg-brand text-slate-950 border-brand font-black' : 'bg-slate-50 dark:bg-dark-900 border-slate-200 dark:border-dark-700'
+                }`}
+              >
+                Personalizado
+              </button>
+            </div>
+          </Card>
+
+          {/* Totalizadores */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Card className="p-3.5">
+              <div className="text-[10px] font-bold text-slate-400 uppercase">Faturamento Total</div>
+              <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">R$ {summary.totalFare.toFixed(2)}</div>
+              <div className="text-[10px] text-slate-400">{summary.completedCount} corridas pagas</div>
+            </Card>
+            <Card className="p-3.5">
+              <div className="text-[10px] font-bold text-slate-400 uppercase">Total de Viagens</div>
+              <div className="text-xl font-black text-slate-900 dark:text-white">{summary.totalRides}</div>
+              <div className="text-[10px] text-slate-400">Solicitações</div>
+            </Card>
+            <Card className="p-3.5">
+              <div className="text-[10px] font-bold text-slate-400 uppercase">Quilometragem</div>
+              <div className="text-xl font-black text-slate-900 dark:text-white">{summary.totalKm.toFixed(1)} km</div>
+              <div className="text-[10px] text-slate-400">Distância total</div>
+            </Card>
+            <Card className="p-3.5">
+              <div className="text-[10px] font-bold text-slate-400 uppercase">Ticket Médio</div>
+              <div className="text-xl font-black text-slate-900 dark:text-white">R$ {summary.avgFare.toFixed(2)}</div>
+              <div className="text-[10px] text-slate-400">Por corrida</div>
+            </Card>
+          </div>
+
+          {/* Botões de Ação */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleExportPDF}
+              className="flex-1 flex items-center justify-center gap-2 bg-slate-900 text-white font-bold py-3 rounded-2xl text-xs hover:bg-black transition shadow-md"
+            >
+              <Printer size={16} />
+              <span>Imprimir / Salvar Relatório PDF</span>
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 text-white font-bold py-3 rounded-2xl text-xs hover:bg-emerald-700 transition shadow-md"
+            >
+              <Download size={16} />
+              <span>Exportar Planilha Excel (.CSV)</span>
+            </button>
+          </div>
+
+          {/* Tabela de Corridas */}
+          <Card className="p-0 overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-slate-100 dark:border-dark-700 flex justify-between items-center">
+              <span className="text-xs font-black uppercase text-slate-700 dark:text-slate-300">
+                Corridas Registradas ({filteredRides.length})
+              </span>
+            </div>
+
+            {loadingRides ? (
+              <div className="p-8 text-center text-xs text-slate-400">Carregando dados...</div>
+            ) : filteredRides.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">Nenhuma corrida encontrada no período.</div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-dark-700 max-h-96 overflow-y-auto">
+                {filteredRides.map((ride) => (
+                  <div key={ride.id} className="p-3.5 flex items-center justify-between text-xs hover:bg-slate-50 dark:hover:bg-dark-800 transition">
+                    <div className="min-w-0 pr-2">
+                      <div className="font-bold text-slate-900 dark:text-white truncate">
+                        {ride.pickup_address} ➔ {ride.dropoff_address}
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        {new Date(ride.created_at).toLocaleString('pt-BR')} • {ride.passenger_name} • Motorista: {ride.driver_name}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
-                        !isPending && driver.status === 'Aprovado'
-                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                          : driver.status === 'Reprovado' || driver.vehicle_status === 'Reprovado'
-                          ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
-                          : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
-                      }`}>
-                        {isPendingVehicle ? 'Carro em Análise' : driver.status}
-                      </span>
-                      {isPending && (
-                        <>
-                          <button type="button" aria-label={`Aprovar ${displayName}`} onClick={() => updateDriverStatus(driver.id, 'Aprovado')} className="rounded-xl bg-emerald-600 p-2 text-white hover:bg-emerald-700 transition" title="Aprovar">
-                            <Check size={16} />
-                          </button>
-                          <button type="button" aria-label={`Reprovar ${displayName}`} onClick={() => updateDriverStatus(driver.id, 'Reprovado')} className="rounded-xl bg-red-600 p-2 text-white hover:bg-red-700 transition" title="Reprovar">
-                            <X size={16} />
-                          </button>
-                        </>
-                      )}
+                    <div className="text-right shrink-0">
+                      <div className="font-black text-slate-900 dark:text-brand">R$ {ride.fare_amount.toFixed(2)}</div>
+                      <div className="text-[10px] text-emerald-600 font-bold">{ride.status}</div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-      </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
 
       <BottomNav />
     </div>
