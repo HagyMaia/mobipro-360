@@ -246,12 +246,36 @@ export default function AdminPage() {
     const totalKm = filteredRides.reduce((acc, r) => acc + (r.distance_km || 0), 0);
     const avgFare = completed.length > 0 ? totalFare / completed.length : 0;
 
+    // Agrupamento por passageiro
+    const passMap = new Map<string, { id: string; name: string; ridesCount: number; completedCount: number; totalKm: number; totalFare: number }>();
+    filteredRides.forEach((r) => {
+      const key = r.passenger_id || r.passenger_name || 'Passageiro SR';
+      if (!passMap.has(key)) {
+        passMap.set(key, {
+          id: key,
+          name: r.passenger_name || 'Passageiro',
+          ridesCount: 0,
+          completedCount: 0,
+          totalKm: 0,
+          totalFare: 0,
+        });
+      }
+      const item = passMap.get(key)!;
+      item.ridesCount += 1;
+      item.totalKm += (r.distance_km || 0);
+      if (['COMPLETED', 'FINISHED', 'FINALIZADA', 'CONCLUIDA', 'PAID'].includes(r.status)) {
+        item.completedCount += 1;
+        item.totalFare += r.fare_amount;
+      }
+    });
+
     return {
       totalRides: filteredRides.length,
       completedCount: completed.length,
       totalFare,
       totalKm,
-      avgFare
+      avgFare,
+      passengersList: Array.from(passMap.values())
     };
   }, [filteredRides]);
 
@@ -264,6 +288,34 @@ export default function AdminPage() {
       alert('Por favor, permita pop-ups para imprimir o relatório.');
       return;
     }
+
+    const passSummaryHtml = selectedPassenger === 'ALL' && summary.passengersList.length > 0 ? `
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; font-weight: 900; color: #0f172a; text-transform: uppercase; margin-bottom: 6px;">
+          ● Resumo Consolidado de Todos os Passageiros
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
+          <thead>
+            <tr style="background: #e2e8f0;">
+              <th style="padding: 6px 8px; text-align: left; font-size: 10px;">Passageiro</th>
+              <th style="padding: 6px 8px; text-align: center; font-size: 10px;">Viagens Concluídas</th>
+              <th style="padding: 6px 8px; text-align: center; font-size: 10px;">Km Percorridos</th>
+              <th style="padding: 6px 8px; text-align: right; font-size: 10px;">Subtotal (R$)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${summary.passengersList.map((p) => `
+              <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+                <td style="padding: 6px 8px; font-weight: bold;">${p.name}</td>
+                <td style="padding: 6px 8px; text-align: center;">${p.completedCount} / ${p.ridesCount}</td>
+                <td style="padding: 6px 8px; text-align: center;">${p.totalKm.toFixed(1)} km</td>
+                <td style="padding: 6px 8px; text-align: right; font-weight: bold;">R$ ${p.totalFare.toFixed(2)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : '';
 
     const rowsHtml = filteredRides.map((ride, idx) => `
       <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
@@ -305,7 +357,7 @@ export default function AdminPage() {
           </div>
           <div style="text-align: right; font-size: 11px;">
             <div>Emissão: ${new Date().toLocaleString('pt-BR')}</div>
-            <div><strong>Filtro: ${periodFilter}</strong></div>
+            <div><strong>Filtro: ${periodFilter} (${summary.passengersList.length} passageiros)</strong></div>
           </div>
         </div>
 
@@ -316,6 +368,11 @@ export default function AdminPage() {
           <div class="box" style="background:#0f172a; color:#fff;"><div style="font-size:10px; color:#94a3b8;">Faturamento Total</div><div style="font-size:16px; font-weight:bold; color:#38bdf8;">R$ ${summary.totalFare.toFixed(2)}</div></div>
         </div>
 
+        ${passSummaryHtml}
+
+        <div style="font-size: 11px; font-weight: 900; color: #0f172a; text-transform: uppercase; margin-bottom: 6px;">
+          ● Detalhamento Individual de Viagens
+        </div>
         <table>
           <thead>
             <tr>
@@ -623,11 +680,51 @@ export default function AdminPage() {
             </button>
           </div>
 
+          {/* Resumo Consolidado de Todos os Passageiros */}
+          {summary.passengersList.length > 0 && (
+            <Card className="p-0 overflow-hidden shadow-sm">
+              <div className="p-4 border-b border-slate-100 dark:border-dark-700 flex justify-between items-center">
+                <span className="text-xs font-black uppercase text-slate-700 dark:text-slate-300">
+                  Resumo de Todos os Passageiros ({summary.passengersList.length})
+                </span>
+                <span className="text-[10px] text-slate-400">Clique para filtrar</span>
+              </div>
+              <div className="divide-y divide-slate-100 dark:divide-dark-700 max-h-60 overflow-y-auto">
+                {summary.passengersList.map((p) => {
+                  const isSelected = selectedPassenger === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => setSelectedPassenger(isSelected ? 'ALL' : p.id)}
+                      className={`p-3.5 flex items-center justify-between text-xs cursor-pointer transition ${
+                        isSelected ? 'bg-amber-500/10 border-l-4 border-amber-500' : 'hover:bg-slate-50 dark:hover:bg-dark-800'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span>{p.name}</span>
+                          {isSelected && <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded">FILTRADO</span>}
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          {p.completedCount} viagens concluídas ({p.ridesCount} totais) • {p.totalKm.toFixed(1)} km
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-black text-emerald-600 dark:text-emerald-400">R$ {p.totalFare.toFixed(2)}</div>
+                        <div className="text-[10px] text-slate-400">{isSelected ? 'Remover filtro' : 'Filtrar'}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
           {/* Tabela de Corridas */}
           <Card className="p-0 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-100 dark:border-dark-700 flex justify-between items-center">
               <span className="text-xs font-black uppercase text-slate-700 dark:text-slate-300">
-                Corridas Registradas ({filteredRides.length})
+                Detalhamento Individual de Corridas ({filteredRides.length})
               </span>
             </div>
 
