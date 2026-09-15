@@ -39,6 +39,9 @@ type Driver = {
   modelo_veiculo?: string;
   placa_veiculo?: string;
   categoria?: string;
+  driver_type?: 'EMPRESA' | 'PARTICULAR';
+  tipo_motorista?: 'EMPRESA' | 'PARTICULAR';
+  perfil_motorista?: 'EMPRESA' | 'PARTICULAR';
 };
 
 type AdminRide = {
@@ -63,7 +66,9 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'DRIVERS' | 'REPORTS'>('DRIVERS');
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loadingDrivers, setLoadingDrivers] = useState(true);
+  const [updatingDriverId, setUpdatingDriverId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Relatório Geral de Corridas (Todos os Passageiros)
   const [allRides, setAllRides] = useState<AdminRide[]>([]);
@@ -77,11 +82,11 @@ export default function AdminPage() {
     setLoadingDrivers(true);
     let { data, error: driversError } = await supabase
       .from("motoristas")
-      .select("id, nome, nome_social, nome_completo, status, vehicle_status, telefone, email, marca_veiculo, modelo_veiculo, placa_veiculo, categoria")
+      .select("id, nome, nome_social, nome_completo, status, vehicle_status, telefone, email, marca_veiculo, modelo_veiculo, placa_veiculo, categoria, tipo_motorista, driver_type, perfil_motorista")
       .order("created_at", { ascending: false });
 
     if (driversError) {
-      console.warn("[Admin] Falha ao ordenar por created_at, tentando sem ordenação:", driversError.message);
+      console.warn("[Admin] Falha ao ordenar por created_at ou colunas extras, tentando básico:", driversError.message);
       const retry = await supabase
         .from("motoristas")
         .select("id, nome, nome_social, nome_completo, status, vehicle_status, telefone, email, marca_veiculo, modelo_veiculo, placa_veiculo, categoria");
@@ -174,11 +179,80 @@ export default function AdminPage() {
       setError("Não foi possível atualizar este motorista: " + updateError.message);
       return;
     }
+
+    setSuccessMessage(`Motorista ${status === 'Aprovado' ? 'aprovado' : 'reprovado'} com sucesso!`);
+    setTimeout(() => setSuccessMessage(""), 4000);
+
     setDrivers((current) =>
       current.map((driver) =>
         driver.id === id ? { ...driver, status, vehicle_status: status } : driver
       )
     );
+  };
+
+  const updateDriverType = async (
+    id: string,
+    newType: 'EMPRESA' | 'PARTICULAR'
+  ) => {
+    setUpdatingDriverId(id);
+    setError("");
+    try {
+      let payload: Record<string, any> = {
+        tipo_motorista: newType,
+        driver_type: newType,
+        perfil_motorista: newType,
+      };
+
+      let { error: updateError } = await supabase
+        .from("motoristas")
+        .update(payload)
+        .eq("id", id);
+
+      if (updateError) {
+        let attempts = 0;
+        while (updateError && attempts < 4) {
+          attempts++;
+          const msg = updateError.message || '';
+          const match =
+            msg.match(/Could not find the '([^']+)' column/i) ||
+            msg.match(/column "([^"]+)" of relation/i) ||
+            msg.match(/column "([^"]+)" does not exist/i);
+
+          if (match && match[1] && payload[match[1]] !== undefined) {
+            delete payload[match[1]];
+            const retry = await supabase.from("motoristas").update(payload).eq("id", id);
+            updateError = retry.error;
+          } else {
+            break;
+          }
+        }
+      }
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      setSuccessMessage(`Perfil do motorista alterado para ${newType === 'EMPRESA' ? 'Empresa (Voucher Exclusivo)' : 'Particular (-20%)'}!`);
+      setTimeout(() => setSuccessMessage(""), 4000);
+
+      setDrivers((current) =>
+        current.map((driver) =>
+          driver.id === id
+            ? {
+                ...driver,
+                driver_type: newType,
+                tipo_motorista: newType,
+                perfil_motorista: newType,
+              }
+            : driver
+        )
+      );
+    } catch (err: any) {
+      console.error("[Admin] Erro ao alterar perfil do motorista:", err);
+      setError("Erro ao alterar perfil do motorista: " + (err.message || 'Erro desconhecido'));
+    } finally {
+      setUpdatingDriverId(null);
+    }
   };
 
   // Filtragem de Corridas do Relatório
@@ -510,7 +584,25 @@ export default function AdminPage() {
           </div>
 
           <div className="pb-6">
-            <SectionTitle className="mb-3">Aprovações de Motoristas & Veículos</SectionTitle>
+            <div className="flex items-center justify-between mb-3">
+              <SectionTitle className="mb-0">Aprovações & Gestão de Motoristas</SectionTitle>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-dark-800 px-3 py-1 rounded-full border border-slate-200 dark:border-dark-700">
+                Total: {drivers.length} cadastrados
+              </span>
+            </div>
+
+            {successMessage && (
+              <div className="mb-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Check size={16} />
+                  {successMessage}
+                </span>
+                <button type="button" onClick={() => setSuccessMessage("")} className="opacity-70 hover:opacity-100">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
             <Card className="p-0 shadow-sm overflow-hidden">
               {error && <div className="border-b border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-600">{error}</div>}
               {loadingDrivers ? (
@@ -523,32 +615,74 @@ export default function AdminPage() {
                     const isPendingVehicle = driver.vehicle_status === "Pendente" && driver.status === "Aprovado";
                     const isPending = driver.status === "Pendente" || driver.vehicle_status === "Pendente";
                     const displayName = driver.nome_social || driver.nome || "Motorista";
+                    const currentType = (driver.tipo_motorista || driver.driver_type || driver.perfil_motorista || 'PARTICULAR').toUpperCase() === 'EMPRESA' ? 'EMPRESA' : 'PARTICULAR';
+                    const isUpdatingThis = updatingDriverId === driver.id;
 
                     return (
-                      <div key={driver.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
+                      <div key={driver.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between hover:bg-slate-50/50 dark:hover:bg-dark-800/40 transition">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-slate-900 dark:text-white">{displayName}</span>
                             {isPendingVehicle && (
                               <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
                                 Troca de Carro
                               </span>
                             )}
+                            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${
+                              !isPending && driver.status === 'Aprovado'
+                                ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30'
+                                : driver.status === 'Reprovado' || driver.vehicle_status === 'Reprovado'
+                                ? 'bg-red-500/15 text-red-600 border border-red-500/30'
+                                : 'bg-amber-500/15 text-amber-700 border border-amber-500/30'
+                            }`}>
+                              {isPendingVehicle ? 'Carro em Análise' : driver.status}
+                            </span>
                           </div>
                           <div className="text-xs text-slate-500 dark:text-slate-400">
                             {driver.marca_veiculo || ''} {driver.modelo_veiculo || ''} {driver.placa_veiculo ? `(${driver.placa_veiculo})` : ''} {driver.telefone ? `• ${driver.telefone}` : ''}
+                            {driver.email ? ` • ${driver.email}` : ''}
+                          </div>
+
+                          {/* SELETOR EXCLUSIVO ADMIN: PERFIL DO MOTORISTA */}
+                          <div className="pt-1.5 flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                              Perfil de Atendimento (Admin):
+                            </span>
+                            <div className="inline-flex rounded-xl p-0.5 bg-slate-100 dark:bg-dark-900 border border-slate-200 dark:border-dark-700">
+                              <button
+                                type="button"
+                                disabled={isUpdatingThis}
+                                onClick={() => updateDriverType(driver.id, 'PARTICULAR')}
+                                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition ${
+                                  currentType === 'PARTICULAR'
+                                    ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                                title="Atende corridas particulares (-20% taxa de retenção)"
+                              >
+                                🚗 Particular (-20%)
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isUpdatingThis}
+                                onClick={() => updateDriverType(driver.id, 'EMPRESA')}
+                                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition ${
+                                  currentType === 'EMPRESA'
+                                    ? 'bg-teal-500 text-slate-950 font-black shadow-sm'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                                title="Atende exclusivamente voucher corporativo (100% repasse)"
+                              >
+                                🏢 Empresa (Voucher)
+                              </button>
+                            </div>
+                            {isUpdatingThis && (
+                              <span className="text-[10px] text-brand animate-pulse font-bold">Salvando...</span>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
-                            !isPending && driver.status === 'Aprovado'
-                              ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30'
-                              : driver.status === 'Reprovado' || driver.vehicle_status === 'Reprovado'
-                              ? 'bg-red-500/15 text-red-600 border border-red-500/30'
-                              : 'bg-amber-500/15 text-amber-700 border border-amber-500/30'
-                          }`}>
-                            {isPendingVehicle ? 'Carro em Análise' : driver.status}
-                          </span>
+
+                        <div className="flex items-center gap-2 self-end sm:self-center">
                           {isPending && (
                             <>
                               <button type="button" aria-label={`Aprovar ${displayName}`} onClick={() => updateDriverStatus(driver.id, 'Aprovado')} className="rounded-xl bg-emerald-600 p-2 text-white hover:bg-emerald-700 transition" title="Aprovar">

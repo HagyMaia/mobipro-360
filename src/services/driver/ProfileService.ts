@@ -170,6 +170,54 @@ export class ProfileService {
     }
 
     /**
+     * Define o tipo/perfil do motorista exclusivamente via painel de administração (EMPRESA ou PARTICULAR)
+     */
+    public static async setDriverTypeByAdmin(driverId: string, driverType: 'EMPRESA' | 'PARTICULAR') {
+        const supabase = createClient();
+        const updates: Record<string, any> = {
+            tipo_motorista: driverType,
+            driver_type: driverType,
+            perfil_motorista: driverType,
+            updated_at: new Date().toISOString()
+        };
+
+        let { error: mError } = await supabase
+            .from("motoristas")
+            .update(updates)
+            .eq("id", driverId);
+
+        if (mError) {
+            let attempts = 0;
+            while (mError && attempts < 4) {
+                attempts++;
+                const msg = mError.message || '';
+                const match =
+                    msg.match(/Could not find the '([^']+)' column/i) ||
+                    msg.match(/column "([^"]+)" of relation/i) ||
+                    msg.match(/column "([^"]+)" does not exist/i);
+
+                if (match && match[1] && updates[match[1]] !== undefined) {
+                    delete updates[match[1]];
+                    const retry = await supabase.from("motoristas").update(updates).eq("id", driverId);
+                    mError = retry.error;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if (mError) {
+            console.warn('[ProfileService] Erro ao atualizar tipo no motoristas via admin, tentando tabela drivers:', mError);
+            await supabase
+                .from("drivers")
+                .update(updates)
+                .eq("id", driverId);
+        }
+
+        return driverType;
+    }
+
+    /**
      * Atualiza as informações pessoais do motorista (nome de exibição, telefone, avatar)
      */
     public static async updateProfile(data: {

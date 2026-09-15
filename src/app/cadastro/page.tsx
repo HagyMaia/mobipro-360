@@ -234,41 +234,14 @@ export default function RegisterWizard() {
           <section className="space-y-4">
             <h2 className="text-xl font-bold">1. Dados Pessoais & Perfil</h2>
 
-            {/* SELEÇÃO DO PERFIL DE ATENDIMENTO */}
-            <div>
-              <label className="text-xs font-semibold text-brand-400 block mb-1">
-                Modalidade de Motorista <span className="text-amber-400">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <button
-                  type="button"
-                  onClick={() => handleInputChange('driverType', 'PARTICULAR')}
-                  className={`p-3 rounded-xl border text-left transition ${
-                    formData.driverType === 'PARTICULAR'
-                      ? 'border-brand bg-brand/15 text-white ring-1 ring-brand font-bold'
-                      : 'border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="text-xs font-black text-white">🚗 Particular</div>
-                  <div className="text-[10px] text-zinc-400 mt-1 leading-tight">
-                    Corridas particulares (-20% de taxa da plataforma).
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleInputChange('driverType', 'EMPRESA')}
-                  className={`p-3 rounded-xl border text-left transition ${
-                    formData.driverType === 'EMPRESA'
-                      ? 'border-brand bg-brand/15 text-white ring-1 ring-brand font-bold'
-                      : 'border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="text-xs font-black text-white">🏢 Empresa</div>
-                  <div className="text-[10px] text-zinc-400 mt-1 leading-tight">
-                    Exclusivo corridas por Voucher corporativo (100% repasse).
-                  </div>
-                </button>
+            {/* AVISO DE ATRIBUIÇÃO DE PERFIL PELO ADMIN */}
+            <div className="p-3 rounded-xl border border-brand-500/20 bg-brand-500/10 text-xs text-zinc-300 flex items-start gap-2.5">
+              <span className="text-brand-400 font-bold text-sm">ℹ️</span>
+              <div>
+                <strong className="text-white block font-bold">Perfil de Atendimento</strong>
+                <span className="text-[11px] text-zinc-400 leading-relaxed">
+                  O enquadramento operacional (Empresa ou Particular) é definido pela administração central da SR Logística após a aprovação do seu cadastro.
+                </span>
               </div>
             </div>
 
