@@ -733,20 +733,51 @@ export default function AdminPage() {
             ) : filteredRides.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400">Nenhuma corrida encontrada no período.</div>
             ) : (
-              <div className="divide-y divide-slate-100 dark:divide-dark-700 max-h-96 overflow-y-auto">
-                {filteredRides.map((ride) => (
-                  <div key={ride.id} className="p-3.5 flex items-center justify-between text-xs hover:bg-slate-50 dark:hover:bg-dark-800 transition">
-                    <div className="min-w-0 pr-2">
-                      <div className="font-bold text-slate-900 dark:text-white truncate">
-                        {ride.pickup_address} ➔ {ride.dropoff_address}
+              <div className="divide-y divide-slate-100 dark:divide-dark-700 max-h-[500px] overflow-y-auto">
+                {filteredRides.map((ride, idx) => (
+                  <div key={ride.id} className="p-4 space-y-2 hover:bg-slate-50 dark:hover:bg-dark-800 transition text-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-slate-400">#{idx + 1}</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{ride.passenger_name || 'Passageiro SR'}</span>
+                        <span className="text-[10px] bg-slate-100 dark:bg-dark-700 px-2 py-0.5 rounded text-slate-500 font-semibold">{ride.payment_method || 'Voucher'}</span>
                       </div>
-                      <div className="text-[11px] text-slate-400">
-                        {new Date(ride.created_at).toLocaleString('pt-BR')} • {ride.passenger_name} • Motorista: {ride.driver_name}
+                      <div className="text-right">
+                        <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">R$ {ride.fare_amount.toFixed(2)}</span>
+                        <span className="ml-2 text-[10px] font-bold text-emerald-600 uppercase bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">{ride.status}</span>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-black text-slate-900 dark:text-brand">R$ {ride.fare_amount.toFixed(2)}</div>
-                      <div className="text-[10px] text-emerald-600 font-bold">{ride.status}</div>
+
+                    {/* Origem e Destino com ícones e links */}
+                    <div className="space-y-1 pl-2 border-l-2 border-slate-200 dark:border-dark-600 text-[11px]">
+                      <div className="flex items-start gap-1.5 text-slate-700 dark:text-slate-300">
+                        <span className="text-emerald-500 font-bold shrink-0">● Embarque:</span>
+                        <span className="break-words">{ride.pickup_address}</span>
+                      </div>
+                      <div className="flex items-start gap-1.5 text-slate-700 dark:text-slate-300">
+                        <span className="text-amber-500 font-bold shrink-0">● Desembarque:</span>
+                        <span className="break-words">{ride.dropoff_address}</span>
+                      </div>
+                    </div>
+
+                    {/* Detalhes de Rodapé */}
+                    <div className="flex flex-wrap items-center justify-between text-[10px] text-slate-400 pt-1">
+                      <div>
+                        <span>{new Date(ride.created_at).toLocaleString('pt-BR')}</span>
+                        <span className="mx-1.5">•</span>
+                        <span>Motorista: <strong className="text-slate-700 dark:text-slate-300">{ride.driver_name}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {ride.distance_km && <span className="font-mono font-bold">{ride.distance_km.toFixed(1)} km</span>}
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(ride.pickup_address)}&destination=${encodeURIComponent(ride.dropoff_address)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-brand font-bold hover:underline"
+                        >
+                          Ver Rota Maps ↗
+                        </a>
+                      </div>
                     </div>
                   </div>
                 ))}
