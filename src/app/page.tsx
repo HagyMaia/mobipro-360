@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Car, MapPin, Navigation, TrendingUp, Trophy } from 'lucide-react';
+import { Bell, Car, MapPin, Navigation, TrendingUp, Trophy, Compass } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import RentabilityOverlay from '@/components/RentabilityOverlay';
 import RideRequestCard from '@/components/RideRequestCard';
 import ActiveRideCard from '@/components/ActiveRideCard';
 import StatusControl, { StatusPill } from '@/components/StatusControl';
+import { DestinationFilterModal } from '@/components/Ride/DestinationFilterModal';
 import { Card, EmptyState, SectionTitle } from '@/components/ui';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useApp } from '@/lib/store';
@@ -28,13 +29,14 @@ export default function HomePage() {
   const [driverName, setDriverName] = useState('Motorista');
   const [isApproved, setIsApproved] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [isDestFilterModalOpen, setDestFilterModalOpen] = useState(false);
 
   // Monitora cancelamentos remotos da corrida ativa
   useActiveRideSync();
 
   // Escuta chamadas quando o motorista está com status "Disponível" e sem corrida ativa
   const isOnlineAndAvailable = state.status === 'available' && !state.activeRide;
-  const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isOnlineAndAvailable);
+  const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isOnlineAndAvailable, state.destinationFilter);
 
   useEffect(() => {
     async function checkAuthAndLoadProfile() {
@@ -238,6 +240,50 @@ export default function HomePage() {
       <div className="flex-1 space-y-4 p-4 pb-28">
         <StatusControl />
 
+        {/* BOTÃO RÁPIDO: DESTINO DEFINIDO ("A CAMINHO DE CASA") */}
+        <button
+          type="button"
+          onClick={() => setDestFilterModalOpen(true)}
+          className={`w-full flex items-center justify-between p-3.5 rounded-2xl border transition shadow-sm ${
+            state.destinationFilter?.enabled
+              ? 'bg-brand/15 border-brand text-slate-900 dark:text-white'
+              : 'bg-white dark:bg-dark-900 border-slate-200/80 dark:border-dark-700/80 text-slate-700 dark:text-slate-300 hover:border-brand/50'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                state.destinationFilter?.enabled
+                  ? 'bg-brand text-slate-950 font-black'
+                  : 'bg-slate-100 dark:bg-dark-800 text-slate-500'
+              }`}
+            >
+              <Compass size={18} />
+            </div>
+            <div className="text-left">
+              <div className="text-xs font-black">
+                {state.destinationFilter?.enabled
+                  ? `Destino: ${state.destinationFilter.label || state.destinationFilter.address}`
+                  : 'Definir Destino ("A Caminho de Casa")'}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                {state.destinationFilter?.enabled
+                  ? `Filtrando chamadas na rota (desvio máx: ${state.destinationFilter.maxDeviationKm || 5}km)`
+                  : 'Filtre apenas chamadas na direção do seu retorno'}
+              </div>
+            </div>
+          </div>
+          <span
+            className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
+              state.destinationFilter?.enabled
+                ? 'bg-emerald-500 text-white shadow-sm'
+                : 'bg-slate-100 dark:bg-dark-800 text-slate-500'
+            }`}
+          >
+            {state.destinationFilter?.enabled ? 'Ativo' : 'Configurar'}
+          </span>
+        </button>
+
         {state.incomingRide ? (
           <RideRequestCard
             ride={state.incomingRide}
@@ -303,6 +349,11 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      <DestinationFilterModal
+        isOpen={isDestFilterModalOpen}
+        onClose={() => setDestFilterModalOpen(false)}
+      />
 
       <RentabilityOverlay />
       <BottomNav />

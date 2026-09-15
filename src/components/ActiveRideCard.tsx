@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, ExternalLink, Flag, Loader2, MapPin, Navigation, Phone, Play, XCircle, MessageSquare, Map as MapIcon } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Flag, Loader2, MapPin, Navigation, Phone, Play, XCircle, MessageSquare, Map as MapIcon, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
 import { RideService } from '@/services/ride/RideService';
 import { ChatService } from '@/services/chat/ChatService';
+import { RiskZoneService } from '@/services/safety/RiskZoneService';
 import { formatBRL } from '@/lib/utils';
 import { Badge, Button, Card } from '@/components/ui';
 import { NavigationModal } from '@/components/NavigationModal';
@@ -197,6 +198,30 @@ export default function ActiveRideCard() {
             </div>
           </div>
         </div>
+
+        {/* Alerta de Área de Risco / Segurança */}
+        {(() => {
+          const activeRisk = RiskZoneService.checkAddressRisk(navAddress, navCoords) ||
+            RiskZoneService.checkAddressRisk(ride.pickup) ||
+            RiskZoneService.checkAddressRisk(ride.dropoff);
+          if (!activeRisk?.isRisk) return null;
+          return (
+            <div className="mb-3 rounded-2xl bg-amber-500/15 border border-amber-500/30 p-3 text-left">
+              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold text-xs uppercase tracking-wider">
+                <AlertTriangle size={14} className="shrink-0 text-amber-500" />
+                <span>Alerta de Segurança ({activeRisk.areaName || 'Área Monitorada'})</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-700 dark:text-slate-300">
+                {activeRisk.reason}
+              </p>
+              {activeRisk.tips && activeRisk.tips[0] && (
+                <p className="mt-0.5 text-[11px] text-amber-600 dark:text-amber-300 font-medium">
+                  💡 {activeRisk.tips[0]}
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Progresso da corrida em passos */}
         <div className="mb-3 flex items-center justify-between px-1">

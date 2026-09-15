@@ -85,4 +85,12 @@ export interface RideOffer {
     distanceKm: number;
     estimatedMinutes: number;
     expiresInSeconds: number;
+    riskAssessment?: {
+        isRisk: boolean;
+        level: 'low' | 'medium' | 'high';
+        reason: string;
+        areaName?: string;
+        tips?: string[];
+    };
+    matchesDestinationFilter?: boolean;
 }

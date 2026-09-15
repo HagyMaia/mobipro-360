@@ -15,7 +15,8 @@ import {
     MapPin,
     ExternalLink,
     Loader2,
-    MessageSquare
+    MessageSquare,
+    Compass
 } from "lucide-react";
 import { DriverStatusButton } from "@/features/driver-status/components/DriverStatusButton";
 import { useDriverLocation } from "@/hooks/useDriverLocation";
@@ -25,6 +26,7 @@ import { ProfileService } from "@/services/driver/ProfileService";
 import { RideService } from "@/services/ride/RideService";
 import { createClient } from "@/lib/supabase";
 import NewRideModal from "@/components/Ride/NewRideModal";
+import { DestinationFilterModal } from "@/components/Ride/DestinationFilterModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { StatusPill } from "@/components/StatusControl";
 import { Card, Button, Badge } from "@/components/ui";
@@ -55,6 +57,7 @@ export default function MapaPage() {
     const [isNavModalOpen, setNavModalOpen] = useState(false);
     const [isCheckoutModalOpen, setCheckoutModalOpen] = useState(false);
     const [isChatModalOpen, setChatModalOpen] = useState(false);
+    const [isDestFilterModalOpen, setDestFilterModalOpen] = useState(false);
     const [unreadMessages, setUnreadMessages] = useState(0);
 
     // Escuta cancelamentos remotos da corrida ativa
@@ -70,7 +73,7 @@ export default function MapaPage() {
         currentOffer,
         clearOffer,
         rejectOffer,
-    } = useRideRequests(isAvailableForNewRides);
+    } = useRideRequests(isAvailableForNewRides, state.destinationFilter);
 
     const activeRide = state.activeRide;
 
@@ -385,6 +388,19 @@ export default function MapaPage() {
                             </p>
                         </div>
                         <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setDestFilterModalOpen(true)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black shadow-sm active:scale-95 transition ${
+                                    state.destinationFilter?.enabled
+                                        ? 'bg-brand text-slate-950 border border-brand'
+                                        : 'bg-slate-100 dark:bg-dark-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-dark-700 hover:border-brand/40'
+                                }`}
+                                title="Configurar Destino Definido (A Caminho de Casa)"
+                            >
+                                <Compass size={14} className={state.destinationFilter?.enabled ? 'text-slate-950' : 'text-brand'} />
+                                <span>{state.destinationFilter?.enabled ? 'Destino Ativo' : 'Destino'}</span>
+                            </button>
                             <Link
                                 href="/radar"
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs font-black shadow-sm active:scale-95 transition hover:bg-amber-500/25"
@@ -602,6 +618,11 @@ export default function MapaPage() {
                     />
                 </div>
             )}
+
+            <DestinationFilterModal
+                isOpen={isDestFilterModalOpen}
+                onClose={() => setDestFilterModalOpen(false)}
+            />
 
             <BottomNav />
         </div>

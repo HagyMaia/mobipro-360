@@ -25,6 +25,8 @@ export interface RideRequest {
   paymentMethod: PaymentMethod;
   requestedAt: string;
   source: 'app' | 'integrator';
+  riskAssessment?: RiskAssessment;
+  matchesDestinationFilter?: boolean;
 }
 
 export interface Ride extends RideRequest {
@@ -104,3 +106,45 @@ export interface PassengerFilters {
   rejectCash: boolean;
   autoReject: boolean;
 }
+
+export interface DestinationFilter {
+  enabled: boolean;
+  address: string;
+  label?: string; // e.g. "Minha Casa", "Centro", "Trabalho"
+  coordinates?: Coordinates;
+  maxDeviationKm?: number;
+}
+
+export interface RiskAssessment {
+  isRisk: boolean;
+  level: 'low' | 'medium' | 'high';
+  reason: string;
+  areaName?: string;
+  tips?: string[];
+}
+
+export type IncidentType =
+  | 'unpaid_fare'
+  | 'lost_item'
+  | 'inappropriate_behavior'
+  | 'vehicle_damage'
+  | 'safety_threat'
+  | 'route_dispute'
+  | 'other';
+
+export interface IncidentReport {
+  id: string;
+  rideId: string;
+  driverId?: string;
+  passengerName?: string;
+  incidentType: IncidentType;
+  description: string;
+  amountUnpaid?: number;
+  itemDescription?: string;
+  evidenceNotes?: string;
+  status: 'pending' | 'under_review' | 'resolved';
+  createdAt: string;
+  protocolNumber?: string;
+  resolutionNotes?: string;
+}
+

@@ -28,6 +28,8 @@ import { ChatModal } from '@/components/Ride/ChatModal';
 import { ChatService } from '@/services/chat/ChatService';
 import { PaymentCheckoutModal } from '@/components/Ride/PaymentCheckoutModal';
 import { NavigationModal } from '@/components/NavigationModal';
+import { ReportIncidentModal } from '@/components/Ride/ReportIncidentModal';
+import { RiskZoneService } from '@/services/safety/RiskZoneService';
 import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
 import { useDriverLocation } from '@/hooks/useDriverLocation';
@@ -49,6 +51,7 @@ export default function DetalheCorrida() {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [isCheckoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [isNavModalOpen, setNavModalOpen] = useState(false);
+  const [isIncidentModalOpen, setIncidentModalOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
   const [dbRide, setDbRide] = useState<Ride | null>(null);
   const [loadingDbRide, setLoadingDbRide] = useState(false);
@@ -332,6 +335,29 @@ export default function DetalheCorrida() {
           </div>
         )}
 
+        {/* ALERTA DE ZONA DE RISCO / SEGURANÇA */}
+        {(() => {
+          const risk = RiskZoneService.checkAddressRisk(currentRide.pickup, currentRide.pickupCoordinates) ||
+            RiskZoneService.checkAddressRisk(currentRide.dropoff, currentRide.dropoffCoordinates);
+          if (!risk?.isRisk) return null;
+          return (
+            <div className="rounded-3xl border border-amber-500/40 bg-amber-500/15 p-4 text-left space-y-1">
+              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold text-xs uppercase tracking-wider">
+                <AlertTriangle size={15} className="shrink-0 text-amber-500" />
+                <span>Alerta de Segurança ({risk.areaName || 'Área Monitorada'})</span>
+              </div>
+              <p className="text-xs text-slate-700 dark:text-slate-300">
+                {risk.reason}
+              </p>
+              {risk.tips && risk.tips[0] && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-300 font-medium">
+                  💡 {risk.tips[0]}
+                </p>
+              )}
+            </div>
+          );
+        })()}
+
         {/* MAPA OPERACIONAL EM TEMPO REAL */}
         <div className="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 shadow-md">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-dark-800 px-4 py-2.5 bg-slate-50/50 dark:bg-dark-800/40">
@@ -519,6 +545,30 @@ export default function DetalheCorrida() {
             )}
           </div>
         )}
+
+        {/* CENTRAL DE AJUDA & RELATO DE OCORRÊNCIA PÓS-CORRIDA */}
+        <div className="rounded-3xl border border-slate-200/80 dark:border-dark-700/80 bg-white dark:bg-dark-900 p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-black text-slate-900 dark:text-white">
+              <ShieldCheck size={16} className="text-brand-600 dark:text-brand" />
+              <span>Suporte & Segurança da Corrida</span>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">Atendimento 24h</span>
+          </div>
+
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Houve algum problema com o pagamento, item esquecido, desacato ou situação de risco nesta viagem?
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setIncidentModalOpen(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 py-3 text-xs font-bold text-red-600 dark:text-red-400 transition hover:bg-red-500/20 active:scale-95"
+          >
+            <AlertTriangle size={15} />
+            Relatar Problema / Abrir Ocorrência
+          </button>
+        </div>
       </main>
 
       {/* FOOTER FIXO DE AÇÕES SE A CORRIDA ESTIVER ATIVA */}
@@ -605,6 +655,15 @@ export default function DetalheCorrida() {
         pickupAddress={currentRide.pickup}
         dropoffAddress={currentRide.dropoff}
         onFinishRide={handleFinishCheckout}
+      />
+
+      {/* Modal de Ocorrências e Incidentes */}
+      <ReportIncidentModal
+        isOpen={isIncidentModalOpen}
+        onClose={() => setIncidentModalOpen(false)}
+        rideId={currentRide.id}
+        passengerName={currentRide.passengerName}
+        fareAmount={currentRide.fare}
       />
     </div>
   );

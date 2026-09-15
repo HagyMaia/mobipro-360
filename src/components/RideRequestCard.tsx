@@ -126,6 +126,32 @@ export default function RideRequestCard({
         </div>
       </div>
 
+      {/* BADGE DESTINO DEFINIDO */}
+      {ride.matchesDestinationFilter && (
+        <div className="mb-3 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 py-1 px-3 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+          <span>🏠</span>
+          <span>A Caminho do seu Destino Definido</span>
+        </div>
+      )}
+
+      {/* ALERTA DE ZONA DE RISCO / SEGURANÇA */}
+      {ride.riskAssessment?.isRisk && (
+        <div className="mb-3 rounded-2xl bg-amber-500/15 border border-amber-500/30 p-3 text-left">
+          <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold text-xs uppercase tracking-wider">
+            <AlertTriangle size={14} className="shrink-0 text-amber-500" />
+            <span>Alerta de Segurança ({ride.riskAssessment.areaName || 'Área Monitorada'})</span>
+          </div>
+          <p className="mt-1 text-xs text-slate-700 dark:text-slate-300">
+            {ride.riskAssessment.reason}
+          </p>
+          {ride.riskAssessment.tips && ride.riskAssessment.tips[0] && (
+            <p className="mt-0.5 text-[11px] text-amber-600 dark:text-amber-300 font-medium">
+              💡 {ride.riskAssessment.tips[0]}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="mb-3 space-y-2 rounded-2xl border border-slate-200/80 dark:border-dark-700 bg-slate-50 dark:bg-dark-900/70 p-3">
         <div className="flex items-start gap-2">
           <MapPin size={16} className="mt-0.5 shrink-0 text-emerald-500" />

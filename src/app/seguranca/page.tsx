@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, 
   ShieldCheck, 
@@ -15,21 +15,53 @@ import {
   Radio, 
   Check, 
   X,
-  Volume2
+  Volume2,
+  FileText,
+  AlertOctagon,
+  Clock,
+  ExternalLink,
+  PlusCircle
 } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import { Badge, Button, Card, SectionTitle } from '@/components/ui';
 import { useApp } from '@/lib/store';
-import { uid } from '@/lib/utils';
+import { useAuth } from '@/lib/auth';
+import { uid, formatBRL } from '@/lib/utils';
+import { RiskZoneService } from '@/services/safety/RiskZoneService';
+import { IncidentService } from '@/services/incident/IncidentService';
+import { ReportIncidentModal } from '@/components/Ride/ReportIncidentModal';
+import type { IncidentReport } from '@/lib/types';
 
 export default function SegurancaPage() {
   const { state, dispatch } = useApp();
+  const { user } = useAuth();
   const [sosTriggered, setSosTriggered] = useState(false);
   const [sosCountdown, setSosCountdown] = useState<number | null>(null);
   const [cameraActive, setCameraActive] = useState(true);
   const [shareToast, setShareToast] = useState(false);
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [newContact, setNewContact] = useState({ name: '', phone: '', relationship: 'Família' });
+
+  // Central de Ocorrências
+  const [incidents, setIncidents] = useState<IncidentReport[]>([]);
+  const [loadingIncidents, setLoadingIncidents] = useState(false);
+  const [isIncidentModalOpen, setIncidentModalOpen] = useState(false);
+
+  const loadIncidents = React.useCallback(async () => {
+    setLoadingIncidents(true);
+    try {
+      const data = await IncidentService.getDriverIncidents(user?.id);
+      setIncidents(data);
+    } catch (err) {
+      console.warn('[Seguranca] Erro ao carregar ocorrências:', err);
+    } finally {
+      setLoadingIncidents(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadIncidents();
+  }, [loadIncidents]);
 
   // Disparo de Pânico / SOS
   const handleSosPress = () => {
@@ -304,7 +336,146 @@ export default function SegurancaPage() {
             ))}
           </div>
         </div>
+
+        {/* CENTRAL DE OCORRÊNCIAS PÓS-CORRIDA */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <SectionTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <FileText size={14} className="text-brand-600 dark:text-brand" />
+              Central de Ocorrências ({incidents.length})
+            </SectionTitle>
+            <button
+              onClick={() => setIncidentModalOpen(true)}
+              className="text-xs text-brand-700 dark:text-brand font-bold flex items-center gap-1 hover:underline"
+            >
+              <PlusCircle size={14} /> Relatar Problema
+            </button>
+          </div>
+
+          {incidents.length === 0 ? (
+            <Card className="p-4 text-center">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Nenhuma ocorrência registrada. Se tiver problemas com corridas (valor não pago, passageiro agressivo ou objeto esquecido), abra um chamado aqui.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 mx-auto text-xs"
+                onClick={() => setIncidentModalOpen(true)}
+              >
+                Abrir Ocorrência
+              </Button>
+            </Card>
+          ) : (
+            <div className="space-y-2.5">
+              {incidents.map((inc) => (
+                <Card key={inc.id} className="p-3.5 space-y-2 border border-slate-200 dark:border-dark-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-black text-brand-700 dark:text-brand">
+                        {inc.protocolNumber || 'OC-2026'}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {new Date(inc.createdAt).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        inc.status === 'resolved'
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                      }`}
+                    >
+                      {inc.status === 'resolved' ? 'Resolvida' : 'Em Análise'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      {inc.incidentType === 'unpaid_fare'
+                        ? '💸 Valor Não Pago pelo Passageiro'
+                        : inc.incidentType === 'lost_item'
+                        ? '🎒 Item Esquecido no Veículo'
+                        : inc.incidentType === 'inappropriate_behavior'
+                        ? '⚠️ Comportamento Inadequado / Desacato'
+                        : inc.incidentType === 'vehicle_damage'
+                        ? '🚗 Dano ao Veículo'
+                        : inc.incidentType === 'safety_threat'
+                        ? '🚨 Ameaça à Segurança / Assalto'
+                        : '📋 Outro Incidente'}
+                    </div>
+                    {inc.amountUnpaid && inc.amountUnpaid > 0 && (
+                      <div className="text-xs font-black text-red-500">
+                        Valor pendente: {formatBRL(inc.amountUnpaid)}
+                      </div>
+                    )}
+                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 line-clamp-2">
+                      {inc.description}
+                    </p>
+                  </div>
+
+                  {inc.resolutionNotes && (
+                    <div className="rounded-xl bg-slate-50 dark:bg-dark-800 p-2 text-[11px] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-dark-700">
+                      <strong>Retorno da Central:</strong> {inc.resolutionNotes}
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ZONAS DE RISCO MONITORADAS */}
+        <div>
+          <SectionTitle className="mb-2 text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <AlertOctagon size={14} className="text-amber-500" />
+            Zonas de Alerta e Risco Monitoradas
+          </SectionTitle>
+
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
+            O MobiPro 360 monitora automaticamente áreas com histórico de restrição noturna, becos sem saída e ramais de difícil acesso para sua proteção.
+          </p>
+
+          <div className="space-y-2">
+            {RiskZoneService.getAllRiskZones().slice(0, 4).map((zone) => (
+              <Card key={zone.id} className="p-3 bg-slate-50/70 dark:bg-dark-800/50 border border-slate-200 dark:border-dark-700">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin size={14} className="text-amber-500" />
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">{zone.name}</span>
+                  </div>
+                  <span
+                    className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                      zone.level === 'high'
+                        ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
+                        : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30'
+                    }`}
+                  >
+                    {zone.level === 'high' ? 'Alto Risco' : 'Atenção Redobrada'}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">
+                  {zone.reason}
+                </p>
+                {zone.tips && zone.tips[0] && (
+                  <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 italic">
+                    Dica: {zone.tips[0]}
+                  </p>
+                )}
+              </Card>
+            ))}
+          </div>
+        </div>
       </main>
+
+      {/* MODAL DE OCORRÊNCIAS */}
+      <ReportIncidentModal
+        isOpen={isIncidentModalOpen}
+        onClose={() => {
+          setIncidentModalOpen(false);
+          loadIncidents();
+        }}
+      />
 
       {/* BOTTOM NAVIGATION */}
       <BottomNav />

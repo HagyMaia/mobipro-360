@@ -8,6 +8,8 @@ import {
     disableScreenWakeLock
 } from '@/lib/notifications';
 import { RideOffer } from '@/types';
+import { RiskZoneService } from '@/services/safety/RiskZoneService';
+import type { DestinationFilter } from '@/lib/types';
 
 // Chave para armazenar IDs recusados recentemente
 const REJECTED_RIDES_KEY = 'mobipro_rejected_rides_v2';
@@ -73,6 +75,24 @@ function isRideSearching(status?: string | null): boolean {
 }
 
 /**
+ * Avalia se o destino da corrida é compatível com o Filtro de Destino Definido ("A Caminho de Casa")
+ */
+function checkMatchesDestination(dropoff: string, destFilter?: DestinationFilter | null): boolean {
+    if (!destFilter || !destFilter.enabled || !destFilter.address) return true;
+
+    const destText = destFilter.address.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const dropoffText = dropoff.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // Se o texto conter o bairro/endereço do destino
+    const words = destText.split(/[\s,/-]+/).filter((w) => w.length > 3);
+    for (const word of words) {
+        if (dropoffText.includes(word)) return true;
+    }
+
+    return false;
+}
+
+/**
  * Toca um aviso sonoro nativo sintetizado pelo navegador (Web Audio API)
  */
 function playRideNotificationSound() {
@@ -116,9 +136,9 @@ function playRideNotificationSound() {
 }
 
 /**
- * Converte qualquer registro da tabela de corridas para RideOffer
+ * Converte qualquer registro da tabela de corridas para RideOffer com avaliação de segurança e rota
  */
-function parseRideToOffer(r: any): RideOffer {
+function parseRideToOffer(r: any, destFilter?: DestinationFilter | null): RideOffer {
     const dist = Number(
         r.distance_km ||
         r.distancia_km ||
@@ -200,6 +220,20 @@ function parseRideToOffer(r: any): RideOffer {
         ? Number(r.estimated_minutes)
         : Math.max(5, Math.round(dist * 2.5)) || 12;
 
+    // Avaliação de Zonas de Risco / Segurança no Embarque e Desembarque
+    const pickupRisk = RiskZoneService.checkAddressRisk(pPickup, {
+        latitude: pPickupLat,
+        longitude: pPickupLng
+    });
+    const dropoffRisk = RiskZoneService.checkAddressRisk(pDropoff, {
+        latitude: pDropoffLat,
+        longitude: pDropoffLng
+    });
+    const riskAssessment = pickupRisk || dropoffRisk || undefined;
+
+    // Avaliação de correspondência com Destino Definido
+    const matchesDest = checkMatchesDestination(pDropoff, destFilter);
+
     return {
         id: String(r.id),
         passengerName: pName,
@@ -218,10 +252,18 @@ function parseRideToOffer(r: any): RideOffer {
         distanceKm: dist,
         estimatedMinutes: estMinutes,
         expiresInSeconds: 40,
+        riskAssessment: riskAssessment ? {
+            isRisk: riskAssessment.isRisk,
+            level: riskAssessment.level,
+            reason: riskAssessment.reason,
+            areaName: riskAssessment.areaName,
+            tips: riskAssessment.tips,
+        } : undefined,
+        matchesDestinationFilter: matchesDest,
     };
 }
 
-export function useRideRequests(isOnline: boolean) {
+export function useRideRequests(isOnline: boolean, destinationFilter?: DestinationFilter | null) {
     const [currentOffer, setCurrentOffer] = useState<RideOffer | null>(null);
     const lastNotifiedOfferId = useRef<string | null>(null);
 
@@ -289,11 +331,19 @@ export function useRideRequests(isOnline: boolean) {
                     return false;
                 }
 
+                // Se o Filtro de Destino estiver ativado, só aceita corridas compatíveis com a rota
+                if (destinationFilter?.enabled && destinationFilter.address) {
+                    const dropoff = r.dropoff_address || r.destino_endereco || r.destino || r.desembarque || '';
+                    if (!checkMatchesDestination(dropoff, destinationFilter)) {
+                        return false;
+                    }
+                }
+
                 return true;
             });
 
             if (candidate && isMounted) {
-                const parsed = parseRideToOffer(candidate);
+                const parsed = parseRideToOffer(candidate, destinationFilter);
                 setCurrentOffer((prev) => {
                     if (prev?.id === parsed.id) return prev;
                     if (lastNotifiedOfferId.current !== parsed.id) {
@@ -446,7 +496,7 @@ export function useRideRequests(isOnline: boolean) {
                 navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
             }
         };
-    }, [isOnline]);
+    }, [isOnline, destinationFilter]);
 
     return {
         currentOffer,

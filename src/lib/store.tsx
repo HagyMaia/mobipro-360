@@ -17,6 +17,7 @@ import type {
   Earning,
   Expense,
   PassengerFilters,
+  DestinationFilter,
   Ride,
   RideRequest
 } from './types';
@@ -40,6 +41,7 @@ export interface AppState {
   goalTarget: number;
   contacts: EmergencyContact[];
   filters: PassengerFilters;
+  destinationFilter: DestinationFilter | null;
   profile: DriverProfile;
   navApp: NavApp;
 }
@@ -60,6 +62,7 @@ type Action =
   | { type: 'ADD_CONTACT'; contact: EmergencyContact }
   | { type: 'REMOVE_CONTACT'; id: string }
   | { type: 'UPDATE_FILTERS'; filters: PassengerFilters }
+  | { type: 'SET_DESTINATION_FILTER'; filter: DestinationFilter | null }
   | { type: 'UPDATE_PROFILE'; profile: DriverProfile }
   | { type: 'SET_NAV_APP'; navApp: NavApp }
   | { type: 'HYDRATE'; state: AppState };
@@ -74,6 +77,7 @@ const DEFAULT_STATE: AppState = {
   goalTarget: 300,
   contacts: DEFAULT_CONTACTS,
   filters: DEFAULT_FILTERS,
+  destinationFilter: null,
   profile: DEFAULT_PROFILE,
   navApp: 'waze'
 };
@@ -177,6 +181,9 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'UPDATE_FILTERS':
       return { ...state, filters: action.filters };
+
+    case 'SET_DESTINATION_FILTER':
+      return { ...state, destinationFilter: action.filter };
 
     case 'UPDATE_PROFILE':
       return { ...state, profile: action.profile };
