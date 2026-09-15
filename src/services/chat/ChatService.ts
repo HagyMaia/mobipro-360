@@ -231,11 +231,30 @@ export class ChatService {
                 const { data: chatData } = await supabase
                     .from('chat_messages')
                     .select('*')
-                    .eq('ride_id', rideId)
+                    .or(`ride_id.eq.${rideId},corrida_id.eq.${rideId}`)
                     .order('created_at', { ascending: true });
 
                 if (Array.isArray(chatData)) {
                     for (const item of chatData) {
+                        const parsed = parseRawMessage(item);
+                        if (parsed) {
+                            messageMap.set(parsed.id, parsed);
+                            saveLocalMessage(parsed);
+                        }
+                    }
+                }
+            } catch (_) {}
+
+            // 5. Busca na tabela 'mensagens' se existir
+            try {
+                const { data: msgData } = await supabase
+                    .from('mensagens')
+                    .select('*')
+                    .or(`ride_id.eq.${rideId},corrida_id.eq.${rideId}`)
+                    .order('created_at', { ascending: true });
+
+                if (Array.isArray(msgData)) {
+                    for (const item of msgData) {
                         const parsed = parseRawMessage(item);
                         if (parsed) {
                             messageMap.set(parsed.id, parsed);
@@ -291,6 +310,50 @@ export class ChatService {
             } catch (_) {}
         }
 
+        // Transmite de imediato via WebSockets do Supabase para o app do passageiro em múltiplos canais
+        const broadcastPayload = {
+            id: localMessage.id,
+            ride_id: params.rideId,
+            corrida_id: params.rideId,
+            trip_id: params.rideId,
+            tripId: params.rideId,
+            sender_id: params.senderId || null,
+            sender_role: params.senderRole,
+            sender_type: params.senderRole,
+            sender_name: params.senderName,
+            content: params.content.trim(),
+            text: params.content.trim(),
+            message: params.content.trim(),
+            mensagem: params.content.trim(),
+            read: false,
+            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            created_at: nowIso,
+        };
+
+        const channelNames = [
+            `chat_realtime_${params.rideId}`,
+            `passenger-ride-${params.rideId}`,
+            `chat-ride-${params.rideId}`,
+            `ride-chat-${params.rideId}`,
+            `chat:${params.rideId}`,
+            `trip:${params.rideId}`,
+            `ride:${params.rideId}`,
+            `sync_rides_${params.rideId}`,
+            `trip-messages-${params.rideId}`
+        ];
+
+        for (const chName of channelNames) {
+            try {
+                const ch = supabase.channel(chName);
+                ch.send({ type: 'broadcast', event: 'chat_message', payload: broadcastPayload }).catch(() => {});
+                ch.send({ type: 'broadcast', event: 'driver_message', payload: broadcastPayload }).catch(() => {});
+                ch.send({ type: 'broadcast', event: 'passenger_message', payload: broadcastPayload }).catch(() => {});
+                ch.send({ type: 'broadcast', event: 'message', payload: broadcastPayload }).catch(() => {});
+                ch.send({ type: 'broadcast', event: 'new_message', payload: broadcastPayload }).catch(() => {});
+                ch.send({ type: 'broadcast', event: 'mensagem', payload: broadcastPayload }).catch(() => {});
+            } catch (_) {}
+        }
+
         const payload: Record<string, any> = {
             ride_id: params.rideId,
             corrida_id: params.rideId,
@@ -338,16 +401,25 @@ export class ChatService {
                 try {
                     const { data: altData } = await supabase
                         .from('messages')
-                        .insert([{
-                            ride_id: params.rideId,
-                            sender_role: params.senderRole,
-                            sender_name: params.senderName,
-                            content: params.content.trim(),
-                        }])
+                        .insert([payload])
                         .select()
                         .maybeSingle();
                     if (altData) {
                         data = altData;
+                    }
+                } catch (_) {}
+            }
+
+            // 4. Fallback para tabela chat_messages
+            if (error) {
+                try {
+                    const { data: altChat } = await supabase
+                        .from('chat_messages')
+                        .insert([payload])
+                        .select()
+                        .maybeSingle();
+                    if (altChat) {
+                        data = altChat;
                     }
                 } catch (_) {}
             }
@@ -443,6 +515,7 @@ export class ChatService {
 
         // 1. Canal Realtime do Supabase (WebSocket)
         let channel: any = null;
+        let passengerRideChannel: any = null;
         try {
             channel = supabase
                 .channel(`chat_realtime_${rideId}`)
@@ -470,6 +543,55 @@ export class ChatService {
                         if (row) handleIncoming(row);
                     }
                 )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'chat_messages',
+                    },
+                    (payload: any) => {
+                        const row = payload.new || payload.old;
+                        if (row) handleIncoming(row);
+                    }
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'mensagens',
+                    },
+                    (payload: any) => {
+                        const row = payload.new || payload.old;
+                        if (row) handleIncoming(row);
+                    }
+                )
+                .on('broadcast', { event: 'chat_message' }, (payload: any) => {
+                    if (payload.payload) handleIncoming(payload.payload);
+                })
+                .on('broadcast', { event: 'passenger_message' }, (payload: any) => {
+                    if (payload.payload) handleIncoming(payload.payload);
+                })
+                .on('broadcast', { event: 'driver_message' }, (payload: any) => {
+                    if (payload.payload) handleIncoming(payload.payload);
+                })
+                .on('broadcast', { event: 'new_message' }, (payload: any) => {
+                    if (payload.payload) handleIncoming(payload.payload);
+                })
+                .on('broadcast', { event: 'message' }, (payload: any) => {
+                    if (payload.payload) handleIncoming(payload.payload);
+                })
+                .on('broadcast', { event: 'mensagem' }, (payload: any) => {
+                    if (payload.payload) handleIncoming(payload.payload);
+                })
+                .subscribe();
+
+            passengerRideChannel = supabase
+                .channel(`passenger-ride-${rideId}`)
+                .on('broadcast', { event: 'chat_message' }, (payload: any) => {
+                    if (payload.payload) handleIncoming(payload.payload);
+                })
                 .on('broadcast', { event: 'new_message' }, (payload: any) => {
                     if (payload.payload) handleIncoming(payload.payload);
                 })
@@ -478,7 +600,7 @@ export class ChatService {
                 })
                 .subscribe();
         } catch (err) {
-            console.warn('[ChatService] Erro ao criar canal Realtime:', err);
+            console.warn('[ChatService] Erro ao criar canais Realtime:', err);
         }
 
         // 2. BroadcastChannel para comunicação instantânea entre abas no mesmo navegador
@@ -541,6 +663,11 @@ export class ChatService {
             if (channel) {
                 try {
                     supabase.removeChannel(channel);
+                } catch {}
+            }
+            if (passengerRideChannel) {
+                try {
+                    supabase.removeChannel(passengerRideChannel);
                 } catch {}
             }
         };

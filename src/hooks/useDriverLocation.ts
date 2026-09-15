@@ -72,5 +72,5 @@ export function useDriverLocation(
         };
     }, [isOnline, activeRideId, driverId, fetchInitialLocation]);
 
-    return { location, error, isLoading, refreshLocation: fetchInitialLocation };
+    return { location, coords: location, error, isLoading, refreshLocation: fetchInitialLocation };
 }

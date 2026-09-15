@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { CheckCircle2, ExternalLink, Flag, Loader2, MapPin, Navigation, Phone, Play, XCircle, MessageSquare, Map as MapIcon, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
+import { useDriverLocation } from '@/hooks/useDriverLocation';
 import { RideService } from '@/services/ride/RideService';
 import { ChatService, playMessageReceivedChime } from '@/services/chat/ChatService';
 import { RiskZoneService } from '@/services/safety/RiskZoneService';
@@ -11,6 +13,8 @@ import { Badge, Button, Card } from '@/components/ui';
 import { NavigationModal } from '@/components/NavigationModal';
 import { PaymentCheckoutModal } from '@/components/Ride/PaymentCheckoutModal';
 import { ChatModal } from '@/components/Ride/ChatModal';
+
+const DriverMap = dynamic(() => import('@/components/map/DriverMap'), { ssr: false });
 
 const STEPS = [
   { key: 'accepted', label: 'A caminho' },
@@ -30,6 +34,33 @@ export default function ActiveRideCard() {
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   const ride = state.activeRide;
+  const { location: driverCoords } = useDriverLocation(true, user?.id, ride?.id);
+
+  const pickupPoint = useMemo(() => {
+    if (!ride) return null;
+    const lat = (ride.pickupCoordinates as any)?.latitude ?? (Array.isArray(ride.pickupCoordinates) ? ride.pickupCoordinates[0] : -3.1190);
+    const lng = (ride.pickupCoordinates as any)?.longitude ?? (Array.isArray(ride.pickupCoordinates) ? ride.pickupCoordinates[1] : -60.0217);
+    return {
+      latitude: Number(lat),
+      longitude: Number(lng),
+      label: 'EMBARQUE',
+      address: ride.pickup,
+    };
+  }, [ride]);
+
+  const dropoffPoint = useMemo(() => {
+    if (!ride) return null;
+    const lat = (ride.dropoffCoordinates as any)?.latitude ?? (Array.isArray(ride.dropoffCoordinates) ? ride.dropoffCoordinates[0] : -3.1070);
+    const lng = (ride.dropoffCoordinates as any)?.longitude ?? (Array.isArray(ride.dropoffCoordinates) ? ride.dropoffCoordinates[1] : -60.0125);
+    return {
+      latitude: Number(lat),
+      longitude: Number(lng),
+      label: 'DESTINO',
+      address: ride.dropoff,
+    };
+  }, [ride]);
+
+  const mapLocation = driverCoords || (pickupPoint ? { latitude: pickupPoint.latitude, longitude: pickupPoint.longitude, heading: 0, speed: 0, accuracy: 10 } : null);
 
   // Escuta novas mensagens do chat para mostrar o badge de não lidas e tocar alerta sonoro
   useEffect(() => {
@@ -198,6 +229,29 @@ export default function ActiveRideCard() {
               {ride.paymentMethod || 'PIX'}
             </div>
           </div>
+        </div>
+
+        {/* Mapa Interativo em Rota com Trajeto em Tempo Real */}
+        <div className="relative mb-3.5 h-48 sm:h-56 w-full overflow-hidden rounded-2xl border border-slate-200/90 dark:border-dark-700 shadow-md bg-slate-900">
+          <DriverMap
+            location={mapLocation}
+            pickupLocation={pickupPoint}
+            dropoffLocation={dropoffPoint}
+            showRoute={true}
+            routeMode={ride.status === 'in-progress' ? 'to-dropoff' : 'to-pickup'}
+          />
+          <div className="absolute top-2.5 left-2.5 z-[1000] flex items-center gap-1.5 rounded-xl bg-slate-950/85 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md shadow-md border border-slate-800/80">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Trajeto ao Vivo · {ride.status === 'in-progress' ? 'Destino' : 'Embarque'}</span>
+          </div>
+
+          <button
+            onClick={handleGoToMap}
+            className="absolute bottom-2.5 right-2.5 z-[1000] flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-xs font-black text-slate-950 shadow-md transition hover:brightness-110 active:scale-95"
+          >
+            <MapIcon size={14} />
+            <span>Tela Cheia</span>
+          </button>
         </div>
 
         {/* Alerta de Área de Risco / Segurança */}

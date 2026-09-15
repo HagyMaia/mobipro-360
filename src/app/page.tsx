@@ -104,8 +104,41 @@ export default function HomePage() {
                 dispatch({ type: 'COMPLETE_RIDE' });
               }
             } catch (_) {}
-          } else if (state.status === 'en-route' || state.status === 'on-ride') {
-            dispatch({ type: 'SET_STATUS', status: 'available' });
+          } else {
+            // Se NÃO houver corrida ativa em state.activeRide, busca no Supabase se há uma corrida em andamento aceita por este motorista
+            try {
+              const { data: dbActiveRide } = await supabase
+                .from('rides')
+                .select('*')
+                .eq('driver_id', user.id)
+                .in('status', ['accepted', 'arrived', 'in-progress', 'ACCEPTED', 'EM_ANDAMENTO', 'A_CAMINHO', 'NO_LOCAL', 'EM_VIAGEM', 'ACEITA'])
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (dbActiveRide) {
+                const parsed = RideService.parseDbRideToRide(dbActiveRide);
+                dispatch({ type: 'ACCEPT_RIDE', ride: parsed });
+              } else {
+                const { data: corridaActive } = await supabase
+                  .from('corridas')
+                  .select('*')
+                  .or(`motorista_id.eq.${user.id},driver_id.eq.${user.id}`)
+                  .in('status', ['accepted', 'arrived', 'in-progress', 'ACCEPTED', 'EM_ANDAMENTO', 'A_CAMINHO', 'NO_LOCAL', 'EM_VIAGEM', 'ACEITA'])
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+
+                if (corridaActive) {
+                  const parsed = RideService.parseDbRideToRide(corridaActive);
+                  dispatch({ type: 'ACCEPT_RIDE', ride: parsed });
+                } else if (state.status === 'en-route' || state.status === 'on-ride') {
+                  dispatch({ type: 'SET_STATUS', status: 'available' });
+                }
+              }
+            } catch (activeErr) {
+              console.warn('[HomePage] Erro ao buscar corrida ativa:', activeErr);
+            }
           }
 
           if (motorista?.work_status === 'ONLINE' && state.status !== 'available' && state.activeRide === null) {
