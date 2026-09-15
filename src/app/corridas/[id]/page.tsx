@@ -61,52 +61,49 @@ export default function DetalheCorrida() {
   const [historyRatingSubmitted, setHistoryRatingSubmitted] = useState(false);
 
   // Busca corrida do store ativo, do histórico ou do banco
-  const activeRide = state?.activeRide?.id === urlId ? state.activeRide : state?.activeRide;
+  const activeRide = state?.activeRide?.id === urlId ? state.activeRide : null;
   const historyRide = state?.rideHistory?.find((r) => r.id === urlId) || null;
-  const currentRide: Ride | null = activeRide || historyRide || dbRide;
+  const currentRide: Ride | null = dbRide || activeRide || historyRide;
 
   const isRideActive =
-    state.activeRide?.id === currentRide?.id &&
+    Boolean(state.activeRide?.id === currentRide?.id) &&
     currentRide?.status !== 'completed' &&
     currentRide?.status !== 'cancelled';
   const { location } = useDriverLocation(isRideActive, user?.id, currentRide?.id);
 
-  // Busca do Supabase se recarregar a página direto no link
+  // Sincronização contínua e em tempo real do status da corrida no Supabase
   useEffect(() => {
-    if (!currentRide && urlId) {
-      setLoadingDbRide(true);
-      const supabase = createClient();
+    if (!urlId) return;
+    const supabase = createClient();
+    let isMounted = true;
 
-      const parseAndSet = (data: any) => {
-        const parsed = RideService.parseDbRideToRide(data);
-        setDbRide(parsed);
-      };
+    const parseAndSet = (data: any) => {
+      if (!isMounted || !data) return;
+      const parsed = RideService.parseDbRideToRide(data);
+      setDbRide(parsed);
+      
+      const s = String(data.status || '').toUpperCase();
+      if (s === 'CANCELLED' || s === 'CANCELADA' || s === 'CANCELED' || s === 'RECUSADA') {
+        dispatch({
+          type: 'CANCEL_RIDE',
+          ride: parsed,
+          reason: parsed.cancelReason || 'Cancelada pelo passageiro',
+          cancelledBy: (parsed.cancelledBy as any) || 'passenger',
+        });
+      }
+    };
 
-      supabase
-        .from('rides')
-        .select('*')
-        .eq('id', urlId)
-        .maybeSingle()
-        .then((res: any) => {
-          if (res?.data) {
-            parseAndSet(res.data);
-            setLoadingDbRide(false);
-          } else {
-            supabase
-              .from('corridas')
-              .select('*')
-              .eq('id', urlId)
-              .maybeSingle()
-              .then((corridaRes: any) => {
-                if (corridaRes?.data) {
-                  parseAndSet(corridaRes.data);
-                }
-                setLoadingDbRide(false);
-              })
-              .catch(() => setLoadingDbRide(false));
-          }
-        })
-        .catch(() => {
+    // 1. Carga inicial
+    setLoadingDbRide(!currentRide);
+    supabase
+      .from('rides')
+      .select('*')
+      .eq('id', urlId)
+      .maybeSingle()
+      .then((res: any) => {
+        if (res?.data) {
+          parseAndSet(res.data);
+        } else {
           supabase
             .from('corridas')
             .select('*')
@@ -116,12 +113,101 @@ export default function DetalheCorrida() {
               if (corridaRes?.data) {
                 parseAndSet(corridaRes.data);
               }
-              setLoadingDbRide(false);
-            })
-            .catch(() => setLoadingDbRide(false));
-        });
-    }
-  }, [currentRide, urlId]);
+            });
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoadingDbRide(false);
+      });
+
+    // 2. Ouvinte Realtime postgres_changes
+    const channel = supabase
+      .channel(`ride_detail_status_${urlId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rides',
+          filter: `id=eq.${urlId}`,
+        },
+        (payload: any) => {
+          if (payload.new && isMounted) {
+            parseAndSet(payload.new);
+          }
+        }
+      )
+      .on('broadcast', { event: 'ride_cancelled' }, (payload: any) => {
+        const data = payload?.payload || payload;
+        if (isMounted) {
+          setDbRide((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: 'cancelled',
+                  cancelledAt: new Date().toISOString(),
+                  cancelledBy: 'passenger',
+                  cancelReason: data?.reason || 'Cancelada pelo passageiro',
+                }
+              : null
+          );
+          dispatch({
+            type: 'CANCEL_RIDE',
+            reason: data?.reason || 'Cancelada pelo passageiro',
+            cancelledBy: 'passenger',
+          });
+        }
+      })
+      .on('broadcast', { event: 'status_update' }, (payload: any) => {
+        const data = payload?.payload || payload;
+        const s = String(data?.status || '').toUpperCase();
+        if (s === 'CANCELLED' || s === 'CANCELADA' || s === 'CANCELED') {
+          if (isMounted) {
+            setDbRide((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    status: 'cancelled',
+                    cancelledAt: new Date().toISOString(),
+                    cancelledBy: 'passenger',
+                    cancelReason: data?.reason || 'Cancelada pelo passageiro',
+                  }
+                : null
+            );
+            dispatch({
+              type: 'CANCEL_RIDE',
+              reason: data?.reason || 'Cancelada pelo passageiro',
+              cancelledBy: 'passenger',
+            });
+          }
+        }
+      })
+      .subscribe();
+
+    // 3. Polling ativo a cada 1.5s
+    const pollTimer = setInterval(async () => {
+      if (!isMounted) return;
+      try {
+        const { data: rData } = await supabase
+          .from('rides')
+          .select('*')
+          .eq('id', urlId)
+          .maybeSingle();
+
+        if (rData) {
+          parseAndSet(rData);
+        }
+      } catch (_) {}
+    }, 1500);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollTimer);
+      try {
+        supabase.removeChannel(channel);
+      } catch (_) {}
+    };
+  }, [urlId, dispatch]);
 
   // Monitora mensagens do passageiro em tempo real e toca aviso sonoro
   useEffect(() => {

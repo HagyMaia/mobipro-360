@@ -14,6 +14,7 @@ import {
   Lock,
   MapPin,
   Navigation,
+  RefreshCw,
   ShieldCheck,
   TrendingUp,
   UserX,
@@ -119,12 +120,24 @@ export default function CorridasPage() {
     return list;
   }, [state.rideHistory, dbHistory]);
 
+  const isStatusCancelled = (status?: string) => {
+    if (!status) return false;
+    const s = String(status).toLowerCase();
+    return s === 'cancelled' || s === 'cancelada' || s === 'canceled' || s === 'recusada' || s === 'rejected' || s === 'aborted';
+  };
+
+  const isStatusCompleted = (status?: string) => {
+    if (!status) return false;
+    const s = String(status).toLowerCase();
+    return s === 'completed' || s === 'concluida' || s === 'finalizada' || s === 'finished';
+  };
+
   const filteredHistory = useMemo(() => {
     if (filterTab === 'completed') {
-      return combinedHistory.filter((r) => r.status === 'completed');
+      return combinedHistory.filter((r) => isStatusCompleted(r.status));
     }
     if (filterTab === 'cancelled') {
-      return combinedHistory.filter((r) => r.status === 'cancelled');
+      return combinedHistory.filter((r) => isStatusCancelled(r.status));
     }
     return combinedHistory;
   }, [combinedHistory, filterTab]);
@@ -416,7 +429,17 @@ export default function CorridasPage() {
         {/* HISTÓRICO COMPLETO DE CORRIDAS E CANCELAMENTOS */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <SectionTitle className="mb-0">Histórico de Corridas</SectionTitle>
+            <div className="flex items-center gap-2">
+              <SectionTitle className="mb-0">Histórico de Corridas</SectionTitle>
+              <button
+                onClick={loadHistory}
+                disabled={loadingHistory}
+                title="Recarregar histórico"
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-700 text-slate-500 dark:text-slate-400 transition"
+              >
+                <RefreshCw size={13} className={loadingHistory ? 'animate-spin text-brand' : ''} />
+              </button>
+            </div>
             <span className="text-xs font-bold text-slate-400">
               {filteredHistory.length} {filteredHistory.length === 1 ? 'registro' : 'registros'}
             </span>
@@ -442,7 +465,7 @@ export default function CorridasPage() {
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
             >
-              Concluídas ({combinedHistory.filter((r) => r.status === 'completed').length})
+              Concluídas ({combinedHistory.filter((r) => isStatusCompleted(r.status)).length})
             </button>
             <button
               onClick={() => setFilterTab('cancelled')}
@@ -452,7 +475,7 @@ export default function CorridasPage() {
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
             >
-              Canceladas ({combinedHistory.filter((r) => r.status === 'cancelled').length})
+              Canceladas ({combinedHistory.filter((r) => isStatusCancelled(r.status)).length})
             </button>
           </div>
 
@@ -472,8 +495,8 @@ export default function CorridasPage() {
               </Card>
             ) : (
               filteredHistory.map((ride) => {
-                const isCancelled = ride.status === 'cancelled';
-                const isCompleted = ride.status === 'completed';
+                const isCancelled = isStatusCancelled(ride.status);
+                const isCompleted = isStatusCompleted(ride.status);
                 const isCancelledByPassenger =
                   ride.cancelledBy === 'passenger' ||
                   (ride.cancelReason && /passageiro|cliente/i.test(ride.cancelReason));

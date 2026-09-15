@@ -385,9 +385,23 @@ export function useRideRequests(isOnline: boolean, destinationFilter?: Destinati
             }
         }
 
-        // 4. Busca periódica (Polling a cada 3.0 segundos nas duas tabelas)
+        // 4. Busca periódica (Polling a cada 2.5 segundos nas duas tabelas)
         const fetchPendingRides = async () => {
             try {
+                // Se temos uma oferta em exibição, verifica se ela ainda é válida ou se foi cancelada
+                if (currentOffer?.id) {
+                    const { data: activeCheck } = await supabase
+                        .from('rides')
+                        .select('id, status')
+                        .eq('id', currentOffer.id)
+                        .maybeSingle();
+
+                    if (activeCheck && !isRideSearching(activeCheck.status)) {
+                        setCurrentOffer(null);
+                        return;
+                    }
+                }
+
                 // Tabela 1: rides
                 const { data: ridesData } = await supabase
                     .from('rides')
@@ -416,7 +430,7 @@ export function useRideRequests(isOnline: boolean, destinationFilter?: Destinati
         };
 
         fetchPendingRides();
-        pollInterval = setInterval(fetchPendingRides, 3000);
+        pollInterval = setInterval(fetchPendingRides, 2500);
 
         // 5. Escuta em tempo real via Realtime WebSocket (Tabelas 'rides' e 'corridas')
         try {
@@ -426,32 +440,26 @@ export function useRideRequests(isOnline: boolean, destinationFilter?: Destinati
                     .on(
                         'postgres_changes',
                         {
-                            event: 'INSERT',
+                            event: '*',
                             schema: 'public',
                             table: 'rides',
                         },
                         (payload: any) => {
-                            if (payload.new && isMounted) {
-                                processCandidateRides([payload.new]);
-                            }
-                        }
-                    )
-                    .on(
-                        'postgres_changes',
-                        {
-                            event: 'UPDATE',
-                            schema: 'public',
-                            table: 'rides',
-                        },
-                        (payload: any) => {
-                            const updatedRide = payload.new;
-                            if (updatedRide && isMounted) {
-                                const s = String(updatedRide.status).toUpperCase();
-                                if (s === 'CANCELLED' || s === 'CANCELADA') {
-                                    setCurrentOffer((prev) => (prev?.id === String(updatedRide.id) ? null : prev));
-                                } else if (isRideSearching(updatedRide.status) && !updatedRide.driver_id) {
-                                    processCandidateRides([updatedRide]);
+                            if (!isMounted) return;
+                            if (payload.eventType === 'DELETE') {
+                                if (payload.old?.id) {
+                                    setCurrentOffer((prev) => (prev?.id === String(payload.old.id) ? null : prev));
                                 }
+                                return;
+                            }
+                            const row = payload.new;
+                            if (!row) return;
+
+                            const s = String(row.status || '').toUpperCase();
+                            if (s === 'CANCELLED' || s === 'CANCELADA' || s === 'CANCELED' || s === 'RECUSADA') {
+                                setCurrentOffer((prev) => (prev?.id === String(row.id) ? null : prev));
+                            } else if (isRideSearching(row.status) && !row.driver_id) {
+                                processCandidateRides([row]);
                             }
                         }
                     )
@@ -462,13 +470,26 @@ export function useRideRequests(isOnline: boolean, destinationFilter?: Destinati
                     .on(
                         'postgres_changes',
                         {
-                            event: 'INSERT',
+                            event: '*',
                             schema: 'public',
                             table: 'corridas',
                         },
                         (payload: any) => {
-                            if (payload.new && isMounted) {
-                                processCandidateRides([payload.new]);
+                            if (!isMounted) return;
+                            if (payload.eventType === 'DELETE') {
+                                if (payload.old?.id) {
+                                    setCurrentOffer((prev) => (prev?.id === String(payload.old.id) ? null : prev));
+                                }
+                                return;
+                            }
+                            const row = payload.new;
+                            if (!row) return;
+
+                            const s = String(row.status || '').toUpperCase();
+                            if (s === 'CANCELLED' || s === 'CANCELADA' || s === 'CANCELED' || s === 'RECUSADA') {
+                                setCurrentOffer((prev) => (prev?.id === String(row.id) ? null : prev));
+                            } else if (isRideSearching(row.status) && !row.driver_id) {
+                                processCandidateRides([row]);
                             }
                         }
                     )

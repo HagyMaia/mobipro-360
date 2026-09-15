@@ -53,7 +53,7 @@ type Action =
   | { type: 'ARRIVE_AT_PICKUP' }
   | { type: 'START_RIDE' }
   | { type: 'COMPLETE_RIDE' }
-  | { type: 'CANCEL_RIDE' }
+  | { type: 'CANCEL_RIDE'; ride?: Ride; reason?: string; cancelledBy?: 'passenger' | 'driver' | 'admin' | 'system' }
   | { type: 'REJECT_RIDE' }
   | { type: 'ADD_EXPENSE'; expense: Expense }
   | { type: 'REMOVE_EXPENSE'; id: string }
@@ -141,19 +141,34 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         activeRide: null,
-        rideHistory: [completed, ...state.rideHistory],
+        rideHistory: [completed, ...state.rideHistory.filter((r) => r.id !== completed.id)],
         earnings: [earning, ...state.earnings],
         status: 'available'
       };
     }
 
     case 'CANCEL_RIDE': {
-      const cancelled: Ride | null = state.activeRide ? { ...state.activeRide, status: 'cancelled' } : null;
+      const baseRide = action.ride || state.activeRide;
+      const cancelled: Ride | null = baseRide
+        ? {
+            ...baseRide,
+            status: 'cancelled',
+            cancelledAt: new Date().toISOString(),
+            cancelledBy: action.cancelledBy || baseRide.cancelledBy || 'passenger',
+            cancelReason: action.reason || baseRide.cancelReason || 'Cancelada pelo passageiro',
+          }
+        : null;
+
+      const currentHistory = state.rideHistory || [];
+      const updatedHistory = cancelled
+        ? [cancelled, ...currentHistory.filter((r) => r.id !== cancelled.id)]
+        : currentHistory;
+
       return {
         ...state,
         activeRide: null,
         incomingRide: null,
-        rideHistory: cancelled ? [cancelled, ...state.rideHistory] : state.rideHistory,
+        rideHistory: updatedHistory,
         status: 'available'
       };
     }

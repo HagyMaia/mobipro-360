@@ -316,24 +316,33 @@ export class RideService {
      * Converte registro do banco em objeto Ride tipado
      */
     public static parseDbRideToRide(r: any): import('@/lib/types').Ride {
-        const dbStatus = String(r.status || '').toUpperCase();
+        const dbStatus = String(r.status || '').toUpperCase().trim();
         let rideStatus: import('@/lib/types').RideStatus = 'accepted';
-        if (dbStatus === 'COMPLETED' || dbStatus === 'CONCLUIDA' || dbStatus === 'FINALIZADA') {
+        if (dbStatus === 'COMPLETED' || dbStatus === 'CONCLUIDA' || dbStatus === 'FINALIZADA' || dbStatus === 'FINISHED') {
             rideStatus = 'completed';
-        } else if (dbStatus === 'CANCELLED' || dbStatus === 'CANCELADA' || dbStatus === 'CANCELED' || dbStatus === 'RECUSADA') {
+        } else if (
+            dbStatus === 'CANCELLED' ||
+            dbStatus === 'CANCELADA' ||
+            dbStatus === 'CANCELED' ||
+            dbStatus === 'CANCELADO' ||
+            dbStatus === 'CANCEL' ||
+            dbStatus === 'RECUSADA' ||
+            dbStatus === 'REJECTED' ||
+            dbStatus === 'ABORTED'
+        ) {
             rideStatus = 'cancelled';
-        } else if (dbStatus === 'IN_PROGRESS' || dbStatus === 'EM_ANDAMENTO') {
+        } else if (dbStatus === 'IN_PROGRESS' || dbStatus === 'EM_ANDAMENTO' || dbStatus === 'ON_RIDE') {
             rideStatus = 'in-progress';
         } else if (dbStatus === 'ARRIVED' || dbStatus === 'NO_LOCAL' || dbStatus === 'CHEGOU') {
             rideStatus = 'arrived';
-        } else if (dbStatus === 'ACCEPTED' || dbStatus === 'ACEITA') {
+        } else if (dbStatus === 'ACCEPTED' || dbStatus === 'ACEITA' || dbStatus === 'EN_ROUTE') {
             rideStatus = 'accepted';
-        } else if (dbStatus === 'SEARCHING' || dbStatus === 'PENDING') {
+        } else if (dbStatus === 'SEARCHING' || dbStatus === 'PENDING' || dbStatus === 'PENDENTE') {
             rideStatus = 'pending';
         }
 
-        const cancelReason = r.cancel_reason || r.motivo_cancelamento || r.cancelamento_motivo || undefined;
-        let cancelledBy: 'passenger' | 'driver' | 'admin' | string | undefined = r.cancelled_by || r.autor_cancelamento;
+        const cancelReason = r.cancel_reason || r.motivo_cancelamento || r.cancelamento_motivo || r.reason || r.motivo || undefined;
+        let cancelledBy: 'passenger' | 'driver' | 'admin' | string | undefined = r.cancelled_by || r.autor_cancelamento || r.cancelado_por;
 
         if (!cancelledBy && cancelReason) {
             const lower = cancelReason.toLowerCase();
@@ -346,13 +355,17 @@ export class RideService {
             }
         }
 
-        const dist = Number(r.distance_km || r.distancia_km || r.distance || 4.2);
+        if (rideStatus === 'cancelled' && !cancelledBy) {
+            cancelledBy = 'passenger';
+        }
+
+        const dist = Number(r.distance_km || r.distancia_km || r.distance || r.distancia || 4.2);
         const estMins = Number(r.estimated_minutes || r.duracao_min || r.estimatedMinutes || Math.round(dist * 2.5) || 12);
         const fareVal = Number(r.fare_amount || r.valor || r.fare || r.valor_total || r.price || 20.0);
 
         return {
             id: String(r.id),
-            passengerName: r.passenger_name || r.cliente_nome || r.nome_passageiro || 'Passageiro Mobipro',
+            passengerName: r.passenger_name || r.cliente_nome || r.nome_passageiro || r.passageiro || 'Passageiro Mobipro',
             passengerRating: Number(r.passenger_rating || r.nota_passageiro || 5.0),
             passengerAccountMonths: Number(r.passenger_account_months || 6),
             passengerTrips: Number(r.passenger_trips || 18),
@@ -371,10 +384,10 @@ export class RideService {
             fare: fareVal,
             paymentMethod: (r.payment_method || r.forma_pagamento || 'pix') as any,
             status: rideStatus,
-            requestedAt: r.created_at || new Date().toISOString(),
+            requestedAt: r.created_at || r.requested_at || new Date().toISOString(),
             startedAt: r.started_at || undefined,
             completedAt: r.completed_at || (rideStatus === 'completed' ? r.updated_at : undefined),
-            cancelledAt: rideStatus === 'cancelled' ? (r.updated_at || r.created_at) : undefined,
+            cancelledAt: rideStatus === 'cancelled' ? (r.cancelled_at || r.updated_at || r.created_at || new Date().toISOString()) : undefined,
             cancelReason,
             cancelledBy,
             source: 'app',
@@ -383,48 +396,97 @@ export class RideService {
 
     /**
      * Busca o histórico completo de corridas do motorista (concluídas, canceladas e em andamento)
+     * com fusão de cache local permanente e banco de dados
      */
     public static async getDriverRidesHistory(driverId?: string): Promise<import('@/lib/types').Ride[]> {
         const supabase = createClient();
         const results: import('@/lib/types').Ride[] = [];
         const seenIds = new Set<string>();
 
-        try {
-            // 1. Busca na tabela rides
-            let query = supabase
-                .from('rides')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(50);
-
-            if (driverId) {
-                query = query.or(`driver_id.eq.${driverId},driver_id.is.null`);
-            }
-
-            const { data: ridesData, error: ridesErr } = await query;
-
-            if (!ridesErr && Array.isArray(ridesData)) {
-                for (const row of ridesData) {
-                    if (row && row.id && !seenIds.has(String(row.id))) {
-                        seenIds.add(String(row.id));
-                        results.push(this.parseDbRideToRide(row));
+        // 1. Carrega do armazenamento local imediato (para não perder cancelamentos recentes)
+        if (typeof window !== 'undefined') {
+            try {
+                const rawV2 = window.localStorage.getItem('mobipro_ride_history_v2');
+                if (rawV2) {
+                    const parsedList = JSON.parse(rawV2);
+                    if (Array.isArray(parsedList)) {
+                        for (const item of parsedList) {
+                            if (item && item.id && !seenIds.has(String(item.id))) {
+                                seenIds.add(String(item.id));
+                                results.push(item);
+                            }
+                        }
                     }
                 }
-            }
+            } catch (_) {}
 
-            // 2. Busca na tabela corridas (compatibilidade)
             try {
-                let corridasQuery = supabase
-                    .from('corridas')
+                const rawState = window.localStorage.getItem('mobipro_state_v1');
+                if (rawState) {
+                    const parsedState = JSON.parse(rawState);
+                    if (Array.isArray(parsedState?.rideHistory)) {
+                        for (const item of parsedState.rideHistory) {
+                            if (item && item.id && !seenIds.has(String(item.id))) {
+                                seenIds.add(String(item.id));
+                                results.push(item);
+                            }
+                        }
+                    }
+                }
+            } catch (_) {}
+        }
+
+        try {
+            // 2. Busca na tabela rides
+            try {
+                let query = supabase
+                    .from('rides')
                     .select('*')
                     .order('created_at', { ascending: false })
                     .limit(50);
 
                 if (driverId) {
-                    corridasQuery = corridasQuery.or(`motorista_id.eq.${driverId},driver_id.eq.${driverId}`);
+                    query = query.or(`driver_id.eq.${driverId},driver_id.is.null`);
                 }
 
-                const { data: corridasData, error: corridasErr } = await corridasQuery;
+                const { data: ridesData, error: ridesErr } = await query;
+
+                if (!ridesErr && Array.isArray(ridesData)) {
+                    for (const row of ridesData) {
+                        if (row && row.id && !seenIds.has(String(row.id))) {
+                            seenIds.add(String(row.id));
+                            results.push(this.parseDbRideToRide(row));
+                        }
+                    }
+                }
+            } catch (_) {}
+
+            // 3. Fallback sem filtro estrito de driver_id (para recuperar cancelamentos onde driver_id foi desvinculado)
+            try {
+                const { data: generalRides } = await supabase
+                    .from('rides')
+                    .select('*')
+                    .in('status', ['CANCELLED', 'CANCELADA', 'CANCELED', 'COMPLETED', 'FINALIZADA'])
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+
+                if (Array.isArray(generalRides)) {
+                    for (const row of generalRides) {
+                        if (row && row.id && !seenIds.has(String(row.id))) {
+                            seenIds.add(String(row.id));
+                            results.push(this.parseDbRideToRide(row));
+                        }
+                    }
+                }
+            } catch (_) {}
+
+            // 4. Busca na tabela corridas (compatibilidade)
+            try {
+                const { data: corridasData, error: corridasErr } = await supabase
+                    .from('corridas')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
 
                 if (!corridasErr && Array.isArray(corridasData)) {
                     for (const row of corridasData) {
@@ -436,10 +498,10 @@ export class RideService {
                 }
             } catch (_) {}
 
-            // Ordena por data decrescente
+            // Ordena por data mais recente primeiro
             results.sort((a, b) => {
-                const timeA = new Date(a.requestedAt || 0).getTime();
-                const timeB = new Date(b.requestedAt || 0).getTime();
+                const timeA = new Date(a.completedAt || a.cancelledAt || a.requestedAt || 0).getTime();
+                const timeB = new Date(b.completedAt || b.cancelledAt || b.requestedAt || 0).getTime();
                 return timeB - timeA;
             });
 
