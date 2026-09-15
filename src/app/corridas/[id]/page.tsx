@@ -67,9 +67,9 @@ export default function DetalheCorrida() {
   const currentRide: Ride | null = dbRide || activeRide || historyRide;
 
   const isRideActive =
-    Boolean(state.activeRide?.id === currentRide?.id) &&
-    currentRide?.status !== 'completed' &&
-    currentRide?.status !== 'cancelled';
+    currentRide !== null &&
+    currentRide.status !== 'completed' &&
+    currentRide.status !== 'cancelled';
   const { location } = useDriverLocation(isRideActive, user?.id, currentRide?.id);
 
   // Sincronização contínua e em tempo real do status da corrida no Supabase
@@ -339,6 +339,53 @@ export default function DetalheCorrida() {
       console.warn('[DetalheCorrida] Erro ao concluir:', err);
     }
     dispatch({ type: 'COMPLETE_RIDE' });
+    setDbRide((prev) => (prev ? { ...prev, status: 'completed' } : null));
+  };
+
+  const handleReactivateRide = async () => {
+    if (!currentRide?.id) return;
+    setLoadingAction(true);
+    try {
+      const supabase = createClient();
+      await supabase
+        .from('rides')
+        .update({
+          status: 'IN_PROGRESS',
+          cancelled_at: null,
+          cancel_reason: null,
+          cancelled_by: null,
+          motivo_cancelamento: null,
+          autor_cancelamento: null,
+        })
+        .eq('id', currentRide.id);
+
+      try {
+        await supabase
+          .from('corridas')
+          .update({
+            status: 'EM_ANDAMENTO',
+            cancelado_em: null,
+            motivo_cancelamento: null,
+          })
+          .eq('id', currentRide.id);
+      } catch (_) {}
+
+      const updatedRide: Ride = {
+        ...currentRide,
+        status: 'in-progress',
+        cancelledAt: undefined,
+        cancelReason: undefined,
+        cancelledBy: undefined,
+      };
+
+      setDbRide(updatedRide);
+      dispatch({ type: 'ACCEPT_RIDE', ride: updatedRide });
+      dispatch({ type: 'START_RIDE' });
+    } catch (err) {
+      console.warn('[DetalheCorrida] Erro ao reativar corrida:', err);
+    } finally {
+      setLoadingAction(false);
+    }
   };
 
   const handleRatePassengerHistory = () => {
@@ -397,9 +444,9 @@ export default function DetalheCorrida() {
 
       {/* CONTEÚDO PRINCIPAL */}
       <main className="flex-1 space-y-4 overflow-y-auto p-4 pb-36">
-        {/* BANNER DETALHADO SE CANCELADA */}
+        {/* BANNER DETALHADO SE CANCELADA + AÇÕES RÁPIDAS DE RECUPERAÇÃO / FINALIZAÇÃO */}
         {isCancelled && (
-          <div className="rounded-3xl border border-red-500/40 bg-red-500/10 p-4 text-red-700 dark:text-red-300 shadow-sm space-y-2">
+          <div className="rounded-3xl border border-red-500/40 bg-red-500/10 p-4 text-red-700 dark:text-red-300 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertTriangle size={18} className="text-red-500 shrink-0" />
@@ -425,6 +472,29 @@ export default function DetalheCorrida() {
                 Registrado em: {new Date(currentRide.cancelledAt).toLocaleString('pt-BR')}
               </p>
             )}
+
+            {/* BOTÕES DE RECUPERAÇÃO E FINALIZAÇÃO EMERGENCIAL */}
+            <div className="pt-2 border-t border-red-500/20 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleReactivateRide}
+                disabled={loadingAction}
+                className="flex items-center justify-center gap-1.5 rounded-2xl bg-brand py-3 text-xs font-black text-slate-950 shadow-md transition hover:brightness-105 active:scale-95 disabled:opacity-50"
+              >
+                {loadingAction ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
+                Reativar Corrida
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCheckoutModalOpen(true)}
+                disabled={loadingAction}
+                className="flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 py-3 text-xs font-black text-white shadow-md transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+              >
+                {loadingAction ? <Loader2 size={15} className="animate-spin" /> : <Flag size={15} />}
+                Finalizar / Cobrar
+              </button>
+            </div>
           </div>
         )}
 
@@ -492,7 +562,7 @@ export default function DetalheCorrida() {
               </span>
               <div
                 className={`text-3xl font-black tabular-nums ${
-                  isCancelled ? 'text-slate-400 line-through' : 'text-emerald-600 dark:text-emerald-400'
+                  isCancelled ? 'text-slate-400' : 'text-emerald-600 dark:text-emerald-400'
                 }`}
               >
                 {formatBRL(currentRide.fare)}
@@ -534,32 +604,31 @@ export default function DetalheCorrida() {
                 Passageiro verificado Mobipro 360
               </p>
             </div>
-            {isRideActive && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setUnreadMessages(0);
-                    setChatModalOpen(true);
-                  }}
-                  className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/15 text-slate-900 dark:text-brand font-bold transition hover:bg-brand/25 active:scale-95"
-                  aria-label="Chat com passageiro"
-                >
-                  <MessageCircle size={18} />
-                  {unreadMessages > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black text-white ring-2 ring-white dark:ring-dark-900 animate-bounce">
-                      {unreadMessages}
-                    </span>
-                  )}
-                </button>
-                <a
-                  href="tel:+5592982329629"
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand text-slate-950 font-bold shadow-md shadow-brand/20 transition hover:brightness-105"
-                  aria-label="Ligar para o passageiro"
-                >
-                  <Phone size={18} />
-                </a>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setUnreadMessages(0);
+                  setChatModalOpen(true);
+                }}
+                className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/15 text-slate-900 dark:text-brand font-bold transition hover:bg-brand/25 active:scale-95"
+                aria-label="Chat com passageiro"
+              >
+                <MessageCircle size={18} />
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black text-white ring-2 ring-white dark:ring-dark-900 animate-bounce">
+                    {unreadMessages}
+                  </span>
+                )}
+              </button>
+              <a
+                href="tel:+5592982329629"
+                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand text-slate-950 font-bold shadow-md shadow-brand/20 transition hover:brightness-105"
+                aria-label="Ligar para o passageiro"
+              >
+                <Phone size={18} />
+              </a>
+            </div>
           </div>
         </div>
 
@@ -664,7 +733,7 @@ export default function DetalheCorrida() {
         </div>
       </main>
 
-      {/* FOOTER FIXO DE AÇÕES SE A CORRIDA ESTIVER ATIVA */}
+      {/* FOOTER FIXO DE AÇÕES SE A CORRIDA ESTIVER ATIVA OU CANCELADA */}
       {isRideActive && (
         <footer className="fixed bottom-0 inset-x-0 z-30 border-t border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-900/95 p-4 backdrop-blur-xl space-y-2">
           {/* Botão de Navegação Waze / Google Maps */}
@@ -715,6 +784,30 @@ export default function DetalheCorrida() {
                 {loadingAction ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />} Finalizar Viagem
               </button>
             )}
+          </div>
+        </footer>
+      )}
+
+      {/* FOOTER FIXO SE ESTIVER CANCELADA */}
+      {isCancelled && (
+        <footer className="fixed bottom-0 inset-x-0 z-30 border-t border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-900/95 p-4 backdrop-blur-xl">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleReactivateRide}
+              disabled={loadingAction}
+              className="flex items-center justify-center gap-1.5 rounded-2xl bg-brand py-3.5 text-xs font-black text-slate-950 shadow-md transition hover:brightness-105 active:scale-95"
+            >
+              {loadingAction ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
+              Reativar Corrida
+            </button>
+            <button
+              onClick={() => setCheckoutModalOpen(true)}
+              disabled={loadingAction}
+              className="flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 py-3.5 text-xs font-black text-white shadow-md transition hover:bg-emerald-700 active:scale-95"
+            >
+              {loadingAction ? <Loader2 size={15} className="animate-spin" /> : <Flag size={15} />}
+              Finalizar / Cobrar
+            </button>
           </div>
         </footer>
       )}
