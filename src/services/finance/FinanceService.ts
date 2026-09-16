@@ -24,60 +24,127 @@ export interface DriverEarningsSummary {
 }
 
 export class FinanceService {
-    public static async getDriverEarnings(driverId: string): Promise<DriverEarningsSummary> {
+    public static async getDriverEarnings(driverId?: string): Promise<DriverEarningsSummary> {
         const supabase = createClient();
+        const rawList: any[] = [];
+        const seenIds = new Set<string>();
 
-        let ridesData: any[] = [];
-
-        const { data: rides, error } = await supabase
-            .from('rides')
-            .select('*')
-            .eq('driver_id', driverId)
-            .eq('status', 'COMPLETED')
-            .order('created_at', { ascending: false });
-
-        if (rides && rides.length > 0) {
-            ridesData = rides;
-        } else {
-            // Fallback para tabela de corridas em português se houver
+        // 1. Carrega do armazenamento local imediato para não perder corridas salvas no cliente
+        if (typeof window !== 'undefined') {
             try {
-                const { data: corridas } = await supabase
-                    .from('corridas')
-                    .select('*')
-                    .eq('motorista_id', driverId)
-                    .eq('status', 'FINALIZADA')
-                    .order('criado_em', { ascending: false });
-                if (corridas && corridas.length > 0) {
-                    ridesData = corridas;
+                const rawV2 = window.localStorage.getItem('mobipro_ride_history_v2');
+                if (rawV2) {
+                    const parsed = JSON.parse(rawV2);
+                    if (Array.isArray(parsed)) {
+                        for (const item of parsed) {
+                            if (item && item.id && !seenIds.has(String(item.id))) {
+                                const st = String(item.status || '').toLowerCase();
+                                if (st === 'completed' || st === 'finalizada' || st === 'concluida') {
+                                    seenIds.add(String(item.id));
+                                    rawList.push(item);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (_) {}
+
+            try {
+                const rawState = window.localStorage.getItem('mobipro_state_v1');
+                if (rawState) {
+                    const parsed = JSON.parse(rawState);
+                    if (Array.isArray(parsed?.rideHistory)) {
+                        for (const item of parsed.rideHistory) {
+                            if (item && item.id && !seenIds.has(String(item.id))) {
+                                const st = String(item.status || '').toLowerCase();
+                                if (st === 'completed' || st === 'finalizada' || st === 'concluida') {
+                                    seenIds.add(String(item.id));
+                                    rawList.push(item);
+                                }
+                            }
+                        }
+                    }
                 }
             } catch (_) {}
         }
 
-        const formattedRides: DriverFinancialRide[] = ridesData.map((ride: any) => {
+        // 2. Busca corridas concluídas no Supabase (tabela rides)
+        try {
+            let query = supabase
+                .from('rides')
+                .select('*')
+                .in('status', ['COMPLETED', 'FINALIZADA', 'CONCLUIDA'])
+                .order('created_at', { ascending: false });
+
+            if (driverId) {
+                query = query.or(`driver_id.eq.${driverId},driver_id.is.null`);
+            }
+
+            const { data: rides, error } = await query;
+            if (!error && Array.isArray(rides)) {
+                for (const r of rides) {
+                    if (r && r.id && !seenIds.has(String(r.id))) {
+                        seenIds.add(String(r.id));
+                        rawList.push(r);
+                    }
+                }
+            }
+        } catch (_) {}
+
+        // 3. Fallback para tabela corridas
+        try {
+            const { data: corridas } = await supabase
+                .from('corridas')
+                .select('*')
+                .in('status', ['FINALIZADA', 'COMPLETED', 'CONCLUIDA'])
+                .order('criado_em', { ascending: false });
+
+            if (Array.isArray(corridas)) {
+                for (const c of corridas) {
+                    if (c && c.id && !seenIds.has(String(c.id))) {
+                        seenIds.add(String(c.id));
+                        rawList.push(c);
+                    }
+                }
+            }
+        } catch (_) {}
+
+        const formattedRides: DriverFinancialRide[] = rawList.map((ride: any) => {
             const rawPayment = String(
                 ride.payment_method ||
+                ride.paymentMethod ||
                 ride.metodo_pagamento ||
                 ride.forma_pagamento ||
-                'pix'
+                (ride.is_voucher || ride.voucher_code || ride.codigo_voucher ? 'voucher' : '') ||
+                ''
             ).toLowerCase();
 
-            const isVoucher = rawPayment.includes('voucher');
+            const isVoucher = rawPayment.includes('voucher') ||
+                Boolean(ride.voucher_code) ||
+                Boolean(ride.codigo_voucher) ||
+                ride.is_voucher === true ||
+                ride.voucher === true ||
+                String(ride.passenger_type || ride.tipo_passageiro || ride.tipo || '').toLowerCase().includes('conven') ||
+                String(ride.passenger_type || ride.tipo_passageiro || ride.tipo || '').toLowerCase().includes('empresa');
+
             const isParticular = !isVoucher;
 
             const grossFare = Number(
+                ride.gross_fare ||
                 ride.fare_amount ||
-                ride.valor ||
                 ride.fare ||
+                ride.valor ||
                 ride.preco ||
                 ride.valor_total ||
                 0
             );
 
-            // Regra de Negócio: Corrida particular tem 20% de desconto retido pela plataforma
-            // Corrida por voucher (empresa) não tem desconto (100% de repasse)
+            // Regra de Negócio Essencial:
+            // - Corrida particular (PIX): 20% de desconto retido pela plataforma (motorista recebe 80%)
+            // - Corrida por Voucher (Convênio / Empresa): ZERO desconto, 100% de repasse integral
             const discountRate = isParticular ? 0.20 : 0.0;
-            const discountAmount = Number((grossFare * discountRate).toFixed(2));
-            const netFare = Number((grossFare - discountAmount).toFixed(2));
+            const discountAmount = isParticular ? Number((grossFare * discountRate).toFixed(2)) : 0.0;
+            const netFare = isParticular ? Number((grossFare - discountAmount).toFixed(2)) : grossFare;
 
             const dist = Number(
                 ride.distance_km ||
@@ -88,19 +155,22 @@ export class FinanceService {
 
             return {
                 id: String(ride.id),
-                created_at: ride.created_at || ride.criado_em || new Date().toISOString(),
+                created_at: ride.completed_at || ride.completedAt || ride.created_at || ride.criado_em || ride.requestedAt || new Date().toISOString(),
                 distance_km: dist,
-                fare_amount: netFare, // O valor na carteira já exibe o valor líquido com desconto
+                fare_amount: netFare, // Saldo líquido real creditado ao motorista
                 gross_fare: grossFare,
                 discount_amount: discountAmount,
                 discount_rate: discountRate,
                 payment_method: isVoucher ? 'voucher' : 'pix',
                 is_particular: isParticular,
-                passenger_name: ride.passenger_name || ride.cliente_nome || ride.nome_passageiro,
-                pickup_address: ride.pickup_address || ride.origem_endereco || ride.embarque,
-                dropoff_address: ride.dropoff_address || ride.destino_endereco || ride.desembarque,
+                passenger_name: ride.passenger_name || ride.passengerName || ride.cliente_nome || ride.nome_passageiro,
+                pickup_address: ride.pickup_address || ride.pickup || ride.origem_endereco || ride.embarque,
+                dropoff_address: ride.dropoff_address || ride.dropoff || ride.destino_endereco || ride.desembarque,
             };
         });
+
+        // Ordena por data decrescente (mais recente primeiro)
+        formattedRides.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         const totalEarned = formattedRides.reduce((acc, r) => acc + r.fare_amount, 0);
         const grossTotal = formattedRides.reduce((acc, r) => acc + r.gross_fare, 0);

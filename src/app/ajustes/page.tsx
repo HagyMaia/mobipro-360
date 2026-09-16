@@ -25,6 +25,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
 import { BiometricAuthService } from '@/services/auth/BiometricAuthService';
+import { ProfileService } from '@/services/driver/ProfileService';
 
 export default function AjustesPage() {
   const { state, dispatch } = useApp();
@@ -34,6 +35,42 @@ export default function AjustesPage() {
   const [autoReject, setAutoReject] = useState(state.filters.autoReject);
   const [rejectCash, setRejectCash] = useState(state.filters.rejectCash);
   const [minRating, setMinRating] = useState(state.filters.minRating);
+
+  // Estados de Categoria Operacional
+  const currentDriverType = state.profile?.driverType || (
+    typeof window !== 'undefined' ? (window.localStorage.getItem('mobipro_driver_type') as 'EMPRESA' | 'PARTICULAR') || 'PARTICULAR' : 'PARTICULAR'
+  );
+  const [driverType, setDriverType] = useState<'EMPRESA' | 'PARTICULAR'>(currentDriverType);
+  const [categoryMsg, setCategoryMsg] = useState('');
+
+  useEffect(() => {
+    if (state.profile?.driverType) {
+      setDriverType(state.profile.driverType);
+    }
+  }, [state.profile?.driverType]);
+
+  const handleDriverTypeChange = async (newType: 'EMPRESA' | 'PARTICULAR') => {
+    setDriverType(newType);
+    try {
+      await ProfileService.updateDriverType(newType);
+      dispatch({
+        type: 'UPDATE_PROFILE',
+        profile: {
+          ...state.profile,
+          driverType: newType,
+        }
+      });
+      setCategoryMsg(
+        newType === 'EMPRESA'
+          ? '🏢 Categoria Empresa salva: Recebe apenas Voucher (100% repasse)!'
+          : '🚗 Categoria Particular salva: Recebe corridas particulares (-20%) e vouchers!'
+      );
+      setTimeout(() => setCategoryMsg(''), 4000);
+    } catch {
+      setCategoryMsg('Categoria salva no dispositivo!');
+      setTimeout(() => setCategoryMsg(''), 3000);
+    }
+  };
 
   // Estados de Biometria
   const [biometricAvailable, setBiometricAvailable] = useState(false);
@@ -118,6 +155,72 @@ export default function AjustesPage() {
 
       {/* CONTEÚDO */}
       <main className="p-4 space-y-4 flex-1">
+        {/* CATEGORIA DO MOTORISTA (EMPRESA vs PARTICULAR) */}
+        <div>
+          <SectionTitle className="mb-2.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+            Categoria Operacional do Motorista
+          </SectionTitle>
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between mb-1">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                  Modalidade de Recebimento
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Define o tipo de corridas que tocarão no seu aplicativo
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleDriverTypeChange('PARTICULAR')}
+                className={`flex flex-col p-3 rounded-2xl text-left border transition ${
+                  driverType === 'PARTICULAR'
+                    ? 'border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30'
+                    : 'border-slate-200 dark:border-dark-700 bg-slate-100/70 dark:bg-dark-800/60 opacity-75 hover:opacity-100'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span className="text-xs font-black text-slate-900 dark:text-white">🚗 Particular</span>
+                  {driverType === 'PARTICULAR' && (
+                    <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">Ativo</span>
+                  )}
+                </div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                  Recebe <strong>Particular</strong> e <strong>Voucher</strong> (taxa 20% no particular)
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDriverTypeChange('EMPRESA')}
+                className={`flex flex-col p-3 rounded-2xl text-left border transition ${
+                  driverType === 'EMPRESA'
+                    ? 'border-teal-500 bg-teal-500/10 ring-2 ring-teal-500/30'
+                    : 'border-slate-200 dark:border-dark-700 bg-slate-100/70 dark:bg-dark-800/60 opacity-75 hover:opacity-100'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span className="text-xs font-black text-slate-900 dark:text-white">🏢 Empresa</span>
+                  {driverType === 'EMPRESA' && (
+                    <span className="bg-teal-500 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">Ativo</span>
+                  )}
+                </div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                  Recebe <strong>Apenas Voucher</strong> (100% Repasse Integral, taxa 0%)
+                </span>
+              </button>
+            </div>
+
+            {categoryMsg && (
+              <div className="p-2.5 rounded-xl bg-brand/10 border border-brand/20 text-xs font-bold text-brand-700 dark:text-brand text-center animate-in fade-in">
+                {categoryMsg}
+              </div>
+            )}
+          </Card>
+        </div>
         {/* SEGURANÇA & BIOMETRIA (DIGITAL DO CELULAR) */}
         <div>
           <SectionTitle className="mb-2.5 text-xs font-bold text-slate-500 dark:text-slate-400">

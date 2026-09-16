@@ -121,6 +121,27 @@ export default function ActiveRideCard() {
     dispatch({ type: 'START_RIDE' });
   }
 
+  const isVoucherRide = Boolean(
+    String(ride?.paymentMethod || '').toLowerCase() === 'voucher' ||
+    (ride as any)?.is_voucher ||
+    (ride as any)?.voucher_code
+  );
+
+  async function handleFinishAutomaticVoucher() {
+    if (!ride) return;
+    setLoadingAction(true);
+    try {
+      if (ride.id) {
+        await RideService.completeRide(ride.id, user?.id, ride.fare);
+      }
+    } catch (err) {
+      console.warn('[ActiveRideCard] Erro ao finalizar voucher no banco:', err);
+    } finally {
+      setLoadingAction(false);
+    }
+    dispatch({ type: 'COMPLETE_RIDE' });
+  }
+
   async function handleFinishCheckout(data: {
     paymentMethod: 'pix' | 'cash' | 'card' | 'voucher';
     finalAmount: number;
@@ -379,7 +400,13 @@ export default function ActiveRideCard() {
               </Button>
               <Button
                 variant="success"
-                onClick={() => setCheckoutModalOpen(true)}
+                onClick={() => {
+                  if (isVoucherRide) {
+                    handleFinishAutomaticVoucher();
+                  } else {
+                    setCheckoutModalOpen(true);
+                  }
+                }}
                 disabled={loadingAction}
                 className="bg-emerald-600 hover:bg-emerald-700 font-black text-white shadow-lg shadow-emerald-600/25"
               >

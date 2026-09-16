@@ -363,36 +363,55 @@ export class RideService {
         const estMins = Number(r.estimated_minutes || r.duracao_min || r.estimatedMinutes || Math.round(dist * 2.5) || 12);
         const fareVal = Number(r.fare_amount || r.valor || r.fare || r.valor_total || r.price || 20.0);
 
-        return {
-            id: String(r.id),
-            passengerName: r.passenger_name || r.cliente_nome || r.nome_passageiro || r.passageiro || 'Passageiro Mobipro',
-            passengerRating: Number(r.passenger_rating || r.nota_passageiro || 5.0),
-            passengerAccountMonths: Number(r.passenger_account_months || 6),
-            passengerTrips: Number(r.passenger_trips || 18),
-            pickup: r.pickup_address || r.origem_endereco || r.pickup || r.origem || 'Ponto de Embarque',
-            dropoff: r.dropoff_address || r.destino_endereco || r.dropoff || r.destino || 'Ponto de Destino',
-            pickupCoordinates: {
-                latitude: Number(r.pickup_latitude || r.origem_lat || r.pickup_lat || -3.1190),
-                longitude: Number(r.pickup_longitude || r.origem_lng || r.pickup_lng || -60.0217),
-            },
-            dropoffCoordinates: {
-                latitude: Number(r.dropoff_latitude || r.destino_lat || r.dropoff_lat || -3.1070),
-                longitude: Number(r.dropoff_longitude || r.destino_lng || r.dropoff_lng || -60.0125),
-            },
-            distanceKm: dist,
-            estimatedMinutes: estMins,
-            fare: fareVal,
-            paymentMethod: (r.payment_method || r.forma_pagamento || 'pix') as any,
-            status: rideStatus,
-            requestedAt: r.created_at || r.requested_at || new Date().toISOString(),
-            startedAt: r.started_at || undefined,
-            completedAt: r.completed_at || (rideStatus === 'completed' ? r.updated_at : undefined),
-            cancelledAt: rideStatus === 'cancelled' ? (r.cancelled_at || r.updated_at || r.created_at || new Date().toISOString()) : undefined,
-            cancelReason,
-            cancelledBy,
-            source: 'app',
-        };
-    }
+            const rawPay = String(
+                r.payment_method ||
+                r.paymentMethod ||
+                r.metodo_pagamento ||
+                r.forma_pagamento ||
+                (r.is_voucher || r.voucher_code || r.codigo_voucher ? 'voucher' : '') ||
+                ''
+            ).toLowerCase();
+
+            const isVoucher = rawPay.includes('voucher') ||
+                Boolean(r.voucher_code) ||
+                Boolean(r.codigo_voucher) ||
+                r.is_voucher === true ||
+                r.voucher === true ||
+                String(r.passenger_type || r.tipo_passageiro || r.tipo || '').toLowerCase().includes('conven') ||
+                String(r.passenger_type || r.tipo_passageiro || r.tipo || '').toLowerCase().includes('empresa');
+
+            const paymentMethod: 'pix' | 'voucher' = isVoucher ? 'voucher' : 'pix';
+
+            return {
+                id: String(r.id),
+                passengerName: r.passenger_name || r.cliente_nome || r.nome_passageiro || r.passageiro || 'Passageiro Mobipro',
+                passengerRating: Number(r.passenger_rating || r.nota_passageiro || 5.0),
+                passengerAccountMonths: Number(r.passenger_account_months || 6),
+                passengerTrips: Number(r.passenger_trips || 18),
+                pickup: r.pickup_address || r.origem_endereco || r.pickup || r.origem || 'Ponto de Embarque',
+                dropoff: r.dropoff_address || r.destino_endereco || r.dropoff || r.destino || 'Ponto de Destino',
+                pickupCoordinates: {
+                    latitude: Number(r.pickup_latitude || r.origem_lat || r.pickup_lat || -3.1190),
+                    longitude: Number(r.pickup_longitude || r.origem_lng || r.pickup_lng || -60.0217),
+                },
+                dropoffCoordinates: {
+                    latitude: Number(r.dropoff_latitude || r.destino_lat || r.dropoff_lat || -3.1070),
+                    longitude: Number(r.dropoff_longitude || r.destino_lng || r.dropoff_lng || -60.0125),
+                },
+                distanceKm: dist,
+                estimatedMinutes: estMins,
+                fare: fareVal,
+                paymentMethod,
+                status: rideStatus,
+                requestedAt: r.created_at || r.requested_at || new Date().toISOString(),
+                startedAt: r.started_at || undefined,
+                completedAt: r.completed_at || (rideStatus === 'completed' ? r.updated_at : undefined),
+                cancelledAt: rideStatus === 'cancelled' ? (r.cancelled_at || r.updated_at || r.created_at || new Date().toISOString()) : undefined,
+                cancelReason,
+                cancelledBy,
+                source: 'app',
+            };
+        }
 
     /**
      * Busca o histórico completo de corridas do motorista (concluídas, canceladas e em andamento)

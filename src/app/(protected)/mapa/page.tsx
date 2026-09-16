@@ -80,7 +80,7 @@ export default function MapaPage() {
         currentOffer,
         clearOffer,
         rejectOffer,
-    } = useRideRequests(isAvailableForNewRides, state.destinationFilter);
+    } = useRideRequests(isAvailableForNewRides, state.destinationFilter, state.profile?.driverType);
 
     const activeRide = state.activeRide;
 
@@ -302,10 +302,12 @@ export default function MapaPage() {
                         passengerTrips: 18,
                         pickup: currentOffer.pickupAddress,
                         dropoff: currentOffer.dropoffAddress,
+                        pickupCoordinates: currentOffer.pickupLocation,
+                        dropoffCoordinates: currentOffer.dropoffLocation,
                         distanceKm: currentOffer.distanceKm,
                         estimatedMinutes: currentOffer.estimatedMinutes,
                         fare: currentOffer.fareAmount,
-                        paymentMethod: 'pix',
+                        paymentMethod: (currentOffer.paymentMethod as any) || 'pix',
                         requestedAt: new Date().toISOString(),
                         source: 'app',
                     },
@@ -372,6 +374,28 @@ export default function MapaPage() {
             }
         }
         dispatch({ type: 'START_RIDE' });
+    };
+
+    const isVoucherRide = Boolean(
+        String(activeRide?.paymentMethod || '').toLowerCase() === 'voucher' ||
+        (activeRide as any)?.is_voucher ||
+        (activeRide as any)?.voucher_code
+    );
+
+    const handleFinishAutomaticVoucher = async () => {
+        if (!activeRide) return;
+        setLoadingRideAction(true);
+        try {
+            if (activeRide.id) {
+                await RideService.completeRide(activeRide.id, userId || undefined, activeRide.fare);
+            }
+        } catch (err) {
+            console.warn('[Mapa] Erro ao finalizar voucher no banco:', err);
+        } finally {
+            setLoadingRideAction(false);
+        }
+        clearOffer();
+        dispatch({ type: 'COMPLETE_RIDE' });
     };
 
     const handleFinishCheckout = async (data: {
@@ -712,7 +736,13 @@ export default function MapaPage() {
                                     variant="success"
                                     size="sm"
                                     disabled={loadingRideAction}
-                                    onClick={() => setCheckoutModalOpen(true)}
+                                    onClick={() => {
+                                        if (isVoucherRide) {
+                                            handleFinishAutomaticVoucher();
+                                        } else {
+                                            setCheckoutModalOpen(true);
+                                        }
+                                    }}
                                     className="font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
                                 >
                                     {loadingRideAction ? <Loader2 size={14} className="animate-spin" /> : <Flag size={14} />} Finalizar Viagem

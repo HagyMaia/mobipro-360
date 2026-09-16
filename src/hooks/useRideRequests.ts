@@ -222,13 +222,23 @@ function parseRideToOffer(r: any, destFilter?: DestinationFilter | null): RideOf
 
     const rawPayment = String(
         r.payment_method ||
+        r.paymentMethod ||
         r.metodo_pagamento ||
         r.forma_pagamento ||
-        'pix'
+        (r.is_voucher || r.voucher_code || r.codigo_voucher ? 'voucher' : '') ||
+        ''
     ).toLowerCase();
 
-    const paymentMethod: 'pix' | 'voucher' = rawPayment.includes('voucher') ? 'voucher' : 'pix';
-    const isParticular = paymentMethod !== 'voucher';
+    const isVoucher = rawPayment.includes('voucher') ||
+        Boolean(r.voucher_code) ||
+        Boolean(r.codigo_voucher) ||
+        r.is_voucher === true ||
+        r.voucher === true ||
+        String(r.passenger_type || r.tipo_passageiro || r.tipo || '').toLowerCase().includes('conven') ||
+        String(r.passenger_type || r.tipo_passageiro || r.tipo || '').toLowerCase().includes('empresa');
+
+    const paymentMethod: 'pix' | 'voucher' = isVoucher ? 'voucher' : 'pix';
+    const isParticular = !isVoucher;
     const discountRate = isParticular ? 0.20 : 0.0;
     const netFare = isParticular ? Number((fareVal * 0.80).toFixed(2)) : fareVal;
 
@@ -287,6 +297,38 @@ export function useRideRequests(
     const [currentOffer, setCurrentOffer] = useState<RideOffer | null>(null);
     const lastNotifiedOfferId = useRef<string | null>(null);
 
+    const [localDriverType, setLocalDriverType] = useState<'EMPRESA' | 'PARTICULAR'>(() => {
+        if (driverType) return driverType;
+        if (typeof window !== 'undefined') {
+            return (window.localStorage.getItem('mobipro_driver_type') as 'EMPRESA' | 'PARTICULAR') || 'PARTICULAR';
+        }
+        return 'PARTICULAR';
+    });
+
+    useEffect(() => {
+        if (driverType) {
+            setLocalDriverType(driverType);
+        }
+    }, [driverType]);
+
+    useEffect(() => {
+        const handleTypeChange = (e: any) => {
+            const newType = e?.detail || (typeof window !== 'undefined' ? window.localStorage.getItem('mobipro_driver_type') : null);
+            if (newType === 'EMPRESA' || newType === 'PARTICULAR') {
+                setLocalDriverType(newType);
+            }
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('mobipro_driver_type_changed', handleTypeChange);
+            window.addEventListener('storage', handleTypeChange);
+            return () => {
+                window.removeEventListener('mobipro_driver_type_changed', handleTypeChange);
+                window.removeEventListener('storage', handleTypeChange);
+            };
+        }
+    }, []);
+
     const clearOffer = useCallback(() => {
         setCurrentOffer(null);
     }, []);
@@ -339,8 +381,8 @@ export function useRideRequests(
             if (!isMounted || !Array.isArray(rides) || rides.length === 0) return;
             const rejected = getRejectedRideIds();
 
-            // Identifica se o motorista é Perfil Empresa
-            const activeDriverType = driverType || (
+            // Identifica se o motorista é Perfil Empresa ou Particular
+            const activeDriverType = driverType || localDriverType || (
                 typeof window !== 'undefined'
                     ? (window.localStorage.getItem('mobipro_driver_type') as 'EMPRESA' | 'PARTICULAR' || 'PARTICULAR')
                     : 'PARTICULAR'
@@ -360,17 +402,28 @@ export function useRideRequests(
                     return false;
                 }
 
-                // REGRA DO MOTORISTA DE EMPRESA: Atende EXCLUSIVAMENTE corridas por voucher
+                // Identifica se a corrida é Voucher corporativo / convênio
                 const rawPay = String(
                     r.payment_method ||
+                    r.paymentMethod ||
                     r.metodo_pagamento ||
                     r.forma_pagamento ||
+                    (r.is_voucher || r.voucher_code || r.codigo_voucher ? 'voucher' : '') ||
                     ''
                 ).toLowerCase();
-                const isVoucher = rawPay.includes('voucher');
 
+                const isVoucher = rawPay.includes('voucher') ||
+                    Boolean(r.voucher_code) ||
+                    Boolean(r.codigo_voucher) ||
+                    r.is_voucher === true ||
+                    r.voucher === true ||
+                    String(r.passenger_type || r.tipo_passageiro || r.tipo || '').toLowerCase().includes('conven') ||
+                    String(r.passenger_type || r.tipo_passageiro || r.tipo || '').toLowerCase().includes('empresa');
+
+                // REGRA DE CATEGORIA:
+                // - Se o motorista for EMPRESA: recebe APENAS corridas por Voucher / Convênio (0% taxa)
+                // - Se o motorista for PARTICULAR: recebe AMBAS (Particular com taxa 20% e Voucher integral)
                 if (activeDriverType === 'EMPRESA' && !isVoucher) {
-                    // Motorista de Empresa não recebe corridas particulares
                     return false;
                 }
 
@@ -560,7 +613,7 @@ export function useRideRequests(
                 navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
             }
         };
-    }, [isOnline, destinationFilter]);
+    }, [isOnline, destinationFilter, driverType, localDriverType]);
 
     return {
         currentOffer,

@@ -324,6 +324,28 @@ export default function DetalheCorrida() {
     }
   };
 
+  const isVoucherRide = Boolean(
+    String(currentRide?.paymentMethod || '').toLowerCase() === 'voucher' ||
+    (currentRide as any)?.is_voucher ||
+    (currentRide as any)?.voucher_code
+  );
+
+  const handleFinishAutomaticVoucher = async () => {
+    if (!currentRide) return;
+    setLoadingAction(true);
+    try {
+      if (currentRide.id) {
+        await RideService.completeRide(currentRide.id, user?.id, currentRide.fare);
+      }
+    } catch (err) {
+      console.warn('[DetalheCorrida] Erro ao concluir voucher:', err);
+    } finally {
+      setLoadingAction(false);
+    }
+    dispatch({ type: 'COMPLETE_RIDE' });
+    setDbRide((prev) => (prev ? { ...prev, status: 'completed' } : null));
+  };
+
   const handleFinishCheckout = async (data: {
     paymentMethod: 'pix' | 'cash' | 'card' | 'voucher';
     finalAmount: number;
@@ -806,7 +828,13 @@ export default function DetalheCorrida() {
 
             {currentRide.status === 'in-progress' && (
               <button
-                onClick={() => setCheckoutModalOpen(true)}
+                onClick={() => {
+                  if (isVoucherRide) {
+                    handleFinishAutomaticVoucher();
+                  } else {
+                    setCheckoutModalOpen(true);
+                  }
+                }}
                 disabled={loadingAction}
                 className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 text-xs font-black text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-700 active:scale-95"
               >
@@ -830,7 +858,13 @@ export default function DetalheCorrida() {
               Reativar Corrida
             </button>
             <button
-              onClick={() => setCheckoutModalOpen(true)}
+              onClick={() => {
+                if (isVoucherRide) {
+                  handleFinishAutomaticVoucher();
+                } else {
+                  setCheckoutModalOpen(true);
+                }
+              }}
               disabled={loadingAction}
               className="flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 py-3.5 text-xs font-black text-white shadow-md transition hover:bg-emerald-700 active:scale-95"
             >

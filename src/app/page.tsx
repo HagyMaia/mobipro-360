@@ -36,7 +36,11 @@ export default function HomePage() {
 
   // Escuta chamadas quando o motorista está com status "Disponível" e sem corrida ativa
   const isOnlineAndAvailable = state.status === 'available' && !state.activeRide;
-  const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isOnlineAndAvailable, state.destinationFilter);
+  const { currentOffer, clearOffer, rejectOffer } = useRideRequests(
+    isOnlineAndAvailable,
+    state.destinationFilter,
+    state.profile?.driverType
+  );
 
   useEffect(() => {
     async function checkAuthAndLoadProfile() {
@@ -188,7 +192,7 @@ export default function HomePage() {
         distanceKm: currentOffer.distanceKm,
         estimatedMinutes: currentOffer.estimatedMinutes,
         fare: currentOffer.fareAmount,
-        paymentMethod: 'pix',
+        paymentMethod: (currentOffer.paymentMethod as any) || 'pix',
         requestedAt: new Date().toISOString(),
         source: 'app',
       };

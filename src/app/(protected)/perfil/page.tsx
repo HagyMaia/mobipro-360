@@ -108,6 +108,30 @@ export default function PerfilPage() {
     reader.readAsDataURL(file);
   };
 
+  // Alterar e Salvar Categoria do Motorista
+  const handleDriverTypeChange = async (newType: 'EMPRESA' | 'PARTICULAR') => {
+    setDriverType(newType);
+    try {
+      await ProfileService.updateDriverType(newType);
+      dispatch({
+        type: 'UPDATE_PROFILE',
+        profile: {
+          ...(state.profile || mockProfile),
+          name: fullName.trim() || state.profile?.name || 'Motorista',
+          phone: phone.trim() || state.profile?.phone || '',
+          driverType: newType,
+        }
+      });
+      showToast(
+        newType === 'EMPRESA'
+          ? '🏢 Categoria Empresa salva: Recebe apenas Voucher (100% repasse)!'
+          : '🚗 Categoria Particular salva: Recebe corridas particulares (-20%) e vouchers!'
+      );
+    } catch {
+      showToast('Categoria salva no dispositivo!');
+    }
+  };
+
   // Salvar Dados Pessoais
   const handleSavePersonal = async () => {
     setLoading(true);
@@ -117,19 +141,21 @@ export default function PerfilPage() {
         displayName: fullName.trim(),
         phone: phone.trim(),
         avatarUrl: avatarUrl || undefined,
+        driverType: driverType,
       });
 
       dispatch({
         type: 'UPDATE_PROFILE',
         profile: {
-          ...mockProfile,
+          ...(state.profile || mockProfile),
           name: fullName.trim(),
           phone: phone.trim(),
+          driverType: driverType,
         }
       });
 
       showToast('Alterações salvas com sucesso!');
-    } catch (err) {
+    } catch {
       showToast('Alterações salvas no aplicativo!');
     } finally {
       setLoading(false);
@@ -199,12 +225,12 @@ export default function PerfilPage() {
             />
           </div>
 
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-black text-slate-900 dark:text-white truncate leading-tight">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-black text-slate-900 dark:text-white truncate">
               {displayName}
             </h2>
-            <p className="text-xs text-slate-400 dark:text-slate-500 font-medium truncate mb-2">
-              {email || 'hagy.maia19@gmail.com'}
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate mb-1.5">
+              {userEmail}
             </p>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -241,57 +267,78 @@ export default function PerfilPage() {
           </div>
         </div>
 
-        {/* Card: PERFIL OPERACIONAL DO MOTORISTA (DEFINIDO PELA ADMINISTRAÇÃO) */}
+        {/* Card: CATEGORIA DO MOTORISTA (PARTICULAR vs EMPRESA) COM TROCA DIRETA */}
         <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-5 border border-slate-100 dark:border-dark-700/80 shadow-sm space-y-3.5">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              PERFIL DE ATENDIMENTO
+              CATEGORIA DO MOTORISTA
             </h3>
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 px-2.5 py-0.5 rounded-full">
-              <Lock size={10} />
-              Definido pela Central
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 px-2.5 py-0.5 rounded-full">
+              Toque para Alternar
             </span>
           </div>
 
-          <div className={`p-4 rounded-2xl border relative flex flex-col justify-between ${
-            driverType === 'EMPRESA'
-              ? 'border-teal-500/40 bg-teal-500/10'
-              : 'border-amber-500/40 bg-amber-500/10'
-          }`}>
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  {driverType === 'EMPRESA' ? '🏢 Motorista de Empresa' : '🚗 Motorista Particular'}
-                </span>
-                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                  driverType === 'EMPRESA'
-                    ? 'bg-teal-500 text-slate-950'
-                    : 'bg-amber-500 text-slate-950'
-                }`}>
-                  {driverType === 'EMPRESA' ? 'Voucher Exclusivo' : 'Particular (-20%)'}
-                </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {/* Opção 1: Motorista Particular */}
+            <button
+              type="button"
+              onClick={() => handleDriverTypeChange('PARTICULAR')}
+              className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
+                driverType === 'PARTICULAR'
+                  ? 'border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30 shadow-sm'
+                  : 'border-slate-200 dark:border-dark-700 bg-slate-50/70 dark:bg-dark-800/60 opacity-80 hover:opacity-100'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                    🚗 Particular
+                  </span>
+                  {driverType === 'PARTICULAR' && (
+                    <span className="bg-amber-500 text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+                      Ativo
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
+                  Recebe <strong>corridas particulares</strong> e <strong>corridas em voucher</strong>.
+                </p>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mt-1">
-                {driverType === 'EMPRESA'
-                  ? 'Você está habilitado para atender exclusivamente corridas corporativas faturadas via Voucher de empresas parceiras.'
-                  : 'Você está habilitado para atender corridas particulares em geral (com recebimento direto e taxa retida da plataforma).'}
-              </p>
-            </div>
+              <div className="mt-2.5 pt-2 border-t border-amber-500/20 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                ⚡ Retenção: 20% em corridas particulares
+              </div>
+            </button>
 
-            <div className={`mt-3 pt-2.5 border-t text-[11px] font-bold flex items-center justify-between ${
-              driverType === 'EMPRESA'
-                ? 'border-teal-500/20 text-teal-700 dark:text-teal-400'
-                : 'border-amber-500/20 text-amber-700 dark:text-amber-400'
-            }`}>
-              <span>{driverType === 'EMPRESA' ? '🛡️ Repasse Integral: 100%' : '⚡ Retenção da plataforma: 20% (Ex: R$ 100 → R$ 80)'}</span>
-              <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">Ativo</span>
-            </div>
+            {/* Opção 2: Motorista de Empresa */}
+            <button
+              type="button"
+              onClick={() => handleDriverTypeChange('EMPRESA')}
+              className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
+                driverType === 'EMPRESA'
+                  ? 'border-teal-500 bg-teal-500/10 ring-2 ring-teal-500/30 shadow-sm'
+                  : 'border-slate-200 dark:border-dark-700 bg-slate-50/70 dark:bg-dark-800/60 opacity-80 hover:opacity-100'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                    🏢 Empresa
+                  </span>
+                  {driverType === 'EMPRESA' && (
+                    <span className="bg-teal-500 text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+                      Ativo
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
+                  Recebe <strong>apenas corridas em voucher</strong> corporativo de empresas conveniadas.
+                </p>
+              </div>
+              <div className="mt-2.5 pt-2 border-t border-teal-500/20 text-[10px] font-bold text-teal-700 dark:text-teal-400">
+                🛡️ Repasse Integral: 100% (0% taxa)
+              </div>
+            </button>
           </div>
-
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed flex items-center gap-1.5 pt-1">
-            <Lock size={12} className="shrink-0 text-slate-400" />
-            <span>A definição da sua modalidade é feita exclusivamente pela administração da SR Logística.</span>
-          </p>
         </div>
 
         {/* Card 2: DADOS PESSOAIS (Formulário com Botão Salvar Alterações) */}

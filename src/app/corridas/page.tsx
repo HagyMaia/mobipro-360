@@ -54,7 +54,11 @@ export default function CorridasPage() {
   const isLocationTrackingActive = Boolean(isOnline || state.status === 'available' || state.activeRide);
 
   const { location } = useDriverLocation(isLocationTrackingActive, user?.id, state.activeRide?.id);
-  const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isAvailableForNewRides);
+  const { currentOffer, clearOffer, rejectOffer } = useRideRequests(
+    isAvailableForNewRides,
+    state.destinationFilter,
+    state.profile?.driverType
+  );
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -191,7 +195,7 @@ export default function CorridasPage() {
             distanceKm: currentOffer.distanceKm,
             estimatedMinutes: currentOffer.estimatedMinutes,
             fare: currentOffer.fareAmount,
-            paymentMethod: 'pix',
+            paymentMethod: (currentOffer.paymentMethod as any) || 'pix',
             requestedAt: new Date().toISOString(),
             source: 'app',
           },

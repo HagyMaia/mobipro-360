@@ -23,7 +23,11 @@ export function GlobalRideListener() {
 
     // Motorista está disponível para chamadas?
     const isOnline = Boolean(user) && (state.status === 'available' || !state.activeRide);
-    const { currentOffer, clearOffer, rejectOffer } = useRideRequests(isOnline && !state.activeRide);
+    const { currentOffer, clearOffer, rejectOffer } = useRideRequests(
+        isOnline && !state.activeRide,
+        state.destinationFilter,
+        state.profile?.driverType
+    );
 
     // Solicita permissão de notificação silenciosamente ao carregar
     useEffect(() => {
@@ -53,7 +57,7 @@ export function GlobalRideListener() {
                     distanceKm: currentOffer.distanceKm,
                     estimatedMinutes: currentOffer.estimatedMinutes,
                     fare: currentOffer.fareAmount,
-                    paymentMethod: 'pix',
+                    paymentMethod: (currentOffer.paymentMethod as any) || 'pix',
                     requestedAt: new Date().toISOString(),
                     source: 'app',
                 },

@@ -261,9 +261,22 @@ function loadState(): AppState {
   if (typeof window === 'undefined') return DEFAULT_STATE;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_STATE;
-    const parsed = JSON.parse(raw) as Partial<AppState>;
-    return { ...DEFAULT_STATE, ...parsed };
+    const localDriverType = window.localStorage.getItem('mobipro_driver_type') as 'EMPRESA' | 'PARTICULAR' | null;
+    let base = DEFAULT_STATE;
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<AppState>;
+      base = { ...DEFAULT_STATE, ...parsed };
+    }
+    if (localDriverType && (localDriverType === 'EMPRESA' || localDriverType === 'PARTICULAR')) {
+      base = {
+        ...base,
+        profile: {
+          ...base.profile,
+          driverType: localDriverType,
+        }
+      };
+    }
+    return base;
   } catch {
     return DEFAULT_STATE;
   }
@@ -276,6 +289,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const hydrated = loadState();
     dispatch({ type: 'HYDRATE', state: hydrated });
   }, []);
+
+  useEffect(() => {
+    const handleTypeChange = (e: any) => {
+      const newType = e?.detail || (typeof window !== 'undefined' ? window.localStorage.getItem('mobipro_driver_type') : null);
+      if (newType === 'EMPRESA' || newType === 'PARTICULAR') {
+        dispatch({
+          type: 'UPDATE_PROFILE',
+          profile: {
+            ...state.profile,
+            driverType: newType,
+          }
+        });
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('mobipro_driver_type_changed', handleTypeChange);
+      return () => {
+        window.removeEventListener('mobipro_driver_type_changed', handleTypeChange);
+      };
+    }
+  }, [state.profile]);
 
   useEffect(() => {
     try {

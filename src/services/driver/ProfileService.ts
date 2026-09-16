@@ -52,34 +52,45 @@ export class ProfileService {
             .from('motoristas')
             .select('*')
             .eq('id', authData.user.id)
-            .single();
+            .maybeSingle();
 
-        if (profileError || !profile) {
+        let finalProfile = profile;
+        if (!finalProfile) {
+            const { data: dProfile } = await supabase
+                .from('drivers')
+                .select('*')
+                .eq('id', authData.user.id)
+                .maybeSingle();
+            finalProfile = dProfile;
+        }
+
+        if (!finalProfile) {
             return null;
         }
 
-        const rawName = cleanString(profile.nome_social, cleanString(profile.nome, ''));
-        const resolvedName = rawName || (profile.email ? profile.email.split('@')[0] : 'Motorista');
+        const p = finalProfile;
+        const rawName = cleanString(p.nome_social, cleanString(p.nome, ''));
+        const resolvedName = rawName || (p.email ? p.email.split('@')[0] : 'Motorista');
 
-        const make = cleanString(profile.marca_veiculo, 'Chevrolet');
-        const model = cleanString(profile.modelo_veiculo, 'Onix Plus');
-        const plate = cleanString(profile.placa_veiculo, 'ABC1D23');
-        const color = cleanString(profile.cor_veiculo, 'Prata');
-        const year = cleanString(profile.ano_veiculo, '2024');
-        const category = cleanString(profile.categoria, 'POPULAR');
-        const vStatus = cleanString(profile.vehicle_status, 'Aprovado') as 'Aprovado' | 'Pendente' | 'Reprovado';
+        const make = cleanString(p.marca_veiculo, cleanString(p.vehicle_make, 'Chevrolet'));
+        const model = cleanString(p.modelo_veiculo, cleanString(p.vehicle_model, 'Onix Plus'));
+        const plate = cleanString(p.placa_veiculo, cleanString(p.vehicle_plate, 'ABC1D23'));
+        const color = cleanString(p.cor_veiculo, cleanString(p.vehicle_color, 'Prata'));
+        const year = cleanString(p.ano_veiculo, cleanString(p.vehicle_year, '2024'));
+        const category = cleanString(p.categoria, 'POPULAR');
+        const vStatus = cleanString(p.vehicle_status, 'Aprovado') as 'Aprovado' | 'Pendente' | 'Reprovado';
 
         const rawRole = cleanString(
-            profile.role,
-            cleanString(profile.tipo, cleanString(profile.perfil, cleanString(profile.user_role, '')))
+            p.role,
+            cleanString(p.tipo, cleanString(p.perfil, cleanString(p.user_role, '')))
         );
         const userEmail = (authData.user.email ?? '').toLowerCase();
         const isAdmin =
             rawRole.toLowerCase() === 'admin' ||
             rawRole.toLowerCase() === 'administrador' ||
-            profile.is_admin === true ||
-            profile.is_admin === 'true' ||
-            profile.admin === true ||
+            p.is_admin === true ||
+            p.is_admin === 'true' ||
+            p.admin === true ||
             userEmail === 'hagy.maia19@gmail.com' ||
             userEmail.startsWith('admin@') ||
             authData.user.user_metadata?.role === 'admin' ||
@@ -88,30 +99,36 @@ export class ProfileService {
             authData.user.app_metadata?.claims_admin === true;
 
         const rawDriverType = cleanString(
-            profile.driver_type,
+            p.driver_type,
             cleanString(
-                profile.tipo_motorista,
+                p.tipo_motorista,
                 cleanString(
-                    profile.perfil_motorista,
+                    p.perfil_motorista,
                     typeof window !== 'undefined' ? (window.localStorage.getItem('mobipro_driver_type') || 'PARTICULAR') : 'PARTICULAR'
                 )
             )
         ).toUpperCase();
         const driverType: 'EMPRESA' | 'PARTICULAR' = rawDriverType === 'EMPRESA' ? 'EMPRESA' : 'PARTICULAR';
 
+        if (typeof window !== 'undefined') {
+            try {
+                window.localStorage.setItem('mobipro_driver_type', driverType);
+            } catch {}
+        }
+
         return {
-            id: profile.id,
-            fullName: cleanString(profile.nome_completo, cleanString(profile.nome, resolvedName)),
+            id: p.id,
+            fullName: cleanString(p.nome_completo, cleanString(p.nome, resolvedName)),
             displayName: resolvedName,
-            cpf: cleanString(profile.cpf, ''),
-            phone: cleanString(profile.telefone, cleanString(profile.phone, '')),
-            email: cleanString(profile.email, authData.user.email ?? ''),
-            avatarUrl: profile.avatar_url ?? null,
-            status: this.normalizeDriverStatus(profile.status),
-            workStatus: profile.work_status ?? "OFFLINE",
+            cpf: cleanString(p.cpf, ''),
+            phone: cleanString(p.telefone, cleanString(p.phone, '')),
+            email: cleanString(p.email, authData.user.email ?? ''),
+            avatarUrl: p.avatar_url ?? null,
+            status: this.normalizeDriverStatus(p.status),
+            workStatus: p.work_status ?? "OFFLINE",
             driverType,
-            rating: Number(profile.rating ?? 4.95),
-            totalRides: Number(profile.total_rides ?? 128),
+            rating: Number(p.rating ?? 4.95),
+            totalRides: Number(p.total_rides ?? 128),
             role: rawRole || (isAdmin ? 'admin' : 'motorista'),
             isAdmin,
             vehicle: {
@@ -124,7 +141,7 @@ export class ProfileService {
                 status: vStatus,
             },
             vehicleStatus: vStatus,
-            createdAt: profile.created_at || new Date().toISOString(),
+            createdAt: p.created_at || new Date().toISOString(),
         };
     }
 
@@ -135,10 +152,14 @@ export class ProfileService {
         const supabase = createClient();
         const { data: authData, error: authError } = await supabase.auth.getUser();
 
-        if (authError || !authData.user) {
-            if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined') {
+            try {
                 window.localStorage.setItem('mobipro_driver_type', driverType);
-            }
+                window.dispatchEvent(new CustomEvent('mobipro_driver_type_changed', { detail: driverType }));
+            } catch {}
+        }
+
+        if (authError || !authData.user) {
             return driverType;
         }
 
@@ -149,10 +170,30 @@ export class ProfileService {
             updated_at: new Date().toISOString()
         };
 
-        const { error: mError } = await supabase
+        let { error: mError } = await supabase
             .from("motoristas")
             .update(updates)
             .eq("id", authData.user.id);
+
+        if (mError) {
+            let attempts = 0;
+            while (mError && attempts < 4) {
+                attempts++;
+                const msg = mError.message || '';
+                const match =
+                    msg.match(/Could not find the '([^']+)' column/i) ||
+                    msg.match(/column "([^"]+)" of relation/i) ||
+                    msg.match(/column "([^"]+)" does not exist/i);
+
+                if (match && match[1] && updates[match[1]] !== undefined) {
+                    delete updates[match[1]];
+                    const retry = await supabase.from("motoristas").update(updates).eq("id", authData.user.id);
+                    mError = retry.error;
+                } else {
+                    break;
+                }
+            }
+        }
 
         if (mError) {
             console.warn('[ProfileService] Erro ao atualizar tipo no motoristas, tentando drivers:', mError);
@@ -160,10 +201,6 @@ export class ProfileService {
                 .from("drivers")
                 .update(updates)
                 .eq("id", authData.user.id);
-        }
-
-        if (typeof window !== 'undefined') {
-            window.localStorage.setItem('mobipro_driver_type', driverType);
         }
 
         return driverType;
@@ -218,7 +255,7 @@ export class ProfileService {
     }
 
     /**
-     * Atualiza as informações pessoais do motorista (nome de exibição, telefone, avatar)
+     * Atualiza as informações pessoais do motorista (nome de exibição, telefone, avatar, tipo de motorista)
      */
     public static async updateProfile(data: {
         displayName?: string;
@@ -230,8 +267,22 @@ export class ProfileService {
         const supabase = createClient();
         const { data: authData, error: authError } = await supabase.auth.getUser();
 
+        if (data.driverType && typeof window !== 'undefined') {
+            try {
+                window.localStorage.setItem('mobipro_driver_type', data.driverType);
+                window.dispatchEvent(new CustomEvent('mobipro_driver_type_changed', { detail: data.driverType }));
+            } catch {}
+        }
+
         if (authError || !authData.user) {
-            throw new Error(authError?.message ?? "Usuário não autenticado.");
+            return {
+                id: 'local',
+                nome: data.displayName,
+                nome_completo: data.fullName,
+                telefone: data.phone,
+                avatar_url: data.avatarUrl,
+                driver_type: data.driverType,
+            };
         }
 
         const updates: Record<string, any> = {};
@@ -248,16 +299,49 @@ export class ProfileService {
         if (data.avatarUrl !== undefined) {
             updates.avatar_url = data.avatarUrl;
         }
+        if (data.driverType !== undefined) {
+            updates.tipo_motorista = data.driverType;
+            updates.driver_type = data.driverType;
+            updates.perfil_motorista = data.driverType;
+        }
 
-        const { data: updated, error } = await supabase
+        let { data: updated, error } = await supabase
             .from("motoristas")
             .update(updates)
             .eq("id", authData.user.id)
             .select()
-            .single();
+            .maybeSingle();
 
         if (error) {
-            throw new Error(`Não foi possível atualizar o perfil: ${error.message}`);
+            let attempts = 0;
+            while (error && attempts < 4) {
+                attempts++;
+                const msg = error.message || '';
+                const match =
+                    msg.match(/Could not find the '([^']+)' column/i) ||
+                    msg.match(/column "([^"]+)" of relation/i) ||
+                    msg.match(/column "([^"]+)" does not exist/i);
+
+                if (match && match[1] && updates[match[1]] !== undefined) {
+                    delete updates[match[1]];
+                    const retry = await supabase.from("motoristas").update(updates).eq("id", authData.user.id).select().maybeSingle();
+                    error = retry.error;
+                    updated = retry.data;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if (error || !updated) {
+            console.warn('[ProfileService] Falha ao atualizar em motoristas, tentando drivers:', error);
+            const { data: dUpdated } = await supabase
+                .from("drivers")
+                .update(updates)
+                .eq("id", authData.user.id)
+                .select()
+                .maybeSingle();
+            updated = dUpdated;
         }
 
         return updated;
