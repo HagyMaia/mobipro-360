@@ -24,6 +24,7 @@ type DemoDriver = {
   nome_social?: string;
   nome_completo?: string;
   avatar_url?: string;
+  foto_status?: 'Aguardando aprovação' | 'Aprovado' | 'Reprovado';
   cpf: string;
   cnh: string;
   telefone: string;
@@ -33,6 +34,8 @@ type DemoDriver = {
   placa_veiculo: string;
   cor_veiculo?: string;
   categoria: string;
+  tipo_motorista?: 'PARTICULAR' | 'EMPRESA';
+  driver_type?: 'PARTICULAR' | 'EMPRESA';
   status: 'Pendente' | 'Aprovado' | 'Reprovado';
   vehicle_status?: 'Pendente' | 'Aprovado' | 'Reprovado';
   work_status?: 'ONLINE' | 'OFFLINE' | 'BUSY';
@@ -188,6 +191,9 @@ function ensureDemoDriverRecord(userId: string, email: string, password = 'demo1
       placa_veiculo: 'ABC1D23',
       cor_veiculo: 'Prata',
       categoria: 'POPULAR',
+      tipo_motorista: 'PARTICULAR',
+      driver_type: 'PARTICULAR',
+      foto_status: 'Aprovado',
       status,
       vehicle_status: 'Aprovado',
       work_status: 'OFFLINE',

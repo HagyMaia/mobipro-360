@@ -3,6 +3,7 @@
 export type DriverStatus = 'Pendente' | 'Aprovado' | 'Reprovado' | 'Bloqueado';
 export type DriverWorkStatus = 'OFFLINE' | 'ONLINE' | 'BUSY';
 export type DriverType = 'EMPRESA' | 'PARTICULAR';
+export type PhotoApprovalStatus = 'Aguardando aprovação' | 'Aprovado' | 'Reprovado';
 
 export type DocumentType = 'CNH' | 'CRLV' | 'PROFILE_PICTURE' | 'PROOF_OF_RESIDENCE';
 export type DocumentStatus = 'Pendente' | 'Aprovado' | 'Reprovado';
@@ -34,6 +35,8 @@ export interface DriverProfile {
     phone: string;
     email: string;
     avatarUrl?: string | null;
+    validAvatarUrl?: string | null;
+    fotoStatus?: PhotoApprovalStatus;
     status: DriverStatus;
     workStatus: DriverWorkStatus;
     driverType?: DriverType;

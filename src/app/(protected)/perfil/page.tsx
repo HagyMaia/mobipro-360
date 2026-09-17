@@ -25,7 +25,7 @@ import { SupportModal } from '@/components/Support/SupportModal';
 import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
 import { ProfileService } from '@/services/driver/ProfileService';
-import type { DriverProfile } from '@/types';
+import type { DriverProfile, PhotoApprovalStatus } from '@/types';
 
 export default function PerfilPage() {
   const { state, dispatch } = useApp();
@@ -43,16 +43,18 @@ export default function PerfilPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [fotoStatus, setFotoStatus] = useState<PhotoApprovalStatus>('Aguardando aprovação');
   const [driverType, setDriverType] = useState<'EMPRESA' | 'PARTICULAR'>('PARTICULAR');
 
   useEffect(() => {
     ProfileService.getCurrentProfile().then((p) => {
       if (p) {
         setDbProfile(p);
-        setFullName(p.fullName || p.displayName || 'hagy.maia19');
+        setFullName(p.fullName || p.displayName || 'Motorista');
         setPhone(p.phone || '(92) 99123-4567');
-        setEmail(p.email || user?.email || 'hagy.maia19@gmail.com');
+        setEmail(p.email || user?.email || 'motorista@srlogistica.com');
         setAvatarUrl(p.avatarUrl || null);
+        setFotoStatus(p.fotoStatus || 'Aguardando aprovação');
         setDriverType(p.driverType || 'PARTICULAR');
       } else if (user?.email) {
         setEmail(user.email);
@@ -79,7 +81,7 @@ export default function PerfilPage() {
     userEmail.startsWith('admin@')
   );
 
-  const displayName = fullName || dbProfile?.displayName || userEmail.split('@')[0] || 'hagy.maia19';
+  const displayName = fullName || dbProfile?.displayName || userEmail.split('@')[0] || 'Motorista';
   const rating = Number(dbProfile?.rating ?? mockProfile.rating ?? 5.0).toFixed(0);
   const totalRides = dbProfile?.totalRides ?? Number(mockProfile.totalRides ?? 48);
   const status = dbProfile?.status ?? 'Aprovado';
@@ -89,7 +91,7 @@ export default function PerfilPage() {
     setTimeout(() => setSuccessToast(null), 3500);
   }
 
-  // Upload de Foto de Perfil
+  // Upload de Foto de Perfil (Entra em "Aguardando aprovação" do administrador)
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -98,41 +100,18 @@ export default function PerfilPage() {
     reader.onload = async (event) => {
       const base64 = event.target?.result as string;
       setAvatarUrl(base64);
+      setFotoStatus('Aguardando aprovação');
       try {
         await ProfileService.updateProfile({ avatarUrl: base64 });
-        showToast('Foto de perfil atualizada!');
+        showToast('Foto enviada! Aguardando aprovação do administrador.');
       } catch (err) {
-        showToast('Foto atualizada no dispositivo!');
+        showToast('Foto enviada! Aguardando aprovação.');
       }
     };
     reader.readAsDataURL(file);
   };
 
-  // Alterar e Salvar Categoria do Motorista
-  const handleDriverTypeChange = async (newType: 'EMPRESA' | 'PARTICULAR') => {
-    setDriverType(newType);
-    try {
-      await ProfileService.updateDriverType(newType);
-      dispatch({
-        type: 'UPDATE_PROFILE',
-        profile: {
-          ...(state.profile || mockProfile),
-          name: fullName.trim() || state.profile?.name || 'Motorista',
-          phone: phone.trim() || state.profile?.phone || '',
-          driverType: newType,
-        }
-      });
-      showToast(
-        newType === 'EMPRESA'
-          ? '🏢 Categoria Empresa salva: Recebe apenas Voucher (100% repasse)!'
-          : '🚗 Categoria Particular salva: Recebe corridas particulares (-20%) e vouchers!'
-      );
-    } catch {
-      showToast('Categoria salva no dispositivo!');
-    }
-  };
-
-  // Salvar Dados Pessoais
+  // Salvar Dados Pessoais (Apenas dados editáveis pelo motorista)
   const handleSavePersonal = async () => {
     setLoading(true);
     try {
@@ -141,7 +120,6 @@ export default function PerfilPage() {
         displayName: fullName.trim(),
         phone: phone.trim(),
         avatarUrl: avatarUrl || undefined,
-        driverType: driverType,
       });
 
       dispatch({
@@ -150,7 +128,6 @@ export default function PerfilPage() {
           ...(state.profile || mockProfile),
           name: fullName.trim(),
           phone: phone.trim(),
-          driverType: driverType,
         }
       });
 
@@ -185,160 +162,182 @@ export default function PerfilPage() {
         </div>
 
         {/* Card 1: Informações do Usuário com Foto e Badges */}
-        <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-4 border border-slate-100 dark:border-dark-700/80 shadow-sm flex items-center gap-4">
-          <div className="relative shrink-0">
-            <div className="w-16 h-16 rounded-2xl ring-2 ring-[#F59E0B] p-0.5 overflow-hidden bg-slate-100 dark:bg-dark-800 flex items-center justify-center">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={displayName}
-                  className="w-full h-full object-cover rounded-xl"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 rounded-xl flex items-center justify-center text-white font-black text-xl">
-                  {displayName.charAt(0).toUpperCase()}
-                </div>
-              )}
+        <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-4 border border-slate-100 dark:border-dark-700/80 shadow-sm space-y-3">
+          <div className="flex items-center gap-4">
+            <div className="relative shrink-0">
+              <div className="w-16 h-16 rounded-2xl ring-2 ring-[#F59E0B] p-0.5 overflow-hidden bg-slate-100 dark:bg-dark-800 flex items-center justify-center">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={displayName}
+                    className="w-full h-full object-cover rounded-xl"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 rounded-xl flex items-center justify-center text-white font-black text-xl">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+
+              {/* Badge de Avaliação */}
+              <div className="absolute -bottom-1 -right-1 bg-slate-950 text-amber-400 text-[10px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow border border-amber-400/30">
+                <Star size={10} className="fill-amber-400" />
+                <span>{rating}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Trocar foto"
+                className="absolute -top-1 -left-1 w-5 h-5 bg-[#F59E0B] text-slate-950 rounded-full flex items-center justify-center shadow hover:scale-110 active:scale-95 transition"
+                title="Trocar Foto"
+              >
+                <Camera size={11} />
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handlePhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
             </div>
 
-            {/* Badge de Avaliação */}
-            <div className="absolute -bottom-1 -right-1 bg-slate-950 text-amber-400 text-[10px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow border border-amber-400/30">
-              <Star size={10} className="fill-amber-400" />
-              <span>{rating}</span>
-            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base font-black text-slate-900 dark:text-white truncate">
+                {displayName}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate mb-1.5">
+                {userEmail}
+              </p>
 
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Trocar foto"
-              className="absolute -top-1 -left-1 w-5 h-5 bg-[#F59E0B] text-slate-950 rounded-full flex items-center justify-center shadow hover:scale-110 active:scale-95 transition"
-              title="Trocar Foto"
-            >
-              <Camera size={11} />
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handlePhotoUpload}
-              accept="image/*"
-              className="hidden"
-            />
+              <div className="flex flex-wrap items-center gap-1.5">
+                {/* Status da Conta */}
+                {isAdmin ? (
+                  <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                    <Shield size={11} />
+                    <span>Administrador</span>
+                  </span>
+                ) : status === 'Pendente' ? (
+                  <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                    <Clock size={11} />
+                    <span>Pendente de Aprovação</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                    <ShieldCheck size={11} />
+                    <span>Aprovado</span>
+                  </span>
+                )}
+
+                {/* Status de Aprovação da Foto */}
+                {avatarUrl && (
+                  fotoStatus === 'Aguardando aprovação' ? (
+                    <span className="inline-flex items-center gap-1 bg-amber-500/15 border border-amber-500/40 text-amber-800 dark:text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse" title="Foto pendente de aprovação pelo administrador">
+                      <Clock size={10} />
+                      <span>Aguardando aprovação</span>
+                    </span>
+                  ) : fotoStatus === 'Reprovado' ? (
+                    <span className="inline-flex items-center gap-1 bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400 text-[10px] font-black px-2 py-0.5 rounded-full" title="Foto recusada pelo administrador">
+                      <span>✕ Foto Recusada</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full" title="Foto aprovada pelo administrador">
+                      <CheckCircle2 size={10} />
+                      <span>Foto Aprovada</span>
+                    </span>
+                  )
+                )}
+
+                {/* Tag Exclusiva da Categoria Atribuída */}
+                <span className={`inline-flex items-center gap-1 text-[11px] font-black px-2 py-0.5 rounded-full border ${
+                  driverType === 'EMPRESA'
+                    ? 'bg-teal-500/10 border-teal-500/30 text-teal-700 dark:text-teal-400'
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400'
+                }`}>
+                  {driverType === 'EMPRESA' ? '🏢 Motorista Empresa' : '🚗 Motorista Particular'}
+                </span>
+
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-medium ml-auto">
+                  {totalRides} viagens
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex-1 min-w-0">
-            <h2 className="text-base font-black text-slate-900 dark:text-white truncate">
-              {displayName}
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 truncate mb-1.5">
-              {userEmail}
-            </p>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {isAdmin ? (
-                <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                  <Shield size={11} />
-                  <span>Administrador</span>
-                </span>
-              ) : status === 'Pendente' ? (
-                <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                  <Clock size={11} />
-                  <span>Pendente de Aprovação</span>
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                  <ShieldCheck size={11} />
-                  <span>Aprovado</span>
-                </span>
-              )}
-
-              {/* Tag de Perfil do Motorista */}
-              <span className={`inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border ${
-                driverType === 'EMPRESA'
-                  ? 'bg-teal-500/10 border-teal-500/30 text-teal-700 dark:text-teal-400'
-                  : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400'
-              }`}>
-                {driverType === 'EMPRESA' ? '🏢 Empresa (Voucher)' : '🚗 Particular (-20%)'}
-              </span>
-
-              <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                {totalRides} viagens
+          {/* Aviso contextual de status da foto de perfil */}
+          {avatarUrl && fotoStatus === 'Aguardando aprovação' && (
+            <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <Clock size={15} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <span>
+                <strong>Foto de perfil em análise:</strong> A imagem aparece como <em>“Aguardando aprovação”</em> e só será considerada válida no sistema após validação do administrador no site principal.
               </span>
             </div>
-          </div>
+          )}
+          {avatarUrl && fotoStatus === 'Reprovado' && (
+            <div className="p-2.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs text-red-700 dark:text-red-400 flex items-start gap-2">
+              <span className="font-black text-sm leading-none shrink-0 mt-0.5">✕</span>
+              <span>
+                <strong>Foto recusada pelo administrador:</strong> Por favor, toque no ícone da câmera para enviar uma nova foto de perfil nítida de frente e bem iluminada.
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Card: CATEGORIA DO MOTORISTA (PARTICULAR vs EMPRESA) COM TROCA DIRETA */}
-        <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-5 border border-slate-100 dark:border-dark-700/80 shadow-sm space-y-3.5">
+        {/* Card: CATEGORIA DO MOTORISTA (EXIBIÇÃO EXCLUSIVA DA CATEGORIA DEFINIDA PELO ADMIN) */}
+        <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-5 border border-slate-100 dark:border-dark-700/80 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
               CATEGORIA DO MOTORISTA
             </h3>
             <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 px-2.5 py-0.5 rounded-full">
-              Toque para Alternar
+              Definida pela Central
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {/* Opção 1: Motorista Particular */}
-            <button
-              type="button"
-              onClick={() => handleDriverTypeChange('PARTICULAR')}
-              className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
-                driverType === 'PARTICULAR'
-                  ? 'border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30 shadow-sm'
-                  : 'border-slate-200 dark:border-dark-700 bg-slate-50/70 dark:bg-dark-800/60 opacity-80 hover:opacity-100'
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                    🚗 Particular
+          {/* Se definido como Particular, a opção Empresa NÃO aparece no aplicativo.
+              Se definido como Empresa, a opção Particular NÃO aparece. */}
+          {driverType === 'EMPRESA' ? (
+            <div className="p-4 rounded-2xl border border-teal-500/30 bg-teal-500/10 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🏢</span>
+                  <span className="text-base font-black text-slate-900 dark:text-white">
+                    Motorista Empresa
                   </span>
-                  {driverType === 'PARTICULAR' && (
-                    <span className="bg-amber-500 text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
-                      Ativo
-                    </span>
-                  )}
                 </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                  Recebe <strong>corridas particulares</strong> e <strong>corridas em voucher</strong>.
-                </p>
+                <span className="bg-teal-500 text-slate-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-sm">
+                  Categoria Ativa
+                </span>
               </div>
-              <div className="mt-2.5 pt-2 border-t border-amber-500/20 text-[10px] font-bold text-amber-700 dark:text-amber-400">
-                ⚡ Retenção: 20% em corridas particulares
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                Você está cadastrado como <strong>Motorista Empresa</strong>. Seu aplicativo recebe <strong>exclusivamente corridas em voucher corporativo</strong> com <strong>100% de repasse integral</strong> (taxa zero).
+              </p>
+              <div className="pt-2 border-t border-teal-500/20 text-[11px] text-teal-700 dark:text-teal-400 font-semibold">
+                🔒 Esta categoria é vinculada ao seu cadastro e só pode ser alterada pelo administrador no painel central.
               </div>
-            </button>
-
-            {/* Opção 2: Motorista de Empresa */}
-            <button
-              type="button"
-              onClick={() => handleDriverTypeChange('EMPRESA')}
-              className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
-                driverType === 'EMPRESA'
-                  ? 'border-teal-500 bg-teal-500/10 ring-2 ring-teal-500/30 shadow-sm'
-                  : 'border-slate-200 dark:border-dark-700 bg-slate-50/70 dark:bg-dark-800/60 opacity-80 hover:opacity-100'
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                    🏢 Empresa
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🚗</span>
+                  <span className="text-base font-black text-slate-900 dark:text-white">
+                    Motorista Particular
                   </span>
-                  {driverType === 'EMPRESA' && (
-                    <span className="bg-teal-500 text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
-                      Ativo
-                    </span>
-                  )}
                 </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                  Recebe <strong>apenas corridas em voucher</strong> corporativo de empresas conveniadas.
-                </p>
+                <span className="bg-amber-500 text-slate-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-sm">
+                  Categoria Ativa
+                </span>
               </div>
-              <div className="mt-2.5 pt-2 border-t border-teal-500/20 text-[10px] font-bold text-teal-700 dark:text-teal-400">
-                🛡️ Repasse Integral: 100% (0% taxa)
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                Você está cadastrado como <strong>Motorista Particular</strong>. Seu aplicativo recebe <strong>corridas particulares</strong> (com retenção de 20%) e <strong>corridas em voucher corporativo</strong>.
+              </p>
+              <div className="pt-2 border-t border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-400 font-semibold">
+                🔒 Esta categoria é vinculada ao seu cadastro e só pode ser alterada pelo administrador no painel central.
               </div>
-            </button>
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Card 2: DADOS PESSOAIS (Formulário com Botão Salvar Alterações) */}

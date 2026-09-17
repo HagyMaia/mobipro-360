@@ -36,6 +36,18 @@ export class ProfileService {
         return map[raw] ?? 'Pendente';
     }
 
+    public static normalizePhotoStatus(value: unknown, hasAvatar: boolean): 'Aguardando aprovação' | 'Aprovado' | 'Reprovado' {
+        if (!hasAvatar) return 'Aguardando aprovação';
+        const raw = String(value ?? '').trim().toLowerCase();
+        if (raw.includes('aprov') || raw.includes('approved') || raw.includes('valida') || raw.includes('valid')) {
+            return 'Aprovado';
+        }
+        if (raw.includes('reprov') || raw.includes('rejeit') || raw.includes('recus') || raw.includes('reject')) {
+            return 'Reprovado';
+        }
+        return 'Aguardando aprovação';
+    }
+
     /**
      * Obtém o perfil completo do motorista autenticado
      */
@@ -98,13 +110,14 @@ export class ProfileService {
             authData.user.app_metadata?.role === 'admin' ||
             authData.user.app_metadata?.claims_admin === true;
 
+        // Categoria definida exclusivamente pelo administrador
         const rawDriverType = cleanString(
             p.driver_type,
             cleanString(
                 p.tipo_motorista,
                 cleanString(
                     p.perfil_motorista,
-                    typeof window !== 'undefined' ? (window.localStorage.getItem('mobipro_driver_type') || 'PARTICULAR') : 'PARTICULAR'
+                    cleanString(p.categoria_motorista, 'PARTICULAR')
                 )
             )
         ).toUpperCase();
@@ -116,6 +129,10 @@ export class ProfileService {
             } catch {}
         }
 
+        const rawAvatar = p.avatar_url ?? null;
+        const fotoStatus = this.normalizePhotoStatus(p.foto_status || p.avatar_status, Boolean(rawAvatar));
+        const validAvatarUrl = fotoStatus === 'Aprovado' ? rawAvatar : null;
+
         return {
             id: p.id,
             fullName: cleanString(p.nome_completo, cleanString(p.nome, resolvedName)),
@@ -123,7 +140,9 @@ export class ProfileService {
             cpf: cleanString(p.cpf, ''),
             phone: cleanString(p.telefone, cleanString(p.phone, '')),
             email: cleanString(p.email, authData.user.email ?? ''),
-            avatarUrl: p.avatar_url ?? null,
+            avatarUrl: rawAvatar,
+            validAvatarUrl,
+            fotoStatus,
             status: this.normalizeDriverStatus(p.status),
             workStatus: p.work_status ?? "OFFLINE",
             driverType,
@@ -146,67 +165,6 @@ export class ProfileService {
     }
 
     /**
-     * Atualiza o tipo/perfil do motorista (EMPRESA ou PARTICULAR)
-     */
-    public static async updateDriverType(driverType: 'EMPRESA' | 'PARTICULAR') {
-        const supabase = createClient();
-        const { data: authData, error: authError } = await supabase.auth.getUser();
-
-        if (typeof window !== 'undefined') {
-            try {
-                window.localStorage.setItem('mobipro_driver_type', driverType);
-                window.dispatchEvent(new CustomEvent('mobipro_driver_type_changed', { detail: driverType }));
-            } catch {}
-        }
-
-        if (authError || !authData.user) {
-            return driverType;
-        }
-
-        const updates: Record<string, any> = {
-            tipo_motorista: driverType,
-            driver_type: driverType,
-            perfil_motorista: driverType,
-            updated_at: new Date().toISOString()
-        };
-
-        let { error: mError } = await supabase
-            .from("motoristas")
-            .update(updates)
-            .eq("id", authData.user.id);
-
-        if (mError) {
-            let attempts = 0;
-            while (mError && attempts < 4) {
-                attempts++;
-                const msg = mError.message || '';
-                const match =
-                    msg.match(/Could not find the '([^']+)' column/i) ||
-                    msg.match(/column "([^"]+)" of relation/i) ||
-                    msg.match(/column "([^"]+)" does not exist/i);
-
-                if (match && match[1] && updates[match[1]] !== undefined) {
-                    delete updates[match[1]];
-                    const retry = await supabase.from("motoristas").update(updates).eq("id", authData.user.id);
-                    mError = retry.error;
-                } else {
-                    break;
-                }
-            }
-        }
-
-        if (mError) {
-            console.warn('[ProfileService] Erro ao atualizar tipo no motoristas, tentando drivers:', mError);
-            await supabase
-                .from("drivers")
-                .update(updates)
-                .eq("id", authData.user.id);
-        }
-
-        return driverType;
-    }
-
-    /**
      * Define o tipo/perfil do motorista exclusivamente via painel de administração (EMPRESA ou PARTICULAR)
      */
     public static async setDriverTypeByAdmin(driverId: string, driverType: 'EMPRESA' | 'PARTICULAR') {
@@ -215,6 +173,7 @@ export class ProfileService {
             tipo_motorista: driverType,
             driver_type: driverType,
             perfil_motorista: driverType,
+            categoria_motorista: driverType,
             updated_at: new Date().toISOString()
         };
 
@@ -255,24 +214,48 @@ export class ProfileService {
     }
 
     /**
-     * Atualiza as informações pessoais do motorista (nome de exibição, telefone, avatar, tipo de motorista)
+     * Atualiza o status de aprovação da foto do motorista pelo administrador ('Aprovado' ou 'Reprovado')
+     */
+    public static async updateDriverPhotoStatusByAdmin(
+        driverId: string,
+        status: 'Aprovado' | 'Reprovado'
+    ) {
+        const supabase = createClient();
+        const updates: Record<string, any> = {
+            foto_status: status,
+            avatar_status: status,
+            updated_at: new Date().toISOString(),
+        };
+
+        let { error } = await supabase
+            .from("motoristas")
+            .update(updates)
+            .eq("id", driverId);
+
+        if (error) {
+            console.warn('[ProfileService] Erro ao atualizar status da foto no motoristas, tentando drivers:', error);
+            await supabase
+                .from("drivers")
+                .update(updates)
+                .eq("id", driverId);
+        }
+
+        return status;
+    }
+
+    /**
+     * Atualiza as informações pessoais do motorista (nome de exibição, telefone, avatar).
+     * Nota: A alteração de foto entra automaticamente em "Aguardando aprovação".
+     * A categoria não pode ser alterada pelo motorista no aplicativo.
      */
     public static async updateProfile(data: {
         displayName?: string;
         fullName?: string;
         phone?: string;
         avatarUrl?: string;
-        driverType?: 'EMPRESA' | 'PARTICULAR';
     }) {
         const supabase = createClient();
         const { data: authData, error: authError } = await supabase.auth.getUser();
-
-        if (data.driverType && typeof window !== 'undefined') {
-            try {
-                window.localStorage.setItem('mobipro_driver_type', data.driverType);
-                window.dispatchEvent(new CustomEvent('mobipro_driver_type_changed', { detail: data.driverType }));
-            } catch {}
-        }
 
         if (authError || !authData.user) {
             return {
@@ -281,7 +264,7 @@ export class ProfileService {
                 nome_completo: data.fullName,
                 telefone: data.phone,
                 avatar_url: data.avatarUrl,
-                driver_type: data.driverType,
+                foto_status: 'Aguardando aprovação',
             };
         }
 
@@ -298,11 +281,9 @@ export class ProfileService {
         }
         if (data.avatarUrl !== undefined) {
             updates.avatar_url = data.avatarUrl;
-        }
-        if (data.driverType !== undefined) {
-            updates.tipo_motorista = data.driverType;
-            updates.driver_type = data.driverType;
-            updates.perfil_motorista = data.driverType;
+            updates.pending_avatar_url = data.avatarUrl;
+            updates.foto_status = 'Aguardando aprovação';
+            updates.avatar_status = 'Aguardando aprovação';
         }
 
         let { data: updated, error } = await supabase
@@ -346,6 +327,7 @@ export class ProfileService {
 
         return updated;
     }
+
 
     /**
      * Solicita alteração do veículo - Entra em status Pendente para aprovação da equipe SR Logística

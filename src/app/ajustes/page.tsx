@@ -36,41 +36,17 @@ export default function AjustesPage() {
   const [rejectCash, setRejectCash] = useState(state.filters.rejectCash);
   const [minRating, setMinRating] = useState(state.filters.minRating);
 
-  // Estados de Categoria Operacional
+  // Categoria Operacional (Definida exclusivamente pelo Admin)
   const currentDriverType = state.profile?.driverType || (
     typeof window !== 'undefined' ? (window.localStorage.getItem('mobipro_driver_type') as 'EMPRESA' | 'PARTICULAR') || 'PARTICULAR' : 'PARTICULAR'
   );
   const [driverType, setDriverType] = useState<'EMPRESA' | 'PARTICULAR'>(currentDriverType);
-  const [categoryMsg, setCategoryMsg] = useState('');
 
   useEffect(() => {
     if (state.profile?.driverType) {
       setDriverType(state.profile.driverType);
     }
   }, [state.profile?.driverType]);
-
-  const handleDriverTypeChange = async (newType: 'EMPRESA' | 'PARTICULAR') => {
-    setDriverType(newType);
-    try {
-      await ProfileService.updateDriverType(newType);
-      dispatch({
-        type: 'UPDATE_PROFILE',
-        profile: {
-          ...state.profile,
-          driverType: newType,
-        }
-      });
-      setCategoryMsg(
-        newType === 'EMPRESA'
-          ? '🏢 Categoria Empresa salva: Recebe apenas Voucher (100% repasse)!'
-          : '🚗 Categoria Particular salva: Recebe corridas particulares (-20%) e vouchers!'
-      );
-      setTimeout(() => setCategoryMsg(''), 4000);
-    } catch {
-      setCategoryMsg('Categoria salva no dispositivo!');
-      setTimeout(() => setCategoryMsg(''), 3000);
-    }
-  };
 
   // Estados de Biometria
   const [biometricAvailable, setBiometricAvailable] = useState(false);
@@ -155,7 +131,7 @@ export default function AjustesPage() {
 
       {/* CONTEÚDO */}
       <main className="p-4 space-y-4 flex-1">
-        {/* CATEGORIA DO MOTORISTA (EMPRESA vs PARTICULAR) */}
+        {/* CATEGORIA DO MOTORISTA (DEFINIDA EXCLUSIVAMENTE PELO ADMINISTRADOR) */}
         <div>
           <SectionTitle className="mb-2.5 text-xs font-bold text-slate-500 dark:text-slate-400">
             Categoria Operacional do Motorista
@@ -164,59 +140,59 @@ export default function AjustesPage() {
             <div className="flex items-center justify-between mb-1">
               <div>
                 <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                  Modalidade de Recebimento
+                  Modalidade de Atendimento
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Define o tipo de corridas que tocarão no seu aplicativo
+                  Definida exclusivamente pela administração central da frota
                 </p>
               </div>
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 px-2.5 py-0.5 rounded-full">
+                Fixada pela Central
+              </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleDriverTypeChange('PARTICULAR')}
-                className={`flex flex-col p-3 rounded-2xl text-left border transition ${
-                  driverType === 'PARTICULAR'
-                    ? 'border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30'
-                    : 'border-slate-200 dark:border-dark-700 bg-slate-100/70 dark:bg-dark-800/60 opacity-75 hover:opacity-100'
-                }`}
-              >
-                <div className="flex items-center justify-between w-full mb-1">
-                  <span className="text-xs font-black text-slate-900 dark:text-white">🚗 Particular</span>
-                  {driverType === 'PARTICULAR' && (
-                    <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">Ativo</span>
-                  )}
+            {/* Renderização Exclusiva: Se Particular, Empresa NÃO aparece. Se Empresa, Particular NÃO aparece. */}
+            {driverType === 'EMPRESA' ? (
+              <div className="p-4 rounded-2xl border border-teal-500/30 bg-teal-500/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🏢</span>
+                    <span className="text-sm font-black text-teal-700 dark:text-teal-400">
+                      Motorista Empresa
+                    </span>
+                  </div>
+                  <span className="bg-teal-500 text-slate-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-sm">
+                    Atribuído
+                  </span>
                 </div>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
-                  Recebe <strong>Particular</strong> e <strong>Voucher</strong> (taxa 20% no particular)
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleDriverTypeChange('EMPRESA')}
-                className={`flex flex-col p-3 rounded-2xl text-left border transition ${
-                  driverType === 'EMPRESA'
-                    ? 'border-teal-500 bg-teal-500/10 ring-2 ring-teal-500/30'
-                    : 'border-slate-200 dark:border-dark-700 bg-slate-100/70 dark:bg-dark-800/60 opacity-75 hover:opacity-100'
-                }`}
-              >
-                <div className="flex items-center justify-between w-full mb-1">
-                  <span className="text-xs font-black text-slate-900 dark:text-white">🏢 Empresa</span>
-                  {driverType === 'EMPRESA' && (
-                    <span className="bg-teal-500 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">Ativo</span>
-                  )}
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Habilitado exclusivamente para receber <strong>corridas em voucher corporativo</strong> de empresas conveniadas com repasse integral (100% repasse, taxa 0%).
+                </p>
+                <div className="pt-2 border-t border-teal-500/20 text-[11px] text-teal-600 dark:text-teal-400 font-semibold flex items-center gap-1.5">
+                  <Info size={13} />
+                  <span>Apenas o administrador pode alterar sua categoria no painel central.</span>
                 </div>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
-                  Recebe <strong>Apenas Voucher</strong> (100% Repasse Integral, taxa 0%)
-                </span>
-              </button>
-            </div>
-
-            {categoryMsg && (
-              <div className="p-2.5 rounded-xl bg-brand/10 border border-brand/20 text-xs font-bold text-brand-700 dark:text-brand text-center animate-in fade-in">
-                {categoryMsg}
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🚗</span>
+                    <span className="text-sm font-black text-amber-700 dark:text-amber-400">
+                      Motorista Particular
+                    </span>
+                  </div>
+                  <span className="bg-amber-500 text-slate-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-sm">
+                    Atribuído
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Habilitado para receber <strong>corridas particulares</strong> (taxa de retenção de 20%) e <strong>corridas em voucher corporativo</strong>.
+                </p>
+                <div className="pt-2 border-t border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-1.5">
+                  <Info size={13} />
+                  <span>Apenas o administrador pode alterar sua categoria no painel central.</span>
+                </div>
               </div>
             )}
           </Card>
