@@ -135,6 +135,8 @@ export default function AdminPage() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
 
+  const [isAdminUser, setIsAdminUser] = useState<boolean | null>(null);
+
   const loadDrivers = async () => {
     setLoadingDrivers(true);
     let { data, error: driversError } = await supabase
@@ -246,8 +248,23 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    loadDrivers();
-    loadAllRides();
+    async function verifyAdmin() {
+      try {
+        const p = await ProfileService.getCurrentProfile();
+        if (p?.isAdmin) {
+          setIsAdminUser(true);
+          loadDrivers();
+          loadAllRides();
+        } else {
+          setIsAdminUser(false);
+          setLoadingDrivers(false);
+        }
+      } catch {
+        setIsAdminUser(false);
+        setLoadingDrivers(false);
+      }
+    }
+    verifyAdmin();
   }, []);
 
   const updateDriverStatus = async (
@@ -681,6 +698,29 @@ export default function AdminPage() {
     link.download = `relatorio_geral_corridas_sr_${Date.now()}.csv`;
     link.click();
   };
+
+  if (isAdminUser === false) {
+    return (
+      <div className="min-h-screen bg-[color:var(--bg)] p-6 flex flex-col items-center justify-center text-center font-sans">
+        <div className="w-16 h-16 rounded-3xl bg-amber-500/20 text-amber-500 flex items-center justify-center mb-4">
+          <Shield size={32} />
+        </div>
+        <h1 className="text-xl font-black text-slate-900 dark:text-white mb-2">
+          Acesso Restrito
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mb-6">
+          Este painel de controle operacional é de acesso exclusivo para a administração central da SR Logística.
+        </p>
+        <Link
+          href="/perfil"
+          className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-3 px-6 rounded-2xl text-sm transition shadow-lg shadow-amber-500/25"
+        >
+          Voltar ao Perfil
+        </Link>
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col space-y-6 p-4 text-slate-900 dark:text-slate-100 min-h-screen bg-[color:var(--bg)] pb-28 transition-colors select-none font-sans">

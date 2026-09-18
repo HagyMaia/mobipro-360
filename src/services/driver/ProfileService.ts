@@ -112,12 +112,12 @@ export class ProfileService {
         );
         const userEmail = (authData.user.email ?? '').toLowerCase();
         const isAdmin =
-            rawRole.toLowerCase() === 'admin' ||
-            rawRole.toLowerCase() === 'administrador' ||
             p.is_admin === true ||
             p.is_admin === 'true' ||
             p.admin === true ||
-            userEmail === 'hagy.maia19@gmail.com' ||
+            rawRole.toLowerCase() === 'admin' ||
+            rawRole.toLowerCase() === 'administrador' ||
+            userEmail === 'srlogistica21@gmail.com' ||
             userEmail.startsWith('admin@') ||
             authData.user.user_metadata?.role === 'admin' ||
             authData.user.user_metadata?.is_admin === true ||
@@ -152,43 +152,61 @@ export class ProfileService {
         // Status de Análise de Dados Pessoais
         let personalDataStatus = this.normalizeDataStatus(p.dados_pessoais_status || p.personal_data_status);
         let pendingPersonalData: PersonalData | null = null;
-        if (p.pending_personal_data) {
+        if (p.pending_personal_data && p.solicitacao_pendente !== false) {
             try {
                 pendingPersonalData = typeof p.pending_personal_data === 'string'
                     ? JSON.parse(p.pending_personal_data)
                     : p.pending_personal_data;
             } catch {}
         }
-        if (typeof window !== 'undefined' && !pendingPersonalData) {
-            try {
-                const cached = window.localStorage.getItem(`mobipro_pending_personal_${p.id}`);
-                if (cached) {
-                    pendingPersonalData = JSON.parse(cached);
-                    const cachedStatus = window.localStorage.getItem(`mobipro_personal_status_${p.id}`);
-                    if (cachedStatus) personalDataStatus = this.normalizeDataStatus(cachedStatus);
-                }
-            } catch {}
+        if (typeof window !== 'undefined') {
+            if (p.solicitacao_pendente === false || personalDataStatus === 'Aprovado') {
+                try {
+                    window.localStorage.removeItem(`mobipro_pending_personal_${p.id}`);
+                    window.localStorage.removeItem(`mobipro_personal_status_${p.id}`);
+                } catch {}
+                pendingPersonalData = null;
+                personalDataStatus = 'Aprovado';
+            } else if (!pendingPersonalData) {
+                try {
+                    const cached = window.localStorage.getItem(`mobipro_pending_personal_${p.id}`);
+                    if (cached) {
+                        pendingPersonalData = JSON.parse(cached);
+                        const cachedStatus = window.localStorage.getItem(`mobipro_personal_status_${p.id}`);
+                        if (cachedStatus) personalDataStatus = this.normalizeDataStatus(cachedStatus);
+                    }
+                } catch {}
+            }
         }
 
         // Status de Análise de Dados da Empresa
         let companyDataStatus = this.normalizeDataStatus(p.dados_empresa_status || p.company_data_status);
         let pendingCompanyData: CompanyData | null = null;
-        if (p.pending_company_data) {
+        if (p.pending_company_data && p.solicitacao_pendente !== false) {
             try {
                 pendingCompanyData = typeof p.pending_company_data === 'string'
                     ? JSON.parse(p.pending_company_data)
                     : p.pending_company_data;
             } catch {}
         }
-        if (typeof window !== 'undefined' && !pendingCompanyData) {
-            try {
-                const cached = window.localStorage.getItem(`mobipro_pending_company_${p.id}`);
-                if (cached) {
-                    pendingCompanyData = JSON.parse(cached);
-                    const cachedStatus = window.localStorage.getItem(`mobipro_company_status_${p.id}`);
-                    if (cachedStatus) companyDataStatus = this.normalizeDataStatus(cachedStatus);
-                }
-            } catch {}
+        if (typeof window !== 'undefined') {
+            if (p.solicitacao_pendente === false || companyDataStatus === 'Aprovado') {
+                try {
+                    window.localStorage.removeItem(`mobipro_pending_company_${p.id}`);
+                    window.localStorage.removeItem(`mobipro_company_status_${p.id}`);
+                } catch {}
+                pendingCompanyData = null;
+                companyDataStatus = 'Aprovado';
+            } else if (!pendingCompanyData) {
+                try {
+                    const cached = window.localStorage.getItem(`mobipro_pending_company_${p.id}`);
+                    if (cached) {
+                        pendingCompanyData = JSON.parse(cached);
+                        const cachedStatus = window.localStorage.getItem(`mobipro_company_status_${p.id}`);
+                        if (cachedStatus) companyDataStatus = this.normalizeDataStatus(cachedStatus);
+                    }
+                } catch {}
+            }
         }
 
         const companyData: CompanyData = {

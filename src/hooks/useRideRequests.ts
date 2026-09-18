@@ -481,7 +481,7 @@ export function useRideRequests(
             }
         }
 
-        // 4. Busca periódica (Polling a cada 2.5 segundos nas duas tabelas)
+        // 4. Busca periódica (Polling paralelo a cada 2.5 segundos nas duas tabelas 'rides' e 'corridas')
         const fetchPendingRides = async () => {
             try {
                 // Se temos uma oferta em exibição, verifica se ela ainda é válida ou se foi cancelada
@@ -498,27 +498,27 @@ export function useRideRequests(
                     }
                 }
 
-                // Tabela 1: rides
-                const { data: ridesData } = await supabase
-                    .from('rides')
-                    .select('*')
-                    .order('created_at', { ascending: false })
-                    .limit(10);
+                // Busca as corridas mais recentes das duas tabelas em paralelo
+                const [ridesRes, corridasRes] = await Promise.all([
+                    supabase
+                        .from('rides')
+                        .select('*')
+                        .order('created_at', { ascending: false })
+                        .limit(25),
+                    supabase
+                        .from('corridas')
+                        .select('*')
+                        .order('created_at', { ascending: false })
+                        .limit(25)
+                ]);
 
-                if (ridesData && ridesData.length > 0) {
-                    processCandidateRides(ridesData);
-                    return;
-                }
+                const combinedRides = [
+                    ...(ridesRes.data || []),
+                    ...(corridasRes.data || [])
+                ].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
-                // Tabela 2: corridas
-                const { data: corridasData } = await supabase
-                    .from('corridas')
-                    .select('*')
-                    .order('created_at', { ascending: false })
-                    .limit(10);
-
-                if (corridasData && corridasData.length > 0) {
-                    processCandidateRides(corridasData);
+                if (combinedRides.length > 0) {
+                    processCandidateRides(combinedRides);
                 }
             } catch (err) {
                 console.warn('[useRideRequests] Erro no polling de corridas:', err);

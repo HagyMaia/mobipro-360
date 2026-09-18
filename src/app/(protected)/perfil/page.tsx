@@ -421,7 +421,7 @@ export default function PerfilPage() {
 
   const rating = dbProfile?.rating ?? 4.95;
   const totalRides = dbProfile?.totalRides ?? 128;
-  const isAdmin = Boolean(dbProfile?.isAdmin || (user?.email && user.email.includes('admin')));
+  const isAdmin = Boolean(dbProfile?.isAdmin);
 
   return (
     <div className="min-h-screen bg-[color:var(--bg)] pb-24 font-sans text-slate-900 dark:text-slate-100 select-none transition-colors">
@@ -1160,33 +1160,35 @@ export default function PerfilPage() {
             <ExternalLink size={16} className="text-slate-400" />
           </a>
 
-          {/* Painel Administrativo Central Web (admin.html) */}
-          <a
-            href="https://www.srlogisticatrasporte.com.br/admin.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-4 flex items-center justify-between hover:bg-amber-500/5 dark:hover:bg-amber-500/10 transition"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                <Shield size={18} />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                    Painel Administrativo Web
-                  </h4>
-                  <span className="bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
-                    Web
-                  </span>
+          {/* Painel Administrativo Central Web (admin.html) - Somente para Administradores */}
+          {isAdmin && (
+            <a
+              href="https://www.srlogisticatrasporte.com.br/admin.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-4 flex items-center justify-between hover:bg-amber-500/5 dark:hover:bg-amber-500/10 transition"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Shield size={18} />
                 </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
-                  srlogisticatrasporte.com.br/admin.html
-                </p>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
+                      Painel Administrativo Web
+                    </h4>
+                    <span className="bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
+                      Web
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                    srlogisticatrasporte.com.br/admin.html
+                  </p>
+                </div>
               </div>
-            </div>
-            <ExternalLink size={16} className="text-amber-500" />
-          </a>
+              <ExternalLink size={16} className="text-amber-500" />
+            </a>
+          )}
 
           {/* Privacidade e Segurança */}
           <Link
