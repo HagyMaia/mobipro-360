@@ -78,7 +78,7 @@ export default function HomePage() {
 
           const { data: motorista, error: dbError } = await supabase
             .from('motoristas')
-            .select('nome, nome_social, nome_completo, status, work_status, driver_type, tipo_motorista')
+            .select('id, nome, nome_social, nome_completo, status, work_status, categoria, categoria_tipo, recebe_voucher, recebe_particular')
             .eq('id', user.id)
             .maybeSingle();
 

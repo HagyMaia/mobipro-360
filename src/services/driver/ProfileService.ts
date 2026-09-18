@@ -124,22 +124,24 @@ export class ProfileService {
             authData.user.app_metadata?.role === 'admin' ||
             authData.user.app_metadata?.claims_admin === true;
 
-        // Categoria definida exclusivamente pelo administrador
-        // Se QUALQUER uma das colunas for 'EMPRESA', o perfil é 'EMPRESA'
-        const candidateTypes = [
-            p.tipo_motorista,
-            p.driver_type,
-            p.perfil_motorista,
-            p.categoria_motorista
-        ].map(v => cleanString(v, '').toUpperCase());
+        // Categoria definida exclusivamente pelo administrador (Site / Central)
+        // Reconhece categoria_tipo, categoria, tipo_motorista, driver_type e flags de despacho
+        const isEmpresa =
+            cleanString(p.categoria_tipo, '').toLowerCase() === 'empresa' ||
+            cleanString(p.categoria, '').toLowerCase() === 'empresa' ||
+            cleanString(p.tipo_motorista, '').toUpperCase() === 'EMPRESA' ||
+            cleanString(p.driver_type, '').toUpperCase() === 'EMPRESA' ||
+            cleanString(p.perfil_motorista, '').toUpperCase() === 'EMPRESA' ||
+            cleanString(p.categoria_motorista, '').toUpperCase() === 'EMPRESA' ||
+            (p.recebe_particular === false && p.recebe_voucher === true);
 
-        const isEmpresa = candidateTypes.some(t => t === 'EMPRESA');
         const driverType: DriverType = isEmpresa ? 'EMPRESA' : 'PARTICULAR';
 
         if (typeof window !== 'undefined') {
             try {
                 window.localStorage.setItem('mobipro_driver_type', driverType);
                 window.dispatchEvent(new CustomEvent('mobipro_driver_type_changed', { detail: { driverType } }));
+                window.dispatchEvent(new CustomEvent('mobipro_driver_type_changed', { detail: driverType }));
             } catch {}
         }
 
@@ -240,7 +242,12 @@ export class ProfileService {
      */
     public static async setDriverTypeByAdmin(driverId: string, driverType: 'EMPRESA' | 'PARTICULAR') {
         const supabase = createClient();
+        const isEmpresa = driverType === 'EMPRESA';
         const updates: Record<string, any> = {
+            categoria_tipo: isEmpresa ? 'empresa' : 'particular',
+            categoria: isEmpresa ? 'Empresa' : 'Particular',
+            recebe_voucher: true,
+            recebe_particular: !isEmpresa,
             tipo_motorista: driverType,
             driver_type: driverType,
             perfil_motorista: driverType,
@@ -255,7 +262,7 @@ export class ProfileService {
 
         if (mError) {
             let attempts = 0;
-            while (mError && attempts < 4) {
+            while (mError && attempts < 6) {
                 attempts++;
                 const msg = mError.message || '';
                 const match =
@@ -273,15 +280,7 @@ export class ProfileService {
             }
         }
 
-        if (mError) {
-            console.warn('[ProfileService] Erro ao atualizar tipo no motoristas via admin, tentando tabela drivers:', mError);
-            await supabase
-                .from("drivers")
-                .update(updates)
-                .eq("id", driverId);
-        }
-
-        return driverType;
+        return updates;
     }
 
     /**

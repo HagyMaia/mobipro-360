@@ -54,6 +54,9 @@ type Driver = {
   modelo_veiculo?: string;
   placa_veiculo?: string;
   categoria?: string;
+  categoria_tipo?: string;
+  recebe_voucher?: boolean;
+  recebe_particular?: boolean;
   driver_type?: 'EMPRESA' | 'PARTICULAR';
   tipo_motorista?: 'EMPRESA' | 'PARTICULAR';
   perfil_motorista?: 'EMPRESA' | 'PARTICULAR';
@@ -143,7 +146,7 @@ export default function AdminPage() {
       console.warn("[Admin] Falha ao ordenar por created_at ou colunas extras, tentando básico:", driversError.message);
       const retry = await supabase
         .from("motoristas")
-        .select("id, nome, nome_social, nome_completo, avatar_url, status, vehicle_status, telefone, email, marca_veiculo, modelo_veiculo, placa_veiculo, categoria, tipo_motorista, driver_type");
+        .select("id, nome, nome_social, nome_completo, avatar_url, status, vehicle_status, telefone, phone, email, marca_veiculo, modelo_veiculo, placa_veiculo, cor_veiculo, categoria, categoria_tipo, recebe_voucher, recebe_particular");
       data = retry.data;
       driversError = retry.error;
     }
@@ -754,7 +757,15 @@ export default function AdminPage() {
                     const isPendingVehicle = driver.vehicle_status === "Pendente" && driver.status === "Aprovado";
                     const isPending = driver.status === "Pendente" || driver.vehicle_status === "Pendente";
                     const displayName = driver.nome_social || driver.nome || driver.nome_completo || "Motorista";
-                    const currentType = (driver.tipo_motorista || driver.driver_type || driver.perfil_motorista || driver.categoria_motorista || 'PARTICULAR').toUpperCase() === 'EMPRESA' ? 'EMPRESA' : 'PARTICULAR';
+                    const currentType = (
+                      (driver.categoria_tipo && String(driver.categoria_tipo).toLowerCase() === 'empresa') ||
+                      (driver.categoria && String(driver.categoria).toLowerCase() === 'empresa') ||
+                      (driver.tipo_motorista && String(driver.tipo_motorista).toUpperCase() === 'EMPRESA') ||
+                      (driver.driver_type && String(driver.driver_type).toUpperCase() === 'EMPRESA') ||
+                      (driver.perfil_motorista && String(driver.perfil_motorista).toUpperCase() === 'EMPRESA') ||
+                      (driver.categoria_motorista && String(driver.categoria_motorista).toUpperCase() === 'EMPRESA') ||
+                      (driver.recebe_particular === false && driver.recebe_voucher === true)
+                    ) ? 'EMPRESA' : 'PARTICULAR';
                     const isUpdatingThis = updatingDriverId === driver.id;
                     const isUpdatingPhoto = updatingPhotoDriverId === driver.id;
                     const isUpdatingData = updatingDataDriverId === driver.id;
