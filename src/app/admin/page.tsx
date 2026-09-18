@@ -62,6 +62,7 @@ type Driver = {
   perfil_motorista?: 'EMPRESA' | 'PARTICULAR';
   categoria_motorista?: 'EMPRESA' | 'PARTICULAR';
   // Dados Pessoais e Análise
+  solicitacao_pendente?: boolean;
   dados_pessoais_status?: string;
   personal_data_status?: string;
   pending_personal_data?: any;
@@ -160,7 +161,16 @@ export default function AdminPage() {
       const enriched = rawList.map((d: any) => {
         let pendingPers = d.pending_personal_data;
         let persStatus = d.dados_pessoais_status || d.personal_data_status;
-        if (!pendingPers && typeof window !== 'undefined') {
+
+        if (d.solicitacao_pendente === false || persStatus === 'Aprovado' || persStatus === 'Reprovado') {
+          pendingPers = null;
+          if (typeof window !== 'undefined') {
+            try {
+              window.localStorage.removeItem(`mobipro_pending_personal_${d.id}`);
+              window.localStorage.removeItem(`mobipro_personal_status_${d.id}`);
+            } catch {}
+          }
+        } else if (!pendingPers && typeof window !== 'undefined') {
           try {
             const cached = window.localStorage.getItem(`mobipro_pending_personal_${d.id}`);
             if (cached) {
@@ -172,7 +182,16 @@ export default function AdminPage() {
 
         let pendingComp = d.pending_company_data;
         let compStatus = d.dados_empresa_status || d.company_data_status;
-        if (!pendingComp && typeof window !== 'undefined') {
+
+        if (d.solicitacao_pendente === false || compStatus === 'Aprovado' || compStatus === 'Reprovado') {
+          pendingComp = null;
+          if (typeof window !== 'undefined') {
+            try {
+              window.localStorage.removeItem(`mobipro_pending_company_${d.id}`);
+              window.localStorage.removeItem(`mobipro_company_status_${d.id}`);
+            } catch {}
+          }
+        } else if (!pendingComp && typeof window !== 'undefined') {
           try {
             const cached = window.localStorage.getItem(`mobipro_pending_company_${d.id}`);
             if (cached) {
@@ -384,6 +403,27 @@ export default function AdminPage() {
       await ProfileService.approvePersonalDataByAdmin(driver.id, pending);
       setSuccessMessage(`Dados pessoais de ${driver.nome || 'motorista'} APROVADOS com sucesso!`);
       setTimeout(() => setSuccessMessage(""), 4000);
+
+      setDrivers((current) =>
+        current.map((d) =>
+          d.id === driver.id
+            ? {
+                ...d,
+                solicitacao_pendente: false,
+                pending_personal_data: null,
+                dados_pessoais_status: 'Aprovado',
+                personal_data_status: 'Aprovado',
+                nome: pending?.displayName || pending?.fullName || d.nome,
+                nome_social: pending?.displayName || d.nome_social,
+                nome_completo: pending?.fullName || d.nome_completo,
+                cpf: pending?.cpf || d.cpf,
+                cnh: pending?.cnh || d.cnh,
+                telefone: pending?.phone || d.telefone,
+              }
+            : d
+        )
+      );
+
       await loadDrivers();
     } catch (err: any) {
       console.error("[Admin] Erro ao aprovar dados pessoais:", err);
@@ -403,6 +443,21 @@ export default function AdminPage() {
       await ProfileService.rejectPersonalDataByAdmin(driver.id, reason);
       setSuccessMessage(`Alteração de dados pessoais de ${driver.nome || 'motorista'} REJEITADA.`);
       setTimeout(() => setSuccessMessage(""), 4000);
+
+      setDrivers((current) =>
+        current.map((d) =>
+          d.id === driver.id
+            ? {
+                ...d,
+                solicitacao_pendente: false,
+                pending_personal_data: null,
+                dados_pessoais_status: 'Reprovado',
+                personal_data_status: 'Reprovado',
+              }
+            : d
+        )
+      );
+
       await loadDrivers();
     } catch (err: any) {
       console.error("[Admin] Erro ao rejeitar dados pessoais:", err);
@@ -423,6 +478,21 @@ export default function AdminPage() {
       await ProfileService.approveCompanyDataByAdmin(driver.id, pending);
       setSuccessMessage(`Dados da empresa de ${driver.nome || 'motorista'} APROVADOS com sucesso!`);
       setTimeout(() => setSuccessMessage(""), 4000);
+
+      setDrivers((current) =>
+        current.map((d) =>
+          d.id === driver.id
+            ? {
+                ...d,
+                solicitacao_pendente: false,
+                pending_company_data: null,
+                dados_empresa_status: 'Aprovado',
+                company_data_status: 'Aprovado',
+              }
+            : d
+        )
+      );
+
       await loadDrivers();
     } catch (err: any) {
       console.error("[Admin] Erro ao aprovar dados da empresa:", err);
@@ -442,6 +512,21 @@ export default function AdminPage() {
       await ProfileService.rejectCompanyDataByAdmin(driver.id, reason);
       setSuccessMessage(`Alteração de dados da empresa de ${driver.nome || 'motorista'} REJEITADA.`);
       setTimeout(() => setSuccessMessage(""), 4000);
+
+      setDrivers((current) =>
+        current.map((d) =>
+          d.id === driver.id
+            ? {
+                ...d,
+                solicitacao_pendente: false,
+                pending_company_data: null,
+                dados_empresa_status: 'Reprovado',
+                company_data_status: 'Reprovado',
+              }
+            : d
+        )
+      );
+
       await loadDrivers();
     } catch (err: any) {
       console.error("[Admin] Erro ao rejeitar dados da empresa:", err);
@@ -860,8 +945,8 @@ export default function AdminPage() {
                     const hasPendingPersonal = (
                       driver.dados_pessoais_status === 'Aguardando aprovação' ||
                       driver.personal_data_status === 'Aguardando aprovação' ||
-                      Boolean(pendingPersonalObj)
-                    ) && Boolean(pendingPersonalObj);
+                      driver.solicitacao_pendente === true
+                    ) && Boolean(pendingPersonalObj) && driver.dados_pessoais_status !== 'Aprovado' && driver.dados_pessoais_status !== 'Reprovado';
 
                     let pendingCompanyObj: any = null;
                     if (driver.pending_company_data) {
@@ -874,8 +959,8 @@ export default function AdminPage() {
                     const hasPendingCompany = (
                       driver.dados_empresa_status === 'Aguardando aprovação' ||
                       driver.company_data_status === 'Aguardando aprovação' ||
-                      Boolean(pendingCompanyObj)
-                    ) && Boolean(pendingCompanyObj);
+                      driver.solicitacao_pendente === true
+                    ) && Boolean(pendingCompanyObj) && driver.dados_empresa_status !== 'Aprovado' && driver.dados_empresa_status !== 'Reprovado';
 
                     return (
                       <div key={driver.id} className="flex flex-col gap-4 p-4 hover:bg-slate-50/50 dark:hover:bg-dark-800/40 transition">

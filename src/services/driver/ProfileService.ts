@@ -158,7 +158,7 @@ export class ProfileService {
         // Status de Análise de Dados Pessoais
         let personalDataStatus = this.normalizeDataStatus(p.dados_pessoais_status || p.personal_data_status);
         let pendingPersonalData: PersonalData | null = null;
-        if (p.pending_personal_data && p.solicitacao_pendente !== false) {
+        if (p.pending_personal_data && p.solicitacao_pendente !== false && personalDataStatus !== 'Aprovado' && personalDataStatus !== 'Reprovado') {
             try {
                 pendingPersonalData = typeof p.pending_personal_data === 'string'
                     ? JSON.parse(p.pending_personal_data)
@@ -166,19 +166,23 @@ export class ProfileService {
             } catch {}
         }
         if (typeof window !== 'undefined') {
-            if (p.solicitacao_pendente === false || personalDataStatus === 'Aprovado') {
+            if (p.solicitacao_pendente === false || personalDataStatus === 'Aprovado' || personalDataStatus === 'Reprovado') {
                 try {
                     window.localStorage.removeItem(`mobipro_pending_personal_${p.id}`);
                     window.localStorage.removeItem(`mobipro_personal_status_${p.id}`);
+                    window.localStorage.removeItem('mobipro_pending_personal_local');
+                    window.localStorage.removeItem('mobipro_personal_status_local');
                 } catch {}
                 pendingPersonalData = null;
-                personalDataStatus = 'Aprovado';
-            } else if (!pendingPersonalData) {
+                if (p.solicitacao_pendente === false && personalDataStatus !== 'Reprovado') {
+                    personalDataStatus = 'Aprovado';
+                }
+            } else if (!pendingPersonalData && p.solicitacao_pendente === true) {
                 try {
-                    const cached = window.localStorage.getItem(`mobipro_pending_personal_${p.id}`);
+                    const cached = window.localStorage.getItem(`mobipro_pending_personal_${p.id}`) || window.localStorage.getItem('mobipro_pending_personal_local');
                     if (cached) {
                         pendingPersonalData = JSON.parse(cached);
-                        const cachedStatus = window.localStorage.getItem(`mobipro_personal_status_${p.id}`);
+                        const cachedStatus = window.localStorage.getItem(`mobipro_personal_status_${p.id}`) || window.localStorage.getItem('mobipro_personal_status_local');
                         if (cachedStatus) personalDataStatus = this.normalizeDataStatus(cachedStatus);
                     }
                 } catch {}
@@ -188,7 +192,7 @@ export class ProfileService {
         // Status de Análise de Dados da Empresa
         let companyDataStatus = this.normalizeDataStatus(p.dados_empresa_status || p.company_data_status);
         let pendingCompanyData: CompanyData | null = null;
-        if (p.pending_company_data && p.solicitacao_pendente !== false) {
+        if (p.pending_company_data && p.solicitacao_pendente !== false && companyDataStatus !== 'Aprovado' && companyDataStatus !== 'Reprovado') {
             try {
                 pendingCompanyData = typeof p.pending_company_data === 'string'
                     ? JSON.parse(p.pending_company_data)
@@ -196,19 +200,23 @@ export class ProfileService {
             } catch {}
         }
         if (typeof window !== 'undefined') {
-            if (p.solicitacao_pendente === false || companyDataStatus === 'Aprovado') {
+            if (p.solicitacao_pendente === false || companyDataStatus === 'Aprovado' || companyDataStatus === 'Reprovado') {
                 try {
                     window.localStorage.removeItem(`mobipro_pending_company_${p.id}`);
                     window.localStorage.removeItem(`mobipro_company_status_${p.id}`);
+                    window.localStorage.removeItem('mobipro_pending_company_local');
+                    window.localStorage.removeItem('mobipro_company_status_local');
                 } catch {}
                 pendingCompanyData = null;
-                companyDataStatus = 'Aprovado';
-            } else if (!pendingCompanyData) {
+                if (p.solicitacao_pendente === false && companyDataStatus !== 'Reprovado') {
+                    companyDataStatus = 'Aprovado';
+                }
+            } else if (!pendingCompanyData && p.solicitacao_pendente === true) {
                 try {
-                    const cached = window.localStorage.getItem(`mobipro_pending_company_${p.id}`);
+                    const cached = window.localStorage.getItem(`mobipro_pending_company_${p.id}`) || window.localStorage.getItem('mobipro_pending_company_local');
                     if (cached) {
                         pendingCompanyData = JSON.parse(cached);
-                        const cachedStatus = window.localStorage.getItem(`mobipro_company_status_${p.id}`);
+                        const cachedStatus = window.localStorage.getItem(`mobipro_company_status_${p.id}`) || window.localStorage.getItem('mobipro_company_status_local');
                         if (cachedStatus) companyDataStatus = this.normalizeDataStatus(cachedStatus);
                     }
                 } catch {}
@@ -511,6 +519,61 @@ export class ProfileService {
     }
 
     /**
+     * Helper de atualização resiliente no Supabase (remove colunas inexistentes caso o schema seja mais enxuto)
+     */
+    public static async resilientUpdateDriver(driverId: string, payload: Record<string, any>) {
+        const supabase = createClient();
+        let currentPayload = { ...payload };
+        let attempts = 0;
+        let lastError = null;
+
+        while (attempts < 15) {
+            attempts++;
+            const { data, error } = await supabase
+                .from("motoristas")
+                .update(currentPayload)
+                .eq("id", driverId)
+                .select();
+
+            if (!error) {
+                return { success: true, data };
+            }
+
+            lastError = error;
+            const match = error.message.match(/Could not find the '([^']+)' column/i);
+            if (match && match[1] && currentPayload[match[1]] !== undefined) {
+                console.warn(`[ProfileService] Coluna '${match[1]}' ausente no schema de motoristas. Removendo do payload.`);
+                delete currentPayload[match[1]];
+            } else {
+                break;
+            }
+        }
+
+        // Fallback para tabela drivers caso exista
+        if (lastError) {
+            let driverPayload = { ...payload };
+            let dAttempts = 0;
+            while (dAttempts < 5) {
+                dAttempts++;
+                const { data, error } = await supabase
+                    .from("drivers")
+                    .update(driverPayload)
+                    .eq("id", driverId)
+                    .select();
+                if (!error) return { success: true, data };
+                const match = error.message.match(/Could not find the '([^']+)' column/i);
+                if (match && match[1] && driverPayload[match[1]] !== undefined) {
+                    delete driverPayload[match[1]];
+                } else {
+                    break;
+                }
+            }
+        }
+
+        return { success: false, error: lastError };
+    }
+
+    /**
      * Aprova a alteração de dados pessoais pelo administrador e efetiva os dados oficiais.
      */
     public static async approvePersonalDataByAdmin(driverId: string, pendingData?: PersonalData) {
@@ -531,48 +594,78 @@ export class ProfileService {
             }
         }
 
-        if (!dataToApply) {
-            throw new Error("Nenhum dado pendente encontrado para aprovação.");
+        if (!dataToApply && typeof window !== 'undefined') {
+            try {
+                const cached = window.localStorage.getItem(`mobipro_pending_personal_${driverId}`) || window.localStorage.getItem('mobipro_pending_personal_local');
+                if (cached) dataToApply = JSON.parse(cached);
+            } catch {}
         }
 
         const updates: Record<string, any> = {
             dados_pessoais_status: 'Aprovado',
             personal_data_status: 'Aprovado',
+            solicitacao_pendente: false,
             pending_personal_data: null,
             personal_data_rejection_reason: null,
             updated_at: new Date().toISOString(),
         };
 
-        if (dataToApply.fullName) {
-            updates.nome_completo = dataToApply.fullName;
-            if (!dataToApply.displayName) {
+        if (dataToApply) {
+            if (dataToApply.fullName) {
+                updates.nome_completo = dataToApply.fullName;
                 updates.nome = dataToApply.fullName;
-                updates.nome_social = dataToApply.fullName;
+                updates.nome_social = dataToApply.displayName || dataToApply.fullName;
+            }
+            if (dataToApply.displayName) {
+                updates.nome_social = dataToApply.displayName;
+                if (!updates.nome) updates.nome = dataToApply.displayName;
+            }
+            if (dataToApply.cpf) updates.cpf = dataToApply.cpf;
+            if (dataToApply.birthDate) updates.data_nascimento = dataToApply.birthDate;
+            if (dataToApply.phone) {
+                updates.telefone = dataToApply.phone;
+                updates.phone = dataToApply.phone;
+            }
+            if (dataToApply.cnh) updates.cnh = dataToApply.cnh;
+            if (dataToApply.zipCode) updates.cep = dataToApply.zipCode;
+            if (dataToApply.street) updates.rua = dataToApply.street;
+            if (dataToApply.number) updates.numero = dataToApply.number;
+            if (dataToApply.complement) updates.complemento = dataToApply.complement;
+            if (dataToApply.neighborhood) updates.bairro = dataToApply.neighborhood;
+            if (dataToApply.city) updates.cidade = dataToApply.city;
+            if (dataToApply.state) updates.estado = dataToApply.state;
+            if (dataToApply.street || dataToApply.neighborhood) {
+                updates.endereco = [dataToApply.street, dataToApply.number, dataToApply.neighborhood, dataToApply.city].filter(Boolean).join(', ');
             }
         }
-        if (dataToApply.displayName) {
-            updates.nome = dataToApply.displayName;
-            updates.nome_social = dataToApply.displayName;
-        }
-        if (dataToApply.cpf) updates.cpf = dataToApply.cpf;
-        if (dataToApply.birthDate) updates.data_nascimento = dataToApply.birthDate;
-        if (dataToApply.phone) {
-            updates.telefone = dataToApply.phone;
-            updates.phone = dataToApply.phone;
-        }
-        if (dataToApply.cnh) updates.cnh = dataToApply.cnh;
-        if (dataToApply.zipCode) updates.cep = dataToApply.zipCode;
-        if (dataToApply.street) updates.rua = dataToApply.street;
-        if (dataToApply.number) updates.numero = dataToApply.number;
-        if (dataToApply.complement) updates.complemento = dataToApply.complement;
-        if (dataToApply.neighborhood) updates.bairro = dataToApply.neighborhood;
-        if (dataToApply.city) updates.cidade = dataToApply.city;
-        if (dataToApply.state) updates.estado = dataToApply.state;
 
-        let { error } = await supabase.from("motoristas").update(updates).eq("id", driverId);
-        if (error) {
-            console.warn('[ProfileService] Falha ao aprovar dados pessoais em motoristas, tentando drivers:', error);
-            await supabase.from("drivers").update(updates).eq("id", driverId);
+        // 1. Atualização resiliente no motoristas
+        await this.resilientUpdateDriver(driverId, updates);
+
+        // 2. Atualizar solicitacoes_alteracao no Supabase
+        try {
+            await supabase
+                .from("solicitacoes_alteracao")
+                .update({
+                    status: 'Aprovado',
+                    analisado_em: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq("usuario_id", driverId)
+                .eq("status", "Pendente");
+        } catch (e) {
+            console.warn('[ProfileService] Erro ao sincronizar solicitacoes_alteracao:', e);
+        }
+
+        // 3. Limpar localStorage
+        if (typeof window !== 'undefined') {
+            try {
+                window.localStorage.removeItem(`mobipro_pending_personal_${driverId}`);
+                window.localStorage.removeItem(`mobipro_personal_status_${driverId}`);
+                window.localStorage.removeItem('mobipro_pending_personal_local');
+                window.localStorage.removeItem('mobipro_personal_status_local');
+                window.dispatchEvent(new CustomEvent('mobipro_personal_data_updated', { detail: updates }));
+            } catch {}
         }
 
         return updates;
@@ -586,13 +679,40 @@ export class ProfileService {
         const updates: Record<string, any> = {
             dados_pessoais_status: 'Reprovado',
             personal_data_status: 'Reprovado',
-            personal_data_rejection_reason: reason || 'Dados pessoais rejeitados pela moderação.',
+            solicitacao_pendente: false,
+            pending_personal_data: null,
+            personal_data_rejection_reason: reason || 'Dados pessoais reprovados pelo administrador.',
             updated_at: new Date().toISOString(),
         };
 
-        let { error } = await supabase.from("motoristas").update(updates).eq("id", driverId);
-        if (error) {
-            await supabase.from("drivers").update(updates).eq("id", driverId);
+        // 1. Atualização resiliente no motoristas
+        await this.resilientUpdateDriver(driverId, updates);
+
+        // 2. Atualizar solicitacoes_alteracao no Supabase
+        try {
+            await supabase
+                .from("solicitacoes_alteracao")
+                .update({
+                    status: 'Rejeitado',
+                    motivo_rejeicao: reason || 'Dados inconsistentes',
+                    analisado_em: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq("usuario_id", driverId)
+                .eq("status", "Pendente");
+        } catch (e) {
+            console.warn('[ProfileService] Erro ao sincronizar solicitacoes_alteracao:', e);
+        }
+
+        // 3. Limpar localStorage
+        if (typeof window !== 'undefined') {
+            try {
+                window.localStorage.removeItem(`mobipro_pending_personal_${driverId}`);
+                window.localStorage.removeItem(`mobipro_personal_status_${driverId}`);
+                window.localStorage.removeItem('mobipro_pending_personal_local');
+                window.localStorage.removeItem('mobipro_personal_status_local');
+                window.dispatchEvent(new CustomEvent('mobipro_personal_data_updated', { detail: updates }));
+            } catch {}
         }
 
         return updates;
@@ -619,36 +739,78 @@ export class ProfileService {
             }
         }
 
-        if (!dataToApply) {
-            throw new Error("Nenhum dado pendente de empresa encontrado para aprovação.");
+        if (!dataToApply && typeof window !== 'undefined') {
+            try {
+                const cached = window.localStorage.getItem(`mobipro_pending_company_${driverId}`) || window.localStorage.getItem('mobipro_pending_company_local');
+                if (cached) dataToApply = JSON.parse(cached);
+            } catch {}
         }
 
         const updates: Record<string, any> = {
             dados_empresa_status: 'Aprovado',
             company_data_status: 'Aprovado',
+            solicitacao_pendente: false,
             pending_company_data: null,
             company_data_rejection_reason: null,
             updated_at: new Date().toISOString(),
         };
 
-        if (dataToApply.legalName) updates.empresa_razao_social = dataToApply.legalName;
-        if (dataToApply.tradeName) updates.empresa_nome_fantasia = dataToApply.tradeName;
-        if (dataToApply.cnpj) updates.empresa_cnpj = dataToApply.cnpj;
-        if (dataToApply.stateRegistration) updates.empresa_inscricao_estadual = dataToApply.stateRegistration;
-        if (dataToApply.phone) updates.empresa_telefone = dataToApply.phone;
-        if (dataToApply.email) updates.empresa_email = dataToApply.email;
-        if (dataToApply.representative) updates.empresa_responsavel = dataToApply.representative;
-        if (dataToApply.zipCode) updates.empresa_cep = dataToApply.zipCode;
-        if (dataToApply.street) updates.empresa_endereco = dataToApply.street;
-        if (dataToApply.number) updates.empresa_numero = dataToApply.number;
-        if (dataToApply.neighborhood) updates.empresa_bairro = dataToApply.neighborhood;
-        if (dataToApply.city) updates.empresa_cidade = dataToApply.city;
-        if (dataToApply.state) updates.empresa_estado = dataToApply.state;
+        if (dataToApply) {
+            if (dataToApply.legalName) {
+                updates.empresa_razao_social = dataToApply.legalName;
+                updates.razao_social = dataToApply.legalName;
+            }
+            if (dataToApply.tradeName) {
+                updates.empresa_nome_fantasia = dataToApply.tradeName;
+                updates.nome_fantasia = dataToApply.tradeName;
+            }
+            if (dataToApply.cnpj) {
+                updates.empresa_cnpj = dataToApply.cnpj;
+                updates.cnpj = dataToApply.cnpj;
+            }
+            if (dataToApply.stateRegistration) {
+                updates.empresa_inscricao_estadual = dataToApply.stateRegistration;
+                updates.inscricao_estadual = dataToApply.stateRegistration;
+            }
+            if (dataToApply.phone) updates.empresa_telefone = dataToApply.phone;
+            if (dataToApply.email) updates.empresa_email = dataToApply.email;
+            if (dataToApply.representative) updates.empresa_responsavel = dataToApply.representative;
+            if (dataToApply.zipCode) updates.empresa_cep = dataToApply.zipCode;
+            if (dataToApply.street) updates.empresa_endereco = dataToApply.street;
+            if (dataToApply.number) updates.empresa_numero = dataToApply.number;
+            if (dataToApply.neighborhood) updates.empresa_bairro = dataToApply.neighborhood;
+            if (dataToApply.city) updates.empresa_cidade = dataToApply.city;
+            if (dataToApply.state) updates.empresa_estado = dataToApply.state;
+        }
 
-        let { error } = await supabase.from("motoristas").update(updates).eq("id", driverId);
-        if (error) {
-            console.warn('[ProfileService] Falha ao aprovar dados de empresa em motoristas, tentando drivers:', error);
-            await supabase.from("drivers").update(updates).eq("id", driverId);
+        // 1. Atualização resiliente no motoristas
+        await this.resilientUpdateDriver(driverId, updates);
+
+        // 2. Atualizar solicitacoes_alteracao no Supabase
+        try {
+            await supabase
+                .from("solicitacoes_alteracao")
+                .update({
+                    status: 'Aprovado',
+                    analisado_em: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq("usuario_id", driverId)
+                .eq("tipo_alteracao", "empresa")
+                .eq("status", "Pendente");
+        } catch (e) {
+            console.warn('[ProfileService] Erro ao sincronizar solicitacoes_alteracao de empresa:', e);
+        }
+
+        // 3. Limpar localStorage
+        if (typeof window !== 'undefined') {
+            try {
+                window.localStorage.removeItem(`mobipro_pending_company_${driverId}`);
+                window.localStorage.removeItem(`mobipro_company_status_${driverId}`);
+                window.localStorage.removeItem('mobipro_pending_company_local');
+                window.localStorage.removeItem('mobipro_company_status_local');
+                window.dispatchEvent(new CustomEvent('mobipro_company_data_updated', { detail: updates }));
+            } catch {}
         }
 
         return updates;
@@ -662,13 +824,41 @@ export class ProfileService {
         const updates: Record<string, any> = {
             dados_empresa_status: 'Reprovado',
             company_data_status: 'Reprovado',
-            company_data_rejection_reason: reason || 'Dados da empresa rejeitados pela moderação.',
+            solicitacao_pendente: false,
+            pending_company_data: null,
+            company_data_rejection_reason: reason || 'Dados da empresa reprovados pelo administrador.',
             updated_at: new Date().toISOString(),
         };
 
-        let { error } = await supabase.from("motoristas").update(updates).eq("id", driverId);
-        if (error) {
-            await supabase.from("drivers").update(updates).eq("id", driverId);
+        // 1. Atualização resiliente no motoristas
+        await this.resilientUpdateDriver(driverId, updates);
+
+        // 2. Atualizar solicitacoes_alteracao no Supabase
+        try {
+            await supabase
+                .from("solicitacoes_alteracao")
+                .update({
+                    status: 'Rejeitado',
+                    motivo_rejeicao: reason || 'Dados inconsistentes',
+                    analisado_em: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq("usuario_id", driverId)
+                .eq("tipo_alteracao", "empresa")
+                .eq("status", "Pendente");
+        } catch (e) {
+            console.warn('[ProfileService] Erro ao sincronizar solicitacoes_alteracao de empresa:', e);
+        }
+
+        // 3. Limpar localStorage
+        if (typeof window !== 'undefined') {
+            try {
+                window.localStorage.removeItem(`mobipro_pending_company_${driverId}`);
+                window.localStorage.removeItem(`mobipro_company_status_${driverId}`);
+                window.localStorage.removeItem('mobipro_pending_company_local');
+                window.localStorage.removeItem('mobipro_company_status_local');
+                window.dispatchEvent(new CustomEvent('mobipro_company_data_updated', { detail: updates }));
+            } catch {}
         }
 
         return updates;
