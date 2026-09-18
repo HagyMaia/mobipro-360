@@ -326,7 +326,57 @@ export class ProfileService {
             } catch {}
         }
 
+        // 2. Inserir na tabela compartilhada solicitacoes_alteracao do Supabase
+        try {
+            const { data: currentDriver } = await supabase
+                .from("motoristas")
+                .select("id, nome, nome_social, nome_completo, cpf, cnh, telefone, phone, email")
+                .eq("id", userId)
+                .maybeSingle();
+
+            const solPayload = {
+                tipo_usuario: 'motorista',
+                usuario_id: userId,
+                usuario_nome: data.fullName || data.displayName || currentDriver?.nome_completo || currentDriver?.nome || 'Motorista SR',
+                tipo_alteracao: 'dados_cadastrais',
+                dados_anteriores: {
+                    nome: currentDriver?.nome || '',
+                    nome_social: currentDriver?.nome_social || '',
+                    nome_completo: currentDriver?.nome_completo || '',
+                    cpf: currentDriver?.cpf || '—',
+                    cnh: currentDriver?.cnh || '—',
+                    telefone: currentDriver?.telefone || currentDriver?.phone || '—',
+                    email: currentDriver?.email || '',
+                },
+                dados_novos: {
+                    nome: data.displayName || data.fullName,
+                    nome_social: data.displayName || data.fullName,
+                    nome_completo: data.fullName || data.displayName,
+                    cpf: data.cpf,
+                    cnh: data.cnh,
+                    telefone: data.phone,
+                    data_nascimento: data.birthDate,
+                    email: data.email,
+                },
+                justificativa: 'Solicitação de alteração cadastral enviada pelo aplicativo do motorista',
+                status: 'Pendente',
+                created_at: new Date().toISOString()
+            };
+
+            const { error: solErr } = await supabase
+                .from("solicitacoes_alteracao")
+                .insert([solPayload]);
+
+            if (solErr) {
+                console.warn('[ProfileService] Aviso ao inserir em solicitacoes_alteracao:', solErr.message);
+            }
+        } catch (solEx) {
+            console.warn('[ProfileService] Exceção ao gravar solicitacoes_alteracao:', solEx);
+        }
+
+        // 3. Atualizar registro do motorista
         const updates: Record<string, any> = {
+            solicitacao_pendente: true,
             pending_personal_data: data,
             dados_pessoais_status: 'Aguardando aprovação',
             personal_data_status: 'Aguardando aprovação',
@@ -334,16 +384,13 @@ export class ProfileService {
             updated_at: new Date().toISOString(),
         };
 
-        let { data: updated, error } = await supabase
+        let { error } = await supabase
             .from("motoristas")
             .update(updates)
-            .eq("id", userId)
-            .select()
-            .maybeSingle();
+            .eq("id", userId);
 
         if (error) {
             console.warn('[ProfileService] Tentando fallback de schema ao registrar análise de dados pessoais:', error.message);
-            // Fallback: se colunas específicas não existirem no Supabase, atualiza updated_at
             try {
                 await supabase
                     .from("motoristas")
@@ -378,7 +425,42 @@ export class ProfileService {
             } catch {}
         }
 
+        // 2. Inserir na tabela compartilhada solicitacoes_alteracao do Supabase
+        try {
+            const { data: currentDriver } = await supabase
+                .from("motoristas")
+                .select("id, nome, nome_social, nome_completo, email")
+                .eq("id", userId)
+                .maybeSingle();
+
+            const solPayload = {
+                tipo_usuario: 'motorista',
+                usuario_id: userId,
+                usuario_nome: currentDriver?.nome_completo || currentDriver?.nome || data.tradeName || 'Motorista SR',
+                tipo_alteracao: 'empresa',
+                dados_anteriores: {},
+                dados_novos: {
+                    razao_social: data.legalName,
+                    nome_fantasia: data.tradeName,
+                    cnpj: data.cnpj,
+                    inscricao_estadual: data.stateRegistration,
+                    telefone_empresa: data.phone,
+                    email_empresa: data.email,
+                    responsavel: data.representative || (data as any).responsiblePerson,
+                    endereco_empresa: `${data.street || ''}, ${data.number || ''} - ${data.neighborhood || ''}, ${data.city || ''}/${data.state || ''}`,
+                },
+                justificativa: 'Solicitação de alteração dos dados da empresa pelo aplicativo do motorista',
+                status: 'Pendente',
+                created_at: new Date().toISOString()
+            };
+
+            await supabase.from("solicitacoes_alteracao").insert([solPayload]);
+        } catch (solEx) {
+            console.warn('[ProfileService] Exceção ao gravar solicitacoes_alteracao de empresa:', solEx);
+        }
+
         const updates: Record<string, any> = {
+            solicitacao_pendente: true,
             pending_company_data: data,
             dados_empresa_status: 'Aguardando aprovação',
             company_data_status: 'Aguardando aprovação',
@@ -386,12 +468,10 @@ export class ProfileService {
             updated_at: new Date().toISOString(),
         };
 
-        let { data: updated, error } = await supabase
+        let { error } = await supabase
             .from("motoristas")
             .update(updates)
-            .eq("id", userId)
-            .select()
-            .maybeSingle();
+            .eq("id", userId);
 
         if (error) {
             console.warn('[ProfileService] Tentando fallback de schema ao registrar análise de dados de empresa:', error.message);
