@@ -22,7 +22,15 @@ import {
   Car,
   AlertTriangle,
   Send,
-  XCircle
+  XCircle,
+  X,
+  Edit3,
+  Phone,
+  Mail,
+  MapPin,
+  FileText,
+  Calendar,
+  CreditCard
 } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import { SupportModal } from '@/components/Support/SupportModal';
@@ -35,8 +43,9 @@ import type { DriverProfile, PhotoApprovalStatus, DataApprovalStatus, PersonalDa
 export default function PerfilPage() {
   const { state, dispatch } = useApp();
   const { user, signOut } = useAuth();
-  const { profile: mockProfile } = state;
   const [dbProfile, setDbProfile] = useState<DriverProfile | null>(null);
+  
+  // Loadings
   const [loadingPersonal, setLoadingPersonal] = useState(false);
   const [loadingCompany, setLoadingCompany] = useState(false);
   const [loadingVehicle, setLoadingVehicle] = useState(false);
@@ -45,7 +54,12 @@ export default function PerfilPage() {
 
   const [supportOpen, setSupportOpen] = useState(false);
 
-  // Form de Dados Pessoais
+  // Modais de Edição / Solicitação para Análise
+  const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false);
+  const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+  const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+
+  // Dados Pessoais Oficiais (Somente Leitura no App)
   const [fullName, setFullName] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [cpf, setCpf] = useState('');
@@ -66,7 +80,22 @@ export default function PerfilPage() {
   const [pendingPersonal, setPendingPersonal] = useState<PersonalData | null>(null);
   const [personalRejectionReason, setPersonalRejectionReason] = useState<string | null>(null);
 
-  // Form de Dados da Empresa
+  // Estados do Modal de Edição de Dados Pessoais
+  const [editFullName, setEditFullName] = useState('');
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [editCpf, setEditCpf] = useState('');
+  const [editBirthDate, setEditBirthDate] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editCnh, setEditCnh] = useState('');
+  const [editZipCode, setEditZipCode] = useState('');
+  const [editStreet, setEditStreet] = useState('');
+  const [editNumber, setEditNumber] = useState('');
+  const [editComplement, setEditComplement] = useState('');
+  const [editNeighborhood, setEditNeighborhood] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editState, setEditState] = useState('');
+
+  // Dados da Empresa Oficiais (Somente Leitura no App)
   const [companyLegalName, setCompanyLegalName] = useState('');
   const [companyTradeName, setCompanyTradeName] = useState('');
   const [companyCnpj, setCompanyCnpj] = useState('');
@@ -86,13 +115,35 @@ export default function PerfilPage() {
   const [pendingCompany, setPendingCompany] = useState<CompanyData | null>(null);
   const [companyRejectionReason, setCompanyRejectionReason] = useState<string | null>(null);
 
-  // Form de Veículo
+  // Estados do Modal de Edição da Empresa
+  const [editCompanyLegalName, setEditCompanyLegalName] = useState('');
+  const [editCompanyTradeName, setEditCompanyTradeName] = useState('');
+  const [editCompanyCnpj, setEditCompanyCnpj] = useState('');
+  const [editCompanyStateReg, setEditCompanyStateReg] = useState('');
+  const [editCompanyPhone, setEditCompanyPhone] = useState('');
+  const [editCompanyEmail, setEditCompanyEmail] = useState('');
+  const [editCompanyRepresentative, setEditCompanyRepresentative] = useState('');
+  const [editCompanyZipCode, setEditCompanyZipCode] = useState('');
+  const [editCompanyStreet, setEditCompanyStreet] = useState('');
+  const [editCompanyNumber, setEditCompanyNumber] = useState('');
+  const [editCompanyNeighborhood, setEditCompanyNeighborhood] = useState('');
+  const [editCompanyCity, setEditCompanyCity] = useState('');
+  const [editCompanyState, setEditCompanyState] = useState('');
+
+  // Veículo Oficial (Somente Leitura no App)
   const [vehicleMake, setVehicleMake] = useState('Chevrolet');
   const [vehicleModel, setVehicleModel] = useState('Onix Plus');
   const [vehiclePlate, setVehiclePlate] = useState('ABC1D23');
   const [vehicleYear, setVehicleYear] = useState('2024');
   const [vehicleColor, setVehicleColor] = useState('Prata');
   const [vehicleStatus, setVehicleStatus] = useState<'Aprovado' | 'Pendente' | 'Reprovado'>('Aprovado');
+
+  // Estados do Modal de Troca de Veículo
+  const [editVehicleMake, setEditVehicleMake] = useState('');
+  const [editVehicleModel, setEditVehicleModel] = useState('');
+  const [editVehiclePlate, setEditVehiclePlate] = useState('');
+  const [editVehicleYear, setEditVehicleYear] = useState('');
+  const [editVehicleColor, setEditVehicleColor] = useState('');
 
   // Foto e Categoria
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -101,7 +152,7 @@ export default function PerfilPage() {
 
   function showToast(msg: string) {
     setSuccessToast(msg);
-    setTimeout(() => setSuccessToast(null), 4000);
+    setTimeout(() => setSuccessToast(null), 4500);
   }
 
   const loadProfileData = useCallback(async () => {
@@ -125,6 +176,7 @@ export default function PerfilPage() {
         setNeighborhood(p.neighborhood || '');
         setCity(p.city || 'Manaus');
         setUf(p.state || 'AM');
+
         setPersonalStatus(p.personalDataStatus || 'Aprovado');
         setPendingPersonal(p.pendingPersonalData || null);
         setPersonalRejectionReason(p.personalDataRejectionReason || null);
@@ -145,6 +197,7 @@ export default function PerfilPage() {
           setCompanyCity(p.companyData.city || 'Manaus');
           setCompanyUf(p.companyData.state || 'AM');
         }
+
         setCompanyStatus(p.companyDataStatus || 'Aprovado');
         setPendingCompany(p.pendingCompanyData || null);
         setCompanyRejectionReason(p.companyDataRejectionReason || null);
@@ -156,314 +209,323 @@ export default function PerfilPage() {
           setVehiclePlate(p.vehicle.plate || 'ABC1D23');
           setVehicleYear(String(p.vehicle.year || '2024'));
           setVehicleColor(p.vehicle.color || 'Prata');
-          setVehicleStatus(p.vehicle.status || 'Aprovado');
         }
+        setVehicleStatus(p.status === 'Pendente' ? 'Pendente' : (p.vehicle?.make ? 'Aprovado' : 'Aprovado'));
 
-        // Foto e Categoria
+        // Categoria e Foto
+        setDriverType(p.driverType || 'PARTICULAR');
         setAvatarUrl(p.avatarUrl || null);
         setFotoStatus(p.fotoStatus || 'Aguardando aprovação');
-        setDriverType(p.driverType || 'PARTICULAR');
 
-        // Sincroniza Store Global
-        dispatch({
-          type: 'UPDATE_PROFILE',
-          profile: {
-            ...(state.profile || mockProfile),
-            name: p.displayName || p.fullName || 'Motorista',
-            phone: p.phone || '',
-            city: p.city || 'Manaus',
-            driverType: p.driverType || 'PARTICULAR',
-          }
-        });
-      } else if (user?.email) {
-        setEmail(user.email);
-        const metaName = (user as any)?.user_metadata?.full_name || (user as any)?.user_metadata?.name;
-        setFullName(metaName || user.email.split('@')[0]);
-        setDisplayName(metaName || user.email.split('@')[0]);
+        dispatch({ type: 'UPDATE_PROFILE', profile: p });
       }
     } catch (e) {
-      console.warn('[PerfilPage] Erro ao carregar perfil:', e);
+      console.error('[PerfilPage] Erro ao carregar perfil do motorista:', e);
     }
-  }, [user, dispatch, mockProfile, state.profile]);
+  }, [user, dispatch]);
 
   useEffect(() => {
     loadProfileData();
 
-    // Inscreve no Realtime para atualizar instantaneamente quando o Admin aprovar ou alterar algo
-    const supabase = createClient();
-    let channel: any = null;
+    // Eventos customizados locais
+    const handlePersonalUpdated = () => loadProfileData();
+    const handleCompanyUpdated = () => loadProfileData();
+    window.addEventListener('mobipro_personal_data_updated', handlePersonalUpdated);
+    window.addEventListener('mobipro_company_data_updated', handleCompanyUpdated);
 
-    if (user?.id) {
-      channel = supabase
-        .channel(`driver_profile_${user.id}`)
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'motoristas', filter: `id=eq.${user.id}` },
-          () => {
-            loadProfileData();
-          }
-        )
-        .subscribe();
-    }
+    // Inscrição Realtime no Supabase para refletir aprovação imediata do Administrador
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`perfil-realtime-sync-${user?.id || 'anon'}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'motoristas',
+          filter: user?.id ? `id=eq.${user.id}` : undefined,
+        },
+        () => {
+          loadProfileData();
+        }
+      )
+      .subscribe();
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      window.removeEventListener('mobipro_personal_data_updated', handlePersonalUpdated);
+      window.removeEventListener('mobipro_company_data_updated', handleCompanyUpdated);
+      supabase.removeChannel(channel);
     };
-  }, [user?.id, loadProfileData]);
+  }, [loadProfileData, user?.id]);
 
-  const userEmail = (email || user?.email || '').toLowerCase();
-  const metaRole = (user as any)?.user_metadata?.role || (user as any)?.app_metadata?.role;
-  const metaIsAdmin = (user as any)?.user_metadata?.is_admin || (user as any)?.app_metadata?.claims_admin;
-  const isAdmin = Boolean(
-    dbProfile?.isAdmin || 
-    dbProfile?.role?.toLowerCase() === 'admin' || 
-    metaRole === 'admin' || 
-    metaIsAdmin === true ||
-    userEmail === 'hagy.maia19@gmail.com' ||
-    userEmail.startsWith('admin@')
-  );
-
-  const finalDisplayName = displayName || fullName || userEmail.split('@')[0] || 'Motorista';
-  const rating = Number(dbProfile?.rating ?? mockProfile.rating ?? 5.0).toFixed(0);
-  const totalRides = dbProfile?.totalRides ?? Number(mockProfile.totalRides ?? 48);
-  const accountStatus = dbProfile?.status ?? 'Aprovado';
-
-  // Upload de Foto de Perfil (Entra em "Aguardando aprovação" do administrador)
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64 = event.target?.result as string;
-      setAvatarUrl(base64);
-      setFotoStatus('Aguardando aprovação');
-      try {
-        await ProfileService.updateProfile({ avatarUrl: base64 });
-        showToast('Foto enviada! Aguardando aprovação do administrador.');
-      } catch (err) {
-        showToast('Foto enviada para análise!');
-      }
-    };
-    reader.readAsDataURL(file);
+  // Abertura dos Modais preenchendo os campos com os dados atuais
+  const handleOpenPersonalModal = () => {
+    setEditFullName(pendingPersonal?.fullName || fullName);
+    setEditDisplayName(pendingPersonal?.displayName || displayName);
+    setEditCpf(pendingPersonal?.cpf || cpf);
+    setEditBirthDate(pendingPersonal?.birthDate || birthDate);
+    setEditPhone(pendingPersonal?.phone || phone);
+    setEditCnh(pendingPersonal?.cnh || cnh);
+    setEditZipCode(pendingPersonal?.zipCode || zipCode);
+    setEditStreet(pendingPersonal?.street || street);
+    setEditNumber(pendingPersonal?.number || number);
+    setEditComplement(pendingPersonal?.complement || complement);
+    setEditNeighborhood(pendingPersonal?.neighborhood || neighborhood);
+    setEditCity(pendingPersonal?.city || city || 'Manaus');
+    setEditState(pendingPersonal?.state || uf || 'AM');
+    setIsPersonalModalOpen(true);
   };
 
-  // Enviar Dados Pessoais para Análise do Administrador
+  const handleOpenCompanyModal = () => {
+    setEditCompanyLegalName(pendingCompany?.legalName || companyLegalName);
+    setEditCompanyTradeName(pendingCompany?.tradeName || companyTradeName);
+    setEditCompanyCnpj(pendingCompany?.cnpj || companyCnpj);
+    setEditCompanyStateReg(pendingCompany?.stateRegistration || companyStateReg);
+    setEditCompanyPhone(pendingCompany?.phone || companyPhone);
+    setEditCompanyEmail(pendingCompany?.email || companyEmail);
+    setEditCompanyRepresentative(pendingCompany?.representative || companyRepresentative);
+    setEditCompanyZipCode(pendingCompany?.zipCode || companyZipCode);
+    setEditCompanyStreet(pendingCompany?.street || companyStreet);
+    setEditCompanyNumber(pendingCompany?.number || companyNumber);
+    setEditCompanyNeighborhood(pendingCompany?.neighborhood || companyNeighborhood);
+    setEditCompanyCity(pendingCompany?.city || companyCity || 'Manaus');
+    setEditCompanyState(pendingCompany?.state || companyUf || 'AM');
+    setIsCompanyModalOpen(true);
+  };
+
+  const handleOpenVehicleModal = () => {
+    setEditVehicleMake(vehicleMake);
+    setEditVehicleModel(vehicleModel);
+    setEditVehiclePlate(vehiclePlate);
+    setEditVehicleYear(vehicleYear);
+    setEditVehicleColor(vehicleColor);
+    setIsVehicleModalOpen(true);
+  };
+
+  // 1. SUBMETER DADOS PESSOAIS PARA ANÁLISE DO ADMINISTRADOR
   const handleSubmitPersonalForReview = async () => {
-    if (!fullName.trim() || !phone.trim()) {
-      showToast('Preencha seu Nome e Telefone antes de enviar.');
+    if (!editFullName.trim()) {
+      showToast('⚠️ Informe o nome completo antes de enviar.');
       return;
     }
-
     setLoadingPersonal(true);
     try {
-      const dataToSubmit: PersonalData = {
-        fullName: fullName.trim(),
-        displayName: displayName.trim() || fullName.trim(),
-        cpf: cpf.trim(),
-        birthDate: birthDate.trim(),
-        phone: phone.trim(),
-        cnh: cnh.trim(),
-        email: email.trim(),
-        zipCode: zipCode.trim(),
-        street: street.trim(),
-        number: number.trim(),
-        complement: complement.trim(),
-        neighborhood: neighborhood.trim(),
-        city: city.trim() || 'Manaus',
-        state: uf.trim() || 'AM',
+      const payload: PersonalData = {
+        fullName: editFullName.trim(),
+        displayName: editDisplayName.trim() || editFullName.trim(),
+        cpf: editCpf.trim(),
+        birthDate: editBirthDate.trim(),
+        phone: editPhone.trim(),
+        cnh: editCnh.trim(),
+        zipCode: editZipCode.trim(),
+        street: editStreet.trim(),
+        number: editNumber.trim(),
+        complement: editComplement.trim(),
+        neighborhood: editNeighborhood.trim(),
+        city: editCity.trim() || 'Manaus',
+        state: editState.trim() || 'AM',
       };
 
-      await ProfileService.requestPersonalDataChange(dataToSubmit);
+      await ProfileService.requestPersonalDataChange(payload);
       setPersonalStatus('Aguardando aprovação');
-      setPendingPersonal(dataToSubmit);
-      setPersonalRejectionReason(null);
-      showToast('Alteração de dados pessoais enviada! Aguardando aprovação do administrador.');
+      setPendingPersonal(payload);
+      setIsPersonalModalOpen(false);
+      showToast('🚀 Solicitação enviada! Aguardando aprovação do administrador.');
+      await loadProfileData();
     } catch (err: any) {
-      showToast(err.message || 'Erro ao enviar alteração para análise.');
+      showToast(`❌ Falha ao enviar: ${err.message || 'Erro inesperado'}`);
     } finally {
       setLoadingPersonal(false);
     }
   };
 
-  // Enviar Dados da Empresa para Análise do Administrador
+  // 2. SUBMETER DADOS DA EMPRESA PARA ANÁLISE DO ADMINISTRADOR
   const handleSubmitCompanyForReview = async () => {
-    if (!companyLegalName.trim() && !companyCnpj.trim()) {
-      showToast('Preencha ao menos a Razão Social ou CNPJ da empresa.');
+    if (!editCompanyLegalName.trim() && !editCompanyCnpj.trim()) {
+      showToast('⚠️ Preencha a Razão Social ou CNPJ da empresa.');
       return;
     }
-
     setLoadingCompany(true);
     try {
-      const dataToSubmit: CompanyData = {
-        legalName: companyLegalName.trim(),
-        tradeName: companyTradeName.trim(),
-        cnpj: companyCnpj.trim(),
-        stateRegistration: companyStateReg.trim(),
-        phone: companyPhone.trim(),
-        email: companyEmail.trim(),
-        representative: companyRepresentative.trim(),
-        zipCode: companyZipCode.trim(),
-        street: companyStreet.trim(),
-        number: companyNumber.trim(),
-        neighborhood: companyNeighborhood.trim(),
-        city: companyCity.trim() || 'Manaus',
-        state: companyUf.trim() || 'AM',
+      const payload: CompanyData = {
+        legalName: editCompanyLegalName.trim(),
+        tradeName: editCompanyTradeName.trim(),
+        cnpj: editCompanyCnpj.trim(),
+        stateRegistration: editCompanyStateReg.trim(),
+        phone: editCompanyPhone.trim(),
+        email: editCompanyEmail.trim(),
+        representative: editCompanyRepresentative.trim(),
+        zipCode: editCompanyZipCode.trim(),
+        street: editCompanyStreet.trim(),
+        number: editCompanyNumber.trim(),
+        neighborhood: editCompanyNeighborhood.trim(),
+        city: editCompanyCity.trim() || 'Manaus',
+        state: editCompanyState.trim() || 'AM',
       };
 
-      await ProfileService.requestCompanyDataChange(dataToSubmit);
+      await ProfileService.requestCompanyDataChange(payload);
       setCompanyStatus('Aguardando aprovação');
-      setPendingCompany(dataToSubmit);
-      setCompanyRejectionReason(null);
-      showToast('Alteração de dados da empresa enviada! Aguardando aprovação do administrador.');
+      setPendingCompany(payload);
+      setIsCompanyModalOpen(false);
+      showToast('🏢 Dados da empresa enviados! Aguardando aprovação.');
+      await loadProfileData();
     } catch (err: any) {
-      showToast(err.message || 'Erro ao enviar dados da empresa para análise.');
+      showToast(`❌ Falha ao enviar: ${err.message || 'Erro inesperado'}`);
     } finally {
       setLoadingCompany(false);
     }
   };
 
-  // Solicitar Troca de Veículo para Análise do Administrador
+  // 3. SUBMETER TROCA DE VEÍCULO PARA ANÁLISE
   const handleSubmitVehicleForReview = async () => {
-    if (!vehiclePlate.trim() || !vehicleModel.trim()) {
-      showToast('Informe a placa e modelo do veículo.');
+    if (!editVehiclePlate.trim()) {
+      showToast('⚠️ Informe a placa do veículo.');
       return;
     }
-
     setLoadingVehicle(true);
     try {
       await ProfileService.requestVehicleChange({
-        make: vehicleMake,
-        model: vehicleModel,
-        year: vehicleYear,
-        plate: vehiclePlate,
-        color: vehicleColor,
+        make: editVehicleMake.trim(),
+        model: editVehicleModel.trim(),
+        plate: editVehiclePlate.trim().toUpperCase(),
+        year: editVehicleYear.trim(),
+        color: editVehicleColor.trim(),
       });
       setVehicleStatus('Pendente');
-      showToast('Solicitação de troca de veículo enviada para análise!');
+      setIsVehicleModalOpen(false);
+      showToast('🚗 Troca de veículo enviada! Aguardando aprovação.');
+      await loadProfileData();
     } catch (err: any) {
-      showToast(err.message || 'Erro ao enviar solicitação de veículo.');
+      showToast(`❌ Falha ao enviar troca de carro: ${err.message || 'Erro inesperado'}`);
     } finally {
       setLoadingVehicle(false);
     }
   };
 
+  // 4. UPLOAD DE FOTO COM FLUXO DE APROVAÇÃO
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const tempUrl = URL.createObjectURL(file);
+      setAvatarUrl(tempUrl);
+      setFotoStatus('Aguardando aprovação');
+      showToast('📸 Foto enviada para aprovação do administrador!');
+      await ProfileService.uploadProfilePicture(file);
+      await loadProfileData();
+    } catch (err: any) {
+      showToast(`❌ Falha ao enviar foto: ${err.message || 'Tente novamente.'}`);
+    }
+  };
+
+  const rating = dbProfile?.rating ?? 4.95;
+  const totalRides = dbProfile?.totalRides ?? 128;
+  const isAdmin = Boolean(dbProfile?.isAdmin || (user?.email && user.email.includes('admin')));
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#070D18] text-slate-900 dark:text-slate-100 font-sans pb-28 select-none transition-colors">
-      {/* Toast Notification */}
+    <div className="min-h-screen bg-[color:var(--bg)] pb-24 font-sans text-slate-900 dark:text-slate-100 select-none transition-colors">
+      {/* TOAST DE FEEDBACK FLUTUANTE */}
       {successToast && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-2xl bg-slate-950/95 dark:bg-white text-white dark:text-slate-950 px-4 py-3 text-xs font-black shadow-2xl animate-in fade-in slide-in-from-top-4 border border-slate-700 dark:border-slate-200">
-          <CheckCircle2 size={16} className="text-emerald-400 dark:text-emerald-600" />
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white dark:bg-amber-500 dark:text-slate-950 font-bold px-4 py-3 rounded-2xl shadow-2xl border border-slate-700/50 flex items-center gap-2.5 text-xs animate-in slide-in-from-top-4 duration-200 backdrop-blur-md">
           <span>{successToast}</span>
         </div>
       )}
 
-      <div className="max-w-md mx-auto px-5 pt-4 space-y-4">
-        {/* Cabeçalho da Página */}
-        <div className="pt-2 pb-1 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-xs font-bold tracking-wider uppercase mb-1">
-              <User size={13} />
-              <span>CONTA & CADASTRO</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              Meu Perfil
+      {/* HEADER PRINCIPAL */}
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-950/90 px-4 pb-3 pt-4 backdrop-blur-xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 dark:text-white">
+              Perfil do <span className="text-[#F59E0B]">Motorista</span>
             </h1>
           </div>
-          <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
-            driverType === 'EMPRESA'
-              ? 'bg-teal-500/15 border-teal-500/30 text-teal-700 dark:text-teal-400'
-              : 'bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-400'
-          }`}>
-            {driverType === 'EMPRESA' ? '🏢 Perfil Empresa' : '🚗 Perfil Particular'}
-          </span>
+          <button
+            onClick={() => setSupportOpen(true)}
+            className="w-9 h-9 rounded-2xl border border-slate-200 dark:border-dark-700 bg-slate-100 dark:bg-dark-800 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition"
+            title="Ajuda e Suporte"
+          >
+            <HelpCircle size={17} />
+          </button>
         </div>
+      </header>
 
-        {/* Card 1: Informações do Usuário com Foto e Badges */}
-        <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-4 border border-slate-100 dark:border-dark-700/80 shadow-sm space-y-3">
+      <div className="p-4 space-y-4 max-w-lg mx-auto">
+        
+        {/* CARD 1: FOTO & IDENTIFICAÇÃO OFICIAL */}
+        <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-5 border border-slate-100 dark:border-dark-700/80 shadow-sm space-y-4">
           <div className="flex items-center gap-4">
-            <div className="relative shrink-0">
-              <div className="w-16 h-16 rounded-2xl ring-2 ring-[#F59E0B] p-0.5 overflow-hidden bg-slate-100 dark:bg-dark-800 flex items-center justify-center">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-3xl bg-amber-500/10 border-2 border-amber-500/30 overflow-hidden flex items-center justify-center relative shadow-inner">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
-                    alt={finalDisplayName}
-                    className="w-full h-full object-cover rounded-xl"
+                    alt={displayName}
+                    className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 rounded-xl flex items-center justify-center text-white font-black text-xl">
-                    {finalDisplayName.charAt(0).toUpperCase()}
-                  </div>
+                  <User size={34} className="text-amber-500/70" />
                 )}
               </div>
-
-              {/* Badge de Avaliação */}
-              <div className="absolute -bottom-1 -right-1 bg-slate-950 text-amber-400 text-[10px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow border border-amber-400/30">
-                <Star size={10} className="fill-amber-400" />
-                <span>{rating}</span>
-              </div>
-
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                aria-label="Trocar foto"
-                className="absolute -top-1 -left-1 w-5 h-5 bg-[#F59E0B] text-slate-950 rounded-full flex items-center justify-center shadow hover:scale-110 active:scale-95 transition"
-                title="Trocar Foto"
+                className="absolute -bottom-1.5 -right-1.5 w-7 h-7 bg-[#F59E0B] text-slate-950 rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-dark-900 hover:scale-105 active:scale-95 transition"
+                title="Alterar foto para análise"
               >
-                <Camera size={11} />
+                <Camera size={13} />
               </button>
               <input
-                type="file"
                 ref={fileInputRef}
-                onChange={handlePhotoUpload}
+                type="file"
                 accept="image/*"
+                onChange={handlePhotoSelect}
                 className="hidden"
               />
             </div>
 
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-black text-slate-900 dark:text-white truncate">
-                {finalDisplayName}
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate mb-1.5">
-                {userEmail}
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-black text-slate-900 dark:text-white truncate">
+                  {displayName || fullName || 'Motorista'}
+                </h2>
+                <ShieldCheck size={16} className="text-amber-500 shrink-0" />
+              </div>
+              <p className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5 font-medium">
+                {fullName || 'Cadastro Oficial'}
               </p>
 
-              <div className="flex flex-wrap items-center gap-1.5">
-                {/* Status da Conta */}
-                {isAdmin ? (
-                  <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                    <Shield size={11} />
-                    <span>Administrador</span>
-                  </span>
-                ) : accountStatus === 'Pendente' ? (
-                  <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                    <Clock size={11} />
-                    <span>Pendente de Aprovação</span>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 bg-amber-500/15 text-amber-800 dark:text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                  <Star size={10} className="fill-amber-500 text-amber-500" />
+                  <span>{rating.toFixed(1)}</span>
+                </span>
+
+                {/* Badge de Categoria */}
+                {driverType === 'EMPRESA' ? (
+                  <span className="inline-flex items-center gap-1 bg-teal-500 text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-sm">
+                    🏢 Empresa
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                    <ShieldCheck size={11} />
-                    <span>Cadastro Aprovado</span>
+                  <span className="inline-flex items-center gap-1 bg-amber-500 text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-sm">
+                    🚗 Particular
                   </span>
                 )}
 
-                {/* Status de Aprovação da Foto */}
+                {/* Status da Foto */}
                 {avatarUrl && (
                   fotoStatus === 'Aguardando aprovação' ? (
-                    <span className="inline-flex items-center gap-1 bg-amber-500/15 border border-amber-500/40 text-amber-800 dark:text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse" title="Foto pendente de aprovação pelo administrador">
+                    <span className="inline-flex items-center gap-1 bg-amber-500/15 border border-amber-500/40 text-amber-800 dark:text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse" title="Foto pendente de validação">
                       <Clock size={10} />
-                      <span>Foto: Aguardando aprovação</span>
+                      <span>Foto em análise</span>
                     </span>
                   ) : fotoStatus === 'Reprovado' ? (
-                    <span className="inline-flex items-center gap-1 bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400 text-[10px] font-black px-2 py-0.5 rounded-full" title="Foto recusada pelo administrador">
+                    <span className="inline-flex items-center gap-1 bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400 text-[10px] font-black px-2 py-0.5 rounded-full">
                       <XCircle size={10} />
                       <span>Foto Recusada</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full" title="Foto aprovada pelo administrador">
+                    <span className="inline-flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
                       <CheckCircle2 size={10} />
                       <span>Foto Aprovada</span>
                     </span>
@@ -477,12 +539,12 @@ export default function PerfilPage() {
             </div>
           </div>
 
-          {/* Aviso contextual de status da foto de perfil */}
+          {/* Avisos de Foto */}
           {avatarUrl && fotoStatus === 'Aguardando aprovação' && (
             <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
               <Clock size={15} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400 animate-pulse" />
               <span>
-                <strong>Foto em análise:</strong> A imagem foi enviada com status <em>“Aguardando aprovação”</em> e só se torna oficial após validação do administrador.
+                <strong>Foto em análise:</strong> A imagem foi enviada com status <em>“Aguardando aprovação”</em> e só se torna pública após validação do administrador.
               </span>
             </div>
           )}
@@ -490,13 +552,13 @@ export default function PerfilPage() {
             <div className="p-2.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs text-red-700 dark:text-red-400 flex items-start gap-2">
               <AlertTriangle size={15} className="shrink-0 mt-0.5 text-red-500" />
               <span>
-                <strong>Foto recusada pelo administrador:</strong> Por favor, envie uma nova foto nítida de frente e com boa iluminação.
+                <strong>Foto recusada:</strong> Por favor, envie uma nova foto nítida de frente e com boa iluminação.
               </span>
             </div>
           )}
         </div>
 
-        {/* Card 2: CATEGORIA DO MOTORISTA (DEFINIÇÃO EXCLUSIVA DO ADMINISTRADOR) */}
+        {/* CARD 2: CATEGORIA DO MOTORISTA (DEFINIDA EXCLUSIVAMENTE PELA CENTRAL) */}
         <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-5 border border-slate-100 dark:border-dark-700/80 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -507,8 +569,6 @@ export default function PerfilPage() {
             </span>
           </div>
 
-          {/* Se definido como Empresa, exibe somente o perfil Empresa.
-              Se definido como Particular, exibe somente o perfil Particular. */}
           {driverType === 'EMPRESA' ? (
             <div className="p-4 rounded-2xl border border-teal-500/30 bg-teal-500/10 space-y-2.5">
               <div className="flex items-center justify-between">
@@ -554,16 +614,19 @@ export default function PerfilPage() {
           )}
         </div>
 
-        {/* Card 3: DADOS PESSOAIS DO MOTORISTA (COM FLUXO DE ANÁLISE E BOTÃO "ENVIAR PARA ANÁLISE") */}
+        {/* CARD 3: DADOS PESSOAIS DO MOTORISTA (CAMPOS FIXOS + BOTÃO PARA ABRIR POP-UP) */}
         <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-5 border border-slate-100 dark:border-dark-700/80 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              DADOS PESSOAIS DO MOTORISTA
-            </h3>
+            <div className="flex items-center gap-2">
+              <User size={16} className="text-[#F59E0B]" />
+              <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                DADOS PESSOAIS DO MOTORISTA
+              </h3>
+            </div>
             {personalStatus === 'Aguardando aprovação' ? (
               <span className="inline-flex items-center gap-1 bg-amber-500/20 border border-amber-500/40 text-amber-800 dark:text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-full animate-pulse">
                 <Clock size={11} />
-                <span>Alteração aguardando aprovação</span>
+                <span>Em análise</span>
               </span>
             ) : personalStatus === 'Reprovado' ? (
               <span className="inline-flex items-center gap-1 bg-red-500/20 border border-red-500/40 text-red-600 dark:text-red-400 text-[10px] font-black px-2.5 py-0.5 rounded-full">
@@ -573,12 +636,12 @@ export default function PerfilPage() {
             ) : (
               <span className="inline-flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
                 <CheckCircle2 size={11} />
-                <span>Dados Oficiais Validados</span>
+                <span>Oficial Aprovado</span>
               </span>
             )}
           </div>
 
-          {/* BANNER CLARO: ALTERAÇÃO AGUARDANDO APROVAÇÃO */}
+          {/* BANNER EM ANÁLISE */}
           {personalStatus === 'Aguardando aprovação' && (
             <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 space-y-2">
               <div className="flex items-center gap-2 font-black text-amber-800 dark:text-amber-300">
@@ -586,14 +649,14 @@ export default function PerfilPage() {
                 <span>Alteração aguardando aprovação</span>
               </div>
               <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300/90">
-                Sua solicitação de alteração cadastral está em análise com o administrador. Os dados oficiais só serão atualizados após a aprovação pelo site.
+                Sua solicitação de alteração cadastral está sob análise do administrador. Os dados oficiais abaixo continuam vigentes até a aprovação pelo site.
               </p>
               {pendingPersonal && (
-                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] space-y-1">
-                  <span className="font-bold block text-amber-900 dark:text-amber-200">Dados enviados para análise:</span>
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] space-y-1">
+                  <span className="font-bold block text-amber-900 dark:text-amber-200">Novos dados enviados:</span>
                   {pendingPersonal.fullName && <div>• Nome: <strong>{pendingPersonal.fullName}</strong></div>}
                   {pendingPersonal.cpf && <div>• CPF: <strong>{pendingPersonal.cpf}</strong></div>}
-                  {pendingPersonal.birthDate && <div>• Nasc: <strong>{pendingPersonal.birthDate}</strong></div>}
+                  {pendingPersonal.birthDate && <div>• Nascimento: <strong>{pendingPersonal.birthDate}</strong></div>}
                   {pendingPersonal.phone && <div>• Telefone: <strong>{pendingPersonal.phone}</strong></div>}
                   {pendingPersonal.cnh && <div>• CNH: <strong>{pendingPersonal.cnh}</strong></div>}
                 </div>
@@ -601,7 +664,7 @@ export default function PerfilPage() {
             </div>
           )}
 
-          {/* BANNER: ALTERAÇÃO REPROVADA */}
+          {/* BANNER RECUSADO */}
           {personalStatus === 'Reprovado' && (
             <div className="p-3.5 rounded-2xl bg-red-500/15 border border-red-500/30 text-xs text-red-900 dark:text-red-200 space-y-1.5">
               <div className="flex items-center gap-2 font-black text-red-700 dark:text-red-400">
@@ -609,179 +672,117 @@ export default function PerfilPage() {
                 <span>Alteração recusada pelo administrador</span>
               </div>
               <p className="text-[11px] text-red-800 dark:text-red-300">
-                {personalRejectionReason || 'Um ou mais dados informados não puderam ser validados. Por favor, revise as informações e envie novamente.'}
+                {personalRejectionReason || 'Os dados não puderam ser validados. Por favor, solicite uma nova alteração com as informações corretas.'}
               </p>
             </div>
           )}
 
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+          {/* FICHA CADASTRAL FIXA (SOMENTE LEITURA) */}
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-dark-800/60 border border-slate-100 dark:border-dark-700/60 space-y-3">
+            <div className="border-b border-slate-200/60 dark:border-dark-700/60 pb-2.5">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
                 Nome Completo (Conforme Documento)
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ex: Carlos Eduardo da Silva"
-                className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B] transition"
-              />
+              </span>
+              <span className="text-sm font-black text-slate-900 dark:text-white">
+                {fullName || 'Não informado'}
+              </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 border-b border-slate-200/60 dark:border-dark-700/60 pb-2.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
                   Nome Social / Exibição
-                </label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Como chamar no app"
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B] transition"
-                />
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {displayName || 'Não informado'}
+                </span>
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
                   Data de Nascimento
-                </label>
-                <input
-                  type="text"
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  placeholder="DD/MM/AAAA"
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B] transition"
-                />
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {birthDate || '—'}
+                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 border-b border-slate-200/60 dark:border-dark-700/60 pb-2.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
                   CPF
-                </label>
-                <input
-                  type="text"
-                  value={cpf}
-                  onChange={(e) => setCpf(e.target.value)}
-                  placeholder="000.000.000-00"
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B] transition"
-                />
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">
+                  {cpf || '—'}
+                </span>
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Número da CNH
-                </label>
-                <input
-                  type="text"
-                  value={cnh}
-                  onChange={(e) => setCnh(e.target.value)}
-                  placeholder="00000000000"
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B] transition"
-                />
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
+                  CNH
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">
+                  {cnh || '—'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 border-b border-slate-200/60 dark:border-dark-700/60 pb-2.5">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
+                  Telefone / WhatsApp
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {phone || '—'}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
+                  E-mail Oficial
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate block">
+                  {email || '—'}
+                </span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Telefone / WhatsApp
-              </label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="(92) 99123-4567"
-                className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B] transition"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                E-mail (Cadastrado)
-              </label>
-              <input
-                type="email"
-                value={email}
-                disabled
-                className="w-full bg-slate-100 dark:bg-dark-800/40 border border-slate-200 dark:border-dark-700/60 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-500 dark:text-slate-500 cursor-not-allowed"
-              />
-            </div>
-
-            {/* Endereço */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="col-span-2">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Rua / Logradouro
-                </label>
-                <input
-                  type="text"
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                  placeholder="Rua ou Av."
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Número
-                </label>
-                <input
-                  type="text"
-                  value={number}
-                  onChange={(e) => setNumber(e.target.value)}
-                  placeholder="Nº"
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Bairro
-                </label>
-                <input
-                  type="text"
-                  value={neighborhood}
-                  onChange={(e) => setNeighborhood(e.target.value)}
-                  placeholder="Bairro"
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Cidade / UF
-                </label>
-                <input
-                  type="text"
-                  value={`${city || 'Manaus'} - ${uf || 'AM'}`}
-                  disabled
-                  className="w-full bg-slate-100 dark:bg-dark-800/40 border border-slate-200 dark:border-dark-700/60 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-500 cursor-not-allowed"
-                />
-              </div>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
+                Endereço Cadastrado
+              </span>
+              <span className="text-xs font-medium text-slate-700 dark:text-slate-300 leading-relaxed block">
+                {street ? `${street}${number ? `, ${number}` : ''}${neighborhood ? ` - ${neighborhood}` : ''}, ${city || 'Manaus'} - ${uf || 'AM'}` : 'Endereço em Manaus - AM'}
+              </span>
             </div>
           </div>
 
-          <div className="pt-2">
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-3 leading-relaxed">
-              ℹ️ <strong>Processo seguro:</strong> Seus dados não são alterados imediatamente. Ao clicar no botão abaixo, a solicitação é encaminhada para validação do administrador.
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSubmitPersonalForReview}
-              disabled={loadingPersonal}
-              className="w-full bg-[#F59E0B] hover:bg-[#D97706] active:scale-[0.98] text-slate-950 font-black py-4 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm shadow-md shadow-amber-500/20 transition duration-200 disabled:opacity-50"
-            >
-              <Send size={16} />
-              <span>{loadingPersonal ? 'Enviando para análise...' : 'Enviar para análise'}</span>
-            </button>
+          {/* BOTÃO DE AÇÃO: ABRIR POP-UP DE EDIÇÃO */}
+          <div>
+            {personalStatus === 'Aguardando aprovação' ? (
+              <button
+                type="button"
+                disabled
+                className="w-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-black py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-xs border border-amber-500/30 cursor-not-allowed opacity-90"
+              >
+                <Clock size={15} className="animate-pulse text-amber-600" />
+                <span>Alteração aguardando aprovação do administrador</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleOpenPersonalModal}
+                className="w-full bg-[#F59E0B] hover:bg-[#D97706] active:scale-[0.98] text-slate-950 font-black py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-xs shadow-md shadow-amber-500/20 transition duration-200"
+              >
+                <Edit3 size={15} />
+                <span>Solicitar Alteração de Dados Pessoais</span>
+              </button>
+            )}
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mt-2 font-medium">
+              🔒 Dados fixos protegidos. Edições passam por validação prévia.
+            </p>
           </div>
         </div>
 
-        {/* Card 4: DADOS DA EMPRESA (COM FLUXO DE ANÁLISE E BOTÃO "ENVIAR PARA ANÁLISE") */}
+        {/* CARD 4: DADOS DA EMPRESA (CAMPOS FIXOS + BOTÃO PARA ABRIR POP-UP) */}
         <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-5 border border-slate-100 dark:border-dark-700/80 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -793,7 +794,7 @@ export default function PerfilPage() {
             {companyStatus === 'Aguardando aprovação' ? (
               <span className="inline-flex items-center gap-1 bg-amber-500/20 border border-amber-500/40 text-amber-800 dark:text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-full animate-pulse">
                 <Clock size={11} />
-                <span>Alteração aguardando aprovação</span>
+                <span>Em análise</span>
               </span>
             ) : companyStatus === 'Reprovado' ? (
               <span className="inline-flex items-center gap-1 bg-red-500/20 border border-red-500/40 text-red-600 dark:text-red-400 text-[10px] font-black px-2.5 py-0.5 rounded-full">
@@ -803,188 +804,164 @@ export default function PerfilPage() {
             ) : (
               <span className="inline-flex items-center gap-1 bg-teal-500/15 border border-teal-500/30 text-teal-600 dark:text-teal-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
                 <CheckCircle2 size={11} />
-                <span>Dados Corporativos Oficiais</span>
+                <span>Oficial Aprovado</span>
               </span>
             )}
           </div>
 
-          {/* BANNER CLARO: ALTERAÇÃO DA EMPRESA AGUARDANDO APROVAÇÃO */}
+          {/* BANNER EM ANÁLISE */}
           {companyStatus === 'Aguardando aprovação' && (
             <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 space-y-2">
               <div className="flex items-center gap-2 font-black text-amber-800 dark:text-amber-300">
                 <Clock size={16} className="shrink-0 animate-pulse" />
-                <span>Alteração aguardando aprovação</span>
+                <span>Alteração da empresa aguardando aprovação</span>
               </div>
               <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300/90">
-                As alterações nos dados da sua empresa foram enviadas e estão sob análise do administrador. Após aprovação, passam a ser os dados oficiais.
+                As alterações corporativas solicitadas estão em análise. Após aprovação pelo administrador, passarão a ser oficiais.
               </p>
               {pendingCompany && (
-                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] space-y-1">
-                  <span className="font-bold block text-amber-900 dark:text-amber-200">Dados da empresa em análise:</span>
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] space-y-1">
+                  <span className="font-bold block text-amber-900 dark:text-amber-200">Dados corporativos enviados:</span>
                   {pendingCompany.legalName && <div>• Razão Social: <strong>{pendingCompany.legalName}</strong></div>}
                   {pendingCompany.cnpj && <div>• CNPJ: <strong>{pendingCompany.cnpj}</strong></div>}
-                  {pendingCompany.tradeName && <div>• Nome Fantasia: <strong>{pendingCompany.tradeName}</strong></div>}
+                  {pendingCompany.tradeName && <div>• Fantasia: <strong>{pendingCompany.tradeName}</strong></div>}
                   {pendingCompany.phone && <div>• Telefone: <strong>{pendingCompany.phone}</strong></div>}
                 </div>
               )}
             </div>
           )}
 
-          {/* BANNER: ALTERAÇÃO DA EMPRESA REPROVADA */}
+          {/* BANNER RECUSADO */}
           {companyStatus === 'Reprovado' && (
             <div className="p-3.5 rounded-2xl bg-red-500/15 border border-red-500/30 text-xs text-red-900 dark:text-red-200 space-y-1.5">
               <div className="flex items-center gap-2 font-black text-red-700 dark:text-red-400">
                 <AlertTriangle size={16} className="shrink-0" />
-                <span>Alteração da empresa recusada pelo administrador</span>
+                <span>Alteração da empresa recusada</span>
               </div>
               <p className="text-[11px] text-red-800 dark:text-red-300">
-                {companyRejectionReason || 'Os dados informados da empresa não atenderam aos requisitos. Revise e envie novamente.'}
+                {companyRejectionReason || 'Os dados corporativos informados foram rejeitados. Solicite novamente com os dados corretos.'}
               </p>
             </div>
           )}
 
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+          {/* FICHA CORPORATIVA FIXA (SOMENTE LEITURA) */}
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-dark-800/60 border border-slate-100 dark:border-dark-700/60 space-y-3">
+            <div className="border-b border-slate-200/60 dark:border-dark-700/60 pb-2.5">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
                 Razão Social da Empresa
-              </label>
-              <input
-                type="text"
-                value={companyLegalName}
-                onChange={(e) => setCompanyLegalName(e.target.value)}
-                placeholder="Ex: SR Transportes e Logística LTDA"
-                className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500 transition"
-              />
+              </span>
+              <span className="text-sm font-black text-slate-900 dark:text-white">
+                {companyLegalName || 'Não informada'}
+              </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 border-b border-slate-200/60 dark:border-dark-700/60 pb-2.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
                   Nome Fantasia
-                </label>
-                <input
-                  type="text"
-                  value={companyTradeName}
-                  onChange={(e) => setCompanyTradeName(e.target.value)}
-                  placeholder="Nome Fantasia"
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500 transition"
-                />
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {companyTradeName || '—'}
+                </span>
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
                   CNPJ
-                </label>
-                <input
-                  type="text"
-                  value={companyCnpj}
-                  onChange={(e) => setCompanyCnpj(e.target.value)}
-                  placeholder="00.000.000/0001-00"
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500 transition"
-                />
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">
+                  {companyCnpj || '—'}
+                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 border-b border-slate-200/60 dark:border-dark-700/60 pb-2.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
                   Inscrição Estadual
-                </label>
-                <input
-                  type="text"
-                  value={companyStateReg}
-                  onChange={(e) => setCompanyStateReg(e.target.value)}
-                  placeholder="Isento ou Nº"
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500 transition"
-                />
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {companyStateReg || 'Isento'}
+                </span>
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
                   Telefone Corporativo
-                </label>
-                <input
-                  type="text"
-                  value={companyPhone}
-                  onChange={(e) => setCompanyPhone(e.target.value)}
-                  placeholder="(92) 3000-0000"
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500 transition"
-                />
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {companyPhone || '—'}
+                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 border-b border-slate-200/60 dark:border-dark-700/60 pb-2.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
                   E-mail Corporativo
-                </label>
-                <input
-                  type="email"
-                  value={companyEmail}
-                  onChange={(e) => setCompanyEmail(e.target.value)}
-                  placeholder="contato@empresa.com"
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500 transition"
-                />
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate block">
+                  {companyEmail || '—'}
+                </span>
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Responsável / Contato
-                </label>
-                <input
-                  type="text"
-                  value={companyRepresentative}
-                  onChange={(e) => setCompanyRepresentative(e.target.value)}
-                  placeholder="Nome do Representante"
-                  className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500 transition"
-                />
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
+                  Responsável Legal
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {companyRepresentative || '—'}
+                </span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Endereço Comercial da Empresa
-              </label>
-              <input
-                type="text"
-                value={companyStreet}
-                onChange={(e) => setCompanyStreet(e.target.value)}
-                placeholder="Rua / Av. Comercial, Número, Bairro"
-                className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500 transition"
-              />
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
+                Endereço Comercial
+              </span>
+              <span className="text-xs font-medium text-slate-700 dark:text-slate-300 leading-relaxed block">
+                {companyStreet ? `${companyStreet}${companyNumber ? `, ${companyNumber}` : ''}${companyNeighborhood ? ` - ${companyNeighborhood}` : ''}, ${companyCity || 'Manaus'} - ${companyUf || 'AM'}` : 'Endereço Comercial em Manaus - AM'}
+              </span>
             </div>
           </div>
 
-          <div className="pt-2">
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-3 leading-relaxed">
-              🔒 <strong>Regra corporativa:</strong> Os dados da empresa não podem ser alterados diretamente. O administrador aprova ou rejeita pelo site antes da efetivação.
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSubmitCompanyForReview}
-              disabled={loadingCompany}
-              className="w-full bg-teal-600 hover:bg-teal-700 active:scale-[0.98] text-white font-black py-4 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm shadow-md shadow-teal-600/20 transition duration-200 disabled:opacity-50"
-            >
-              <Send size={16} />
-              <span>{loadingCompany ? 'Enviando para análise...' : 'Enviar para análise'}</span>
-            </button>
+          {/* BOTÃO DE AÇÃO: ABRIR POP-UP DE EMPRESA */}
+          <div>
+            {companyStatus === 'Aguardando aprovação' ? (
+              <button
+                type="button"
+                disabled
+                className="w-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-black py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-xs border border-amber-500/30 cursor-not-allowed opacity-90"
+              >
+                <Clock size={15} className="animate-pulse text-amber-600" />
+                <span>Alteração da empresa em análise pelo administrador</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleOpenCompanyModal}
+                className="w-full bg-teal-600 hover:bg-teal-700 active:scale-[0.98] text-white font-black py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-xs shadow-md shadow-teal-600/20 transition duration-200"
+              >
+                <Building2 size={15} />
+                <span>Solicitar Alteração da Empresa</span>
+              </button>
+            )}
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mt-2 font-medium">
+              🏢 Dados corporativos protegidos com validação prévia.
+            </p>
           </div>
         </div>
 
-        {/* Card 5: VEÍCULO CADASTRADO & SOLICITAÇÃO DE TROCA */}
+        {/* CARD 5: VEÍCULO CADASTRADO (FIXO + BOTÃO PARA POP-UP DE TROCA) */}
         <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-5 border border-slate-100 dark:border-dark-700/80 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Car size={16} className="text-amber-500" />
               <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                VEÍCULO CADASTRADO
+                VEÍCULO OFICIAL CADASTRADO
               </h3>
             </div>
             {vehicleStatus === 'Pendente' ? (
               <span className="inline-flex items-center gap-1 bg-amber-500/20 border border-amber-500/40 text-amber-800 dark:text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-full animate-pulse">
                 <Clock size={11} />
-                <span>Carro em Análise</span>
+                <span>Troca em Análise</span>
               </span>
             ) : vehicleStatus === 'Reprovado' ? (
               <span className="inline-flex items-center gap-1 bg-red-500/20 border border-red-500/40 text-red-600 dark:text-red-400 text-[10px] font-black px-2.5 py-0.5 rounded-full">
@@ -999,84 +976,72 @@ export default function PerfilPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Marca
-              </label>
-              <input
-                type="text"
-                value={vehicleMake}
-                onChange={(e) => setVehicleMake(e.target.value)}
-                placeholder="Ex: Chevrolet"
-                className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
-              />
+          {/* FICHA DO VEÍCULO FIXA */}
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-dark-800/60 border border-slate-100 dark:border-dark-700/60 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-dark-700/60 pb-2.5">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
+                  Marca e Modelo
+                </span>
+                <span className="text-sm font-black text-slate-900 dark:text-white">
+                  {vehicleMake} {vehicleModel}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
+                  Placa
+                </span>
+                <span className="bg-slate-200 dark:bg-dark-700 text-slate-900 dark:text-white font-mono font-black text-xs px-2.5 py-1 rounded-lg border border-slate-300 dark:border-dark-600">
+                  {vehiclePlate}
+                </span>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Modelo
-              </label>
-              <input
-                type="text"
-                value={vehicleModel}
-                onChange={(e) => setVehicleModel(e.target.value)}
-                placeholder="Ex: Onix Plus"
-                className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
-              />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
+                  Ano de Fabricação
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {vehicleYear}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
+                  Cor
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {vehicleColor}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Placa
-              </label>
-              <input
-                type="text"
-                value={vehiclePlate}
-                onChange={(e) => setVehiclePlate(e.target.value)}
-                placeholder="ABC1D23"
-                className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Ano
-              </label>
-              <input
-                type="text"
-                value={vehicleYear}
-                onChange={(e) => setVehicleYear(e.target.value)}
-                placeholder="2024"
-                className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Cor
-              </label>
-              <input
-                type="text"
-                value={vehicleColor}
-                onChange={(e) => setVehicleColor(e.target.value)}
-                placeholder="Prata"
-                className="w-full bg-slate-50 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
-              />
-            </div>
+          {/* BOTÃO DE AÇÃO: POP-UP DE TROCA DE VEÍCULO */}
+          <div>
+            {vehicleStatus === 'Pendente' ? (
+              <button
+                type="button"
+                disabled
+                className="w-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-black py-3 px-4 rounded-2xl flex items-center justify-center gap-2 text-xs border border-amber-500/30 cursor-not-allowed opacity-90"
+              >
+                <Clock size={14} className="animate-pulse text-amber-600" />
+                <span>Troca de veículo em análise pelo administrador</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleOpenVehicleModal}
+                className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-700 active:scale-[0.98] text-slate-900 dark:text-white font-bold py-3 px-4 rounded-2xl flex items-center justify-center gap-2 text-xs transition border border-slate-200 dark:border-dark-700"
+              >
+                <Car size={14} />
+                <span>Solicitar Troca de Veículo</span>
+              </button>
+            )}
           </div>
-
-          <button
-            type="button"
-            onClick={handleSubmitVehicleForReview}
-            disabled={loadingVehicle}
-            className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-700 active:scale-[0.98] text-slate-900 dark:text-white font-bold py-3 px-4 rounded-2xl flex items-center justify-center gap-2 text-xs transition border border-slate-200 dark:border-dark-700 disabled:opacity-50"
-          >
-            <Send size={14} />
-            <span>{loadingVehicle ? 'Enviando troca...' : 'Enviar Troca de Veículo para Análise'}</span>
-          </button>
         </div>
 
-        {/* Card Especial de Administração para Usuários Admin */}
+        {/* CARD ESPECIAL DE ADMINISTRAÇÃO */}
         {isAdmin && (
           <Link
             href="/admin"
@@ -1106,7 +1071,7 @@ export default function PerfilPage() {
           </Link>
         )}
 
-        {/* Card 6: Hub de Ferramentas, Radar, Ajustes e Suporte */}
+        {/* HUB DE FERRAMENTAS, RADAR, AJUSTES E SUPORTE */}
         <div className="bg-white dark:bg-dark-900/90 rounded-3xl border border-slate-100 dark:border-dark-700/80 shadow-sm overflow-hidden divide-y divide-slate-100 dark:divide-dark-800">
           {/* Radar de Demanda */}
           <Link
@@ -1240,7 +1205,7 @@ export default function PerfilPage() {
           </Link>
         </div>
 
-        {/* Card 7: Sair da Conta */}
+        {/* SAIR DA CONTA */}
         <button
           type="button"
           onClick={signOut}
@@ -1250,6 +1215,521 @@ export default function PerfilPage() {
           <span>Sair da Conta</span>
         </button>
       </div>
+
+      {/* ========================================================================= */}
+      {/* POP-UP / MODAL 1: SOLICITAR ALTERAÇÃO DE DADOS PESSOAIS */}
+      {/* ========================================================================= */}
+      {isPersonalModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-700 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-100 dark:border-dark-800 flex items-center justify-between bg-slate-50/50 dark:bg-dark-800/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <Edit3 size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                    Solicitar Alteração Cadastral
+                  </h3>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                    Envio para análise e aprovação do administrador
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPersonalModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-dark-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 overflow-y-auto space-y-4 flex-1">
+              {/* Aviso de Moderação */}
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+                <Lock size={16} className="shrink-0 mt-0.5 text-amber-600" />
+                <span className="text-[11px] leading-relaxed">
+                  <strong>Processo Seguro:</strong> As alterações não entram em vigor imediatamente. Elas serão validadas pelo administrador no site antes da aprovação oficial.
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Nome Completo (Conforme Documento)
+                  </label>
+                  <input
+                    type="text"
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(e.target.value)}
+                    placeholder="Ex: Carlos Eduardo da Silva"
+                    className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B] transition"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Nome Social / Exibição
+                    </label>
+                    <input
+                      type="text"
+                      value={editDisplayName}
+                      onChange={(e) => setEditDisplayName(e.target.value)}
+                      placeholder="Como chamar no app"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Data de Nascimento
+                    </label>
+                    <input
+                      type="text"
+                      value={editBirthDate}
+                      onChange={(e) => setEditBirthDate(e.target.value)}
+                      placeholder="DD/MM/AAAA"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      CPF
+                    </label>
+                    <input
+                      type="text"
+                      value={editCpf}
+                      onChange={(e) => setEditCpf(e.target.value)}
+                      placeholder="000.000.000-00"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Número da CNH
+                    </label>
+                    <input
+                      type="text"
+                      value={editCnh}
+                      onChange={(e) => setEditCnh(e.target.value)}
+                      placeholder="00000000000"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Telefone / WhatsApp
+                  </label>
+                  <input
+                    type="text"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="(92) 99123-4567"
+                    className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
+                {/* Endereço */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Rua / Logradouro
+                    </label>
+                    <input
+                      type="text"
+                      value={editStreet}
+                      onChange={(e) => setEditStreet(e.target.value)}
+                      placeholder="Rua ou Av."
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Número
+                    </label>
+                    <input
+                      type="text"
+                      value={editNumber}
+                      onChange={(e) => setEditNumber(e.target.value)}
+                      placeholder="Nº"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Bairro
+                    </label>
+                    <input
+                      type="text"
+                      value={editNeighborhood}
+                      onChange={(e) => setEditNeighborhood(e.target.value)}
+                      placeholder="Bairro"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Cidade / UF
+                    </label>
+                    <input
+                      type="text"
+                      value={`${editCity || 'Manaus'} - ${editState || 'AM'}`}
+                      onChange={(e) => setEditCity(e.target.value)}
+                      placeholder="Manaus - AM"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 dark:border-dark-800 bg-slate-50/50 dark:bg-dark-800/50 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsPersonalModalOpen(false)}
+                disabled={loadingPersonal}
+                className="px-4 py-3 rounded-2xl border border-slate-200 dark:border-dark-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-dark-700 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitPersonalForReview}
+                disabled={loadingPersonal}
+                className="bg-[#F59E0B] hover:bg-[#D97706] active:scale-[0.98] text-slate-950 font-black px-6 py-3 rounded-2xl flex items-center justify-center gap-2 text-xs shadow-md shadow-amber-500/20 transition disabled:opacity-50"
+              >
+                <Send size={14} />
+                <span>{loadingPersonal ? 'Enviando...' : 'Enviar para Análise'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* POP-UP / MODAL 2: SOLICITAR ALTERAÇÃO DE DADOS DA EMPRESA */}
+      {/* ========================================================================= */}
+      {isCompanyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-700 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-100 dark:border-dark-800 flex items-center justify-between bg-slate-50/50 dark:bg-dark-800/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+                  <Building2 size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                    Solicitar Alteração da Empresa
+                  </h3>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                    Envio dos dados corporativos para análise
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCompanyModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-dark-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 overflow-y-auto space-y-4 flex-1">
+              <div className="p-3 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-xs text-teal-800 dark:text-teal-300 flex items-start gap-2.5">
+                <Lock size={16} className="shrink-0 mt-0.5 text-teal-600" />
+                <span className="text-[11px] leading-relaxed">
+                  <strong>Regra Corporativa:</strong> Os dados da empresa serão validados pelo administrador do site principal antes da efetivação no cadastro oficial.
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Razão Social da Empresa
+                  </label>
+                  <input
+                    type="text"
+                    value={editCompanyLegalName}
+                    onChange={(e) => setEditCompanyLegalName(e.target.value)}
+                    placeholder="Ex: SR Transportes e Logística LTDA"
+                    className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500 transition"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Nome Fantasia
+                    </label>
+                    <input
+                      type="text"
+                      value={editCompanyTradeName}
+                      onChange={(e) => setEditCompanyTradeName(e.target.value)}
+                      placeholder="Nome Fantasia"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      CNPJ
+                    </label>
+                    <input
+                      type="text"
+                      value={editCompanyCnpj}
+                      onChange={(e) => setEditCompanyCnpj(e.target.value)}
+                      placeholder="00.000.000/0001-00"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Inscrição Estadual
+                    </label>
+                    <input
+                      type="text"
+                      value={editCompanyStateReg}
+                      onChange={(e) => setEditCompanyStateReg(e.target.value)}
+                      placeholder="Isento ou Nº"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Telefone Corporativo
+                    </label>
+                    <input
+                      type="text"
+                      value={editCompanyPhone}
+                      onChange={(e) => setEditCompanyPhone(e.target.value)}
+                      placeholder="(92) 3000-0000"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      E-mail Corporativo
+                    </label>
+                    <input
+                      type="email"
+                      value={editCompanyEmail}
+                      onChange={(e) => setEditCompanyEmail(e.target.value)}
+                      placeholder="contato@empresa.com"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Responsável Legal
+                    </label>
+                    <input
+                      type="text"
+                      value={editCompanyRepresentative}
+                      onChange={(e) => setEditCompanyRepresentative(e.target.value)}
+                      placeholder="Nome do Representante"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Endereço Comercial da Empresa
+                  </label>
+                  <input
+                    type="text"
+                    value={editCompanyStreet}
+                    onChange={(e) => setEditCompanyStreet(e.target.value)}
+                    placeholder="Rua / Av. Comercial, Número, Bairro, Cidade"
+                    className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500 transition"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 dark:border-dark-800 bg-slate-50/50 dark:bg-dark-800/50 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsCompanyModalOpen(false)}
+                disabled={loadingCompany}
+                className="px-4 py-3 rounded-2xl border border-slate-200 dark:border-dark-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-dark-700 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitCompanyForReview}
+                disabled={loadingCompany}
+                className="bg-teal-600 hover:bg-teal-700 active:scale-[0.98] text-white font-black px-6 py-3 rounded-2xl flex items-center justify-center gap-2 text-xs shadow-md shadow-teal-600/20 transition disabled:opacity-50"
+              >
+                <Send size={14} />
+                <span>{loadingCompany ? 'Enviando...' : 'Enviar para Análise'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* POP-UP / MODAL 3: SOLICITAR TROCA DE VEÍCULO */}
+      {/* ========================================================================= */}
+      {isVehicleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-dark-900 border border-slate-200 dark:border-dark-700 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-100 dark:border-dark-800 flex items-center justify-between bg-slate-50/50 dark:bg-dark-800/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <Car size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                    Solicitar Troca de Veículo
+                  </h3>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                    Envio dos dados do novo veículo para aprovação
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsVehicleModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-dark-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 overflow-y-auto space-y-4 flex-1">
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+                <Car size={16} className="shrink-0 mt-0.5 text-amber-600" />
+                <span className="text-[11px] leading-relaxed">
+                  <strong>Aprovação de Frota:</strong> O novo veículo será verificado pelo administrador. Enquanto estiver pendente, você continuará operando com o veículo atual.
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Marca do Carro
+                    </label>
+                    <input
+                      type="text"
+                      value={editVehicleMake}
+                      onChange={(e) => setEditVehicleMake(e.target.value)}
+                      placeholder="Ex: Chevrolet"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Modelo do Carro
+                    </label>
+                    <input
+                      type="text"
+                      value={editVehicleModel}
+                      onChange={(e) => setEditVehicleModel(e.target.value)}
+                      placeholder="Ex: Onix Plus"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Placa
+                    </label>
+                    <input
+                      type="text"
+                      value={editVehiclePlate}
+                      onChange={(e) => setEditVehiclePlate(e.target.value)}
+                      placeholder="ABC1D23"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Ano
+                    </label>
+                    <input
+                      type="text"
+                      value={editVehicleYear}
+                      onChange={(e) => setEditVehicleYear(e.target.value)}
+                      placeholder="2024"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Cor
+                    </label>
+                    <input
+                      type="text"
+                      value={editVehicleColor}
+                      onChange={(e) => setEditVehicleColor(e.target.value)}
+                      placeholder="Prata"
+                      className="w-full bg-slate-50 dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 dark:border-dark-800 bg-slate-50/50 dark:bg-dark-800/50 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsVehicleModalOpen(false)}
+                disabled={loadingVehicle}
+                className="px-4 py-3 rounded-2xl border border-slate-200 dark:border-dark-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-dark-700 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitVehicleForReview}
+                disabled={loadingVehicle}
+                className="bg-[#F59E0B] hover:bg-[#D97706] active:scale-[0.98] text-slate-950 font-black px-6 py-3 rounded-2xl flex items-center justify-center gap-2 text-xs shadow-md shadow-amber-500/20 transition disabled:opacity-50"
+              >
+                <Send size={14} />
+                <span>{loadingVehicle ? 'Enviando...' : 'Enviar para Análise'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <SupportModal isOpen={supportOpen} onClose={() => setSupportOpen(false)} />
       <BottomNav />

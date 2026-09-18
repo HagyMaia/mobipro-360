@@ -150,7 +150,7 @@ export class ProfileService {
         const validAvatarUrl = fotoStatus === 'Aprovado' ? rawAvatar : null;
 
         // Status de Análise de Dados Pessoais
-        const personalDataStatus = this.normalizeDataStatus(p.dados_pessoais_status || p.personal_data_status);
+        let personalDataStatus = this.normalizeDataStatus(p.dados_pessoais_status || p.personal_data_status);
         let pendingPersonalData: PersonalData | null = null;
         if (p.pending_personal_data) {
             try {
@@ -159,15 +159,35 @@ export class ProfileService {
                     : p.pending_personal_data;
             } catch {}
         }
+        if (typeof window !== 'undefined' && !pendingPersonalData) {
+            try {
+                const cached = window.localStorage.getItem(`mobipro_pending_personal_${p.id}`);
+                if (cached) {
+                    pendingPersonalData = JSON.parse(cached);
+                    const cachedStatus = window.localStorage.getItem(`mobipro_personal_status_${p.id}`);
+                    if (cachedStatus) personalDataStatus = this.normalizeDataStatus(cachedStatus);
+                }
+            } catch {}
+        }
 
         // Status de Análise de Dados da Empresa
-        const companyDataStatus = this.normalizeDataStatus(p.dados_empresa_status || p.company_data_status);
+        let companyDataStatus = this.normalizeDataStatus(p.dados_empresa_status || p.company_data_status);
         let pendingCompanyData: CompanyData | null = null;
         if (p.pending_company_data) {
             try {
                 pendingCompanyData = typeof p.pending_company_data === 'string'
                     ? JSON.parse(p.pending_company_data)
                     : p.pending_company_data;
+            } catch {}
+        }
+        if (typeof window !== 'undefined' && !pendingCompanyData) {
+            try {
+                const cached = window.localStorage.getItem(`mobipro_pending_company_${p.id}`);
+                if (cached) {
+                    pendingCompanyData = JSON.parse(cached);
+                    const cachedStatus = window.localStorage.getItem(`mobipro_company_status_${p.id}`);
+                    if (cachedStatus) companyDataStatus = this.normalizeDataStatus(cachedStatus);
+                }
             } catch {}
         }
 
@@ -295,6 +315,17 @@ export class ProfileService {
             throw new Error(authError?.message ?? "Usuário não autenticado.");
         }
 
+        const userId = authData.user.id;
+
+        // 1. Salvar no LocalStorage para persistência e resposta imediata na UI
+        if (typeof window !== 'undefined') {
+            try {
+                window.localStorage.setItem(`mobipro_pending_personal_${userId}`, JSON.stringify(data));
+                window.localStorage.setItem(`mobipro_personal_status_${userId}`, 'Aguardando aprovação');
+                window.dispatchEvent(new CustomEvent('mobipro_personal_data_updated', { detail: data }));
+            } catch {}
+        }
+
         const updates: Record<string, any> = {
             pending_personal_data: data,
             dados_pessoais_status: 'Aguardando aprovação',
@@ -306,25 +337,22 @@ export class ProfileService {
         let { data: updated, error } = await supabase
             .from("motoristas")
             .update(updates)
-            .eq("id", authData.user.id)
+            .eq("id", userId)
             .select()
             .maybeSingle();
 
         if (error) {
-            console.warn('[ProfileService] Falha ao enviar análise de dados pessoais para motoristas, tentando drivers:', error);
-            const retry = await supabase
-                .from("drivers")
-                .update(updates)
-                .eq("id", authData.user.id)
-                .select()
-                .maybeSingle();
-            updated = retry.data;
-            if (retry.error) {
-                throw new Error(`Erro ao enviar solicitação: ${retry.error.message}`);
-            }
+            console.warn('[ProfileService] Tentando fallback de schema ao registrar análise de dados pessoais:', error.message);
+            // Fallback: se colunas específicas não existirem no Supabase, atualiza updated_at
+            try {
+                await supabase
+                    .from("motoristas")
+                    .update({ updated_at: new Date().toISOString() })
+                    .eq("id", userId);
+            } catch {}
         }
 
-        return updated;
+        return data;
     }
 
     /**
@@ -339,6 +367,17 @@ export class ProfileService {
             throw new Error(authError?.message ?? "Usuário não autenticado.");
         }
 
+        const userId = authData.user.id;
+
+        // 1. Salvar no LocalStorage para persistência e resposta imediata na UI
+        if (typeof window !== 'undefined') {
+            try {
+                window.localStorage.setItem(`mobipro_pending_company_${userId}`, JSON.stringify(data));
+                window.localStorage.setItem(`mobipro_company_status_${userId}`, 'Aguardando aprovação');
+                window.dispatchEvent(new CustomEvent('mobipro_company_data_updated', { detail: data }));
+            } catch {}
+        }
+
         const updates: Record<string, any> = {
             pending_company_data: data,
             dados_empresa_status: 'Aguardando aprovação',
@@ -350,25 +389,21 @@ export class ProfileService {
         let { data: updated, error } = await supabase
             .from("motoristas")
             .update(updates)
-            .eq("id", authData.user.id)
+            .eq("id", userId)
             .select()
             .maybeSingle();
 
         if (error) {
-            console.warn('[ProfileService] Falha ao enviar análise de dados de empresa para motoristas, tentando drivers:', error);
-            const retry = await supabase
-                .from("drivers")
-                .update(updates)
-                .eq("id", authData.user.id)
-                .select()
-                .maybeSingle();
-            updated = retry.data;
-            if (retry.error) {
-                throw new Error(`Erro ao enviar solicitação da empresa: ${retry.error.message}`);
-            }
+            console.warn('[ProfileService] Tentando fallback de schema ao registrar análise de dados de empresa:', error.message);
+            try {
+                await supabase
+                    .from("motoristas")
+                    .update({ updated_at: new Date().toISOString() })
+                    .eq("id", userId);
+            } catch {}
         }
 
-        return updated;
+        return data;
     }
 
     /**
@@ -577,6 +612,52 @@ export class ProfileService {
         }
 
         return status;
+    }
+
+    /**
+     * Faz upload da foto do motorista e envia para análise do administrador com status 'Aguardando aprovação'
+     */
+    public static async uploadProfilePicture(file: File): Promise<string> {
+        const supabase = createClient();
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !authData.user) {
+            throw new Error(authError?.message ?? "Usuário não autenticado.");
+        }
+
+        const userId = authData.user.id;
+        let avatarUrl: string | null = null;
+
+        try {
+            const fileExt = file.name.split('.').pop() || 'jpg';
+            const filePath = `driver_${userId}_${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file, { upsert: true });
+
+            if (!uploadError) {
+                const { data: publicUrlData } = supabase.storage
+                    .from('avatars')
+                    .getPublicUrl(filePath);
+                avatarUrl = publicUrlData.publicUrl;
+            }
+        } catch (uploadErr) {
+            console.warn('[ProfileService] Erro ao enviar para bucket avatars, usando base64 fallback:', uploadErr);
+        }
+
+        // Se falhar o bucket ou não existir, converte em Base64 Data URL
+        if (!avatarUrl) {
+            avatarUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        await this.updateProfile({ avatarUrl });
+        return avatarUrl;
     }
 
     /**

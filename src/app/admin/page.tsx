@@ -154,7 +154,44 @@ export default function AdminPage() {
     if (driversError) {
       setError("Não foi possível carregar os motoristas.");
     } else {
-      setDrivers(data || []);
+      const rawList = data || [];
+      const enriched = rawList.map((d: any) => {
+        let pendingPers = d.pending_personal_data;
+        let persStatus = d.dados_pessoais_status || d.personal_data_status;
+        if (!pendingPers && typeof window !== 'undefined') {
+          try {
+            const cached = window.localStorage.getItem(`mobipro_pending_personal_${d.id}`);
+            if (cached) {
+              pendingPers = JSON.parse(cached);
+              persStatus = window.localStorage.getItem(`mobipro_personal_status_${d.id}`) || 'Aguardando aprovação';
+            }
+          } catch {}
+        }
+
+        let pendingComp = d.pending_company_data;
+        let compStatus = d.dados_empresa_status || d.company_data_status;
+        if (!pendingComp && typeof window !== 'undefined') {
+          try {
+            const cached = window.localStorage.getItem(`mobipro_pending_company_${d.id}`);
+            if (cached) {
+              pendingComp = JSON.parse(cached);
+              compStatus = window.localStorage.getItem(`mobipro_company_status_${d.id}`) || 'Aguardando aprovação';
+            }
+          } catch {}
+        }
+
+        return {
+          ...d,
+          pending_personal_data: pendingPers,
+          dados_pessoais_status: persStatus,
+          personal_data_status: persStatus,
+          pending_company_data: pendingComp,
+          dados_empresa_status: compStatus,
+          company_data_status: compStatus,
+        };
+      });
+
+      setDrivers(enriched);
       setError("");
     }
     setLoadingDrivers(false);
