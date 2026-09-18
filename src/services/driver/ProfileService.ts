@@ -111,18 +111,24 @@ export class ProfileService {
             cleanString(p.tipo, cleanString(p.perfil, cleanString(p.user_role, '')))
         );
         const userEmail = (authData.user.email ?? '').toLowerCase();
-        const isAdmin =
+        const rawRoleLower = rawRole.toLowerCase();
+        const isMasterAdminRole =
+            rawRoleLower === 'admin' ||
+            rawRoleLower === 'admin_master' ||
+            rawRoleLower === 'master' ||
+            rawRoleLower === 'superadmin' ||
+            rawRoleLower === 'administrador' ||
             p.is_admin === true ||
             p.is_admin === 'true' ||
             p.admin === true ||
-            rawRole.toLowerCase() === 'admin' ||
-            rawRole.toLowerCase() === 'administrador' ||
             userEmail === 'srlogistica21@gmail.com' ||
-            userEmail.startsWith('admin@') ||
             authData.user.user_metadata?.role === 'admin' ||
             authData.user.user_metadata?.is_admin === true ||
             authData.user.app_metadata?.role === 'admin' ||
             authData.user.app_metadata?.claims_admin === true;
+
+        const isRegularDriver = rawRoleLower === 'motorista' || rawRoleLower === 'passenger' || p.tipo === 'motorista' || p.tipo === 'passageiro';
+        const isAdmin = Boolean(isMasterAdminRole && (!isRegularDriver || p.is_admin === true || userEmail === 'srlogistica21@gmail.com'));
 
         // Categoria definida exclusivamente pelo administrador (Site / Central)
         // Reconhece categoria_tipo, categoria, tipo_motorista, driver_type e flags de despacho
