@@ -88,19 +88,41 @@ export interface EmergencyContact {
 export type DriverType = 'EMPRESA' | 'PARTICULAR';
 
 export interface DriverProfile {
-  name: string;
-  phone: string;
-  city: string;
+  id?: string;
+  name?: string;
+  fullName?: string;
+  displayName?: string;
+  phone?: string;
+  email?: string;
+  city?: string;
+  cpf?: string;
+  birthDate?: string;
+  cnh?: string;
+  license?: string;
   driverType?: DriverType;
-  rating: number;
-  totalRides: number;
-  vehicle: {
-    model: string;
-    plate: string;
-    color: string;
-    year: number;
+  rating?: number;
+  totalRides?: number;
+  status?: string;
+  workStatus?: string;
+  personalDataStatus?: string;
+  pendingPersonalData?: any;
+  personalDataRejectionReason?: string | null;
+  companyData?: any;
+  companyDataStatus?: string;
+  pendingCompanyData?: any;
+  companyDataRejectionReason?: string | null;
+  avatarUrl?: string | null;
+  validAvatarUrl?: string | null;
+  fotoStatus?: string;
+  vehicle?: {
+    make?: string;
+    model?: string;
+    plate?: string;
+    color?: string;
+    year?: number | string;
+    category?: string;
+    status?: string;
   };
-  license: string;
 }
 
 export interface PassengerFilters {

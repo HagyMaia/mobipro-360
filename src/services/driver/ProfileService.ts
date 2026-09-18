@@ -6,8 +6,11 @@ import type {
     DriverProfile,
     DriverStatus,
     DriverWorkStatus,
+    DriverType,
+    DataApprovalStatus,
+    PersonalData,
+    CompanyData,
 } from "@/types";
-
 
 function cleanString(val: unknown, fallback = ''): string {
     if (val === null || val === undefined) return fallback;
@@ -48,6 +51,17 @@ export class ProfileService {
         return 'Aguardando aprovação';
     }
 
+    public static normalizeDataStatus(value: unknown): DataApprovalStatus {
+        const raw = String(value ?? '').trim().toLowerCase();
+        if (raw.includes('reprov') || raw.includes('rejeit') || raw.includes('recus') || raw.includes('reject')) {
+            return 'Reprovado';
+        }
+        if (raw.includes('aguard') || raw.includes('analis') || raw.includes('pend')) {
+            return 'Aguardando aprovação';
+        }
+        return 'Aprovado';
+    }
+
     /**
      * Obtém o perfil completo do motorista autenticado
      */
@@ -60,7 +74,7 @@ export class ProfileService {
             return null;
         }
 
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
             .from('motoristas')
             .select('*')
             .eq('id', authData.user.id)
@@ -111,21 +125,21 @@ export class ProfileService {
             authData.user.app_metadata?.claims_admin === true;
 
         // Categoria definida exclusivamente pelo administrador
-        const rawDriverType = cleanString(
+        // Se QUALQUER uma das colunas for 'EMPRESA', o perfil é 'EMPRESA'
+        const candidateTypes = [
+            p.tipo_motorista,
             p.driver_type,
-            cleanString(
-                p.tipo_motorista,
-                cleanString(
-                    p.perfil_motorista,
-                    cleanString(p.categoria_motorista, 'PARTICULAR')
-                )
-            )
-        ).toUpperCase();
-        const driverType: 'EMPRESA' | 'PARTICULAR' = rawDriverType === 'EMPRESA' ? 'EMPRESA' : 'PARTICULAR';
+            p.perfil_motorista,
+            p.categoria_motorista
+        ].map(v => cleanString(v, '').toUpperCase());
+
+        const isEmpresa = candidateTypes.some(t => t === 'EMPRESA');
+        const driverType: DriverType = isEmpresa ? 'EMPRESA' : 'PARTICULAR';
 
         if (typeof window !== 'undefined') {
             try {
                 window.localStorage.setItem('mobipro_driver_type', driverType);
+                window.dispatchEvent(new CustomEvent('mobipro_driver_type_changed', { detail: { driverType } }));
             } catch {}
         }
 
@@ -133,13 +147,60 @@ export class ProfileService {
         const fotoStatus = this.normalizePhotoStatus(p.foto_status || p.avatar_status, Boolean(rawAvatar));
         const validAvatarUrl = fotoStatus === 'Aprovado' ? rawAvatar : null;
 
+        // Status de Análise de Dados Pessoais
+        const personalDataStatus = this.normalizeDataStatus(p.dados_pessoais_status || p.personal_data_status);
+        let pendingPersonalData: PersonalData | null = null;
+        if (p.pending_personal_data) {
+            try {
+                pendingPersonalData = typeof p.pending_personal_data === 'string'
+                    ? JSON.parse(p.pending_personal_data)
+                    : p.pending_personal_data;
+            } catch {}
+        }
+
+        // Status de Análise de Dados da Empresa
+        const companyDataStatus = this.normalizeDataStatus(p.dados_empresa_status || p.company_data_status);
+        let pendingCompanyData: CompanyData | null = null;
+        if (p.pending_company_data) {
+            try {
+                pendingCompanyData = typeof p.pending_company_data === 'string'
+                    ? JSON.parse(p.pending_company_data)
+                    : p.pending_company_data;
+            } catch {}
+        }
+
+        const companyData: CompanyData = {
+            legalName: cleanString(p.empresa_razao_social, cleanString(p.razao_social, '')),
+            tradeName: cleanString(p.empresa_nome_fantasia, cleanString(p.nome_fantasia, '')),
+            cnpj: cleanString(p.empresa_cnpj, cleanString(p.cnpj, '')),
+            stateRegistration: cleanString(p.empresa_inscricao_estadual, cleanString(p.inscricao_estadual, '')),
+            phone: cleanString(p.empresa_telefone, ''),
+            email: cleanString(p.empresa_email, ''),
+            representative: cleanString(p.empresa_responsavel, ''),
+            zipCode: cleanString(p.empresa_cep, ''),
+            street: cleanString(p.empresa_endereco, ''),
+            number: cleanString(p.empresa_numero, ''),
+            neighborhood: cleanString(p.empresa_bairro, ''),
+            city: cleanString(p.empresa_cidade, 'Manaus'),
+            state: cleanString(p.empresa_estado, 'AM'),
+        };
+
         return {
             id: p.id,
             fullName: cleanString(p.nome_completo, cleanString(p.nome, resolvedName)),
             displayName: resolvedName,
             cpf: cleanString(p.cpf, ''),
+            birthDate: cleanString(p.data_nascimento, cleanString(p.birth_date, '')),
             phone: cleanString(p.telefone, cleanString(p.phone, '')),
+            cnh: cleanString(p.cnh, ''),
             email: cleanString(p.email, authData.user.email ?? ''),
+            zipCode: cleanString(p.cep, cleanString(p.zip_code, '')),
+            street: cleanString(p.rua, cleanString(p.street, '')),
+            number: cleanString(p.numero, cleanString(p.number, '')),
+            complement: cleanString(p.complemento, cleanString(p.complement, '')),
+            neighborhood: cleanString(p.bairro, cleanString(p.neighborhood, '')),
+            city: cleanString(p.cidade, cleanString(p.city, 'Manaus')),
+            state: cleanString(p.estado, cleanString(p.state, 'AM')),
             avatarUrl: rawAvatar,
             validAvatarUrl,
             fotoStatus,
@@ -150,6 +211,16 @@ export class ProfileService {
             totalRides: Number(p.total_rides ?? 128),
             role: rawRole || (isAdmin ? 'admin' : 'motorista'),
             isAdmin,
+            // Dados Pessoais & Aprovação
+            personalDataStatus,
+            pendingPersonalData,
+            personalDataRejectionReason: p.personal_data_rejection_reason || null,
+            // Dados da Empresa & Aprovação
+            companyData,
+            companyDataStatus,
+            pendingCompanyData,
+            companyDataRejectionReason: p.company_data_rejection_reason || null,
+            // Veículo
             vehicle: {
                 make,
                 model,
@@ -214,6 +285,258 @@ export class ProfileService {
     }
 
     /**
+     * Envia solicitação de alteração de Dados Pessoais do motorista para análise do administrador.
+     * Os dados oficiais permanecem inalterados até a aprovação.
+     */
+    public static async requestPersonalDataChange(data: PersonalData) {
+        const supabase = createClient();
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !authData.user) {
+            throw new Error(authError?.message ?? "Usuário não autenticado.");
+        }
+
+        const updates: Record<string, any> = {
+            pending_personal_data: data,
+            dados_pessoais_status: 'Aguardando aprovação',
+            personal_data_status: 'Aguardando aprovação',
+            personal_data_rejection_reason: null,
+            updated_at: new Date().toISOString(),
+        };
+
+        let { data: updated, error } = await supabase
+            .from("motoristas")
+            .update(updates)
+            .eq("id", authData.user.id)
+            .select()
+            .maybeSingle();
+
+        if (error) {
+            console.warn('[ProfileService] Falha ao enviar análise de dados pessoais para motoristas, tentando drivers:', error);
+            const retry = await supabase
+                .from("drivers")
+                .update(updates)
+                .eq("id", authData.user.id)
+                .select()
+                .maybeSingle();
+            updated = retry.data;
+            if (retry.error) {
+                throw new Error(`Erro ao enviar solicitação: ${retry.error.message}`);
+            }
+        }
+
+        return updated;
+    }
+
+    /**
+     * Envia solicitação de alteração de Dados da Empresa para análise do administrador.
+     * Os dados oficiais da empresa permanecem inalterados até a aprovação.
+     */
+    public static async requestCompanyDataChange(data: CompanyData) {
+        const supabase = createClient();
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !authData.user) {
+            throw new Error(authError?.message ?? "Usuário não autenticado.");
+        }
+
+        const updates: Record<string, any> = {
+            pending_company_data: data,
+            dados_empresa_status: 'Aguardando aprovação',
+            company_data_status: 'Aguardando aprovação',
+            company_data_rejection_reason: null,
+            updated_at: new Date().toISOString(),
+        };
+
+        let { data: updated, error } = await supabase
+            .from("motoristas")
+            .update(updates)
+            .eq("id", authData.user.id)
+            .select()
+            .maybeSingle();
+
+        if (error) {
+            console.warn('[ProfileService] Falha ao enviar análise de dados de empresa para motoristas, tentando drivers:', error);
+            const retry = await supabase
+                .from("drivers")
+                .update(updates)
+                .eq("id", authData.user.id)
+                .select()
+                .maybeSingle();
+            updated = retry.data;
+            if (retry.error) {
+                throw new Error(`Erro ao enviar solicitação da empresa: ${retry.error.message}`);
+            }
+        }
+
+        return updated;
+    }
+
+    /**
+     * Aprova a alteração de dados pessoais pelo administrador e efetiva os dados oficiais.
+     */
+    public static async approvePersonalDataByAdmin(driverId: string, pendingData?: PersonalData) {
+        const supabase = createClient();
+
+        let dataToApply = pendingData;
+        if (!dataToApply) {
+            const { data: currentDriver } = await supabase
+                .from("motoristas")
+                .select("pending_personal_data")
+                .eq("id", driverId)
+                .maybeSingle();
+
+            if (currentDriver?.pending_personal_data) {
+                dataToApply = typeof currentDriver.pending_personal_data === 'string'
+                    ? JSON.parse(currentDriver.pending_personal_data)
+                    : currentDriver.pending_personal_data;
+            }
+        }
+
+        if (!dataToApply) {
+            throw new Error("Nenhum dado pendente encontrado para aprovação.");
+        }
+
+        const updates: Record<string, any> = {
+            dados_pessoais_status: 'Aprovado',
+            personal_data_status: 'Aprovado',
+            pending_personal_data: null,
+            personal_data_rejection_reason: null,
+            updated_at: new Date().toISOString(),
+        };
+
+        if (dataToApply.fullName) {
+            updates.nome_completo = dataToApply.fullName;
+            if (!dataToApply.displayName) {
+                updates.nome = dataToApply.fullName;
+                updates.nome_social = dataToApply.fullName;
+            }
+        }
+        if (dataToApply.displayName) {
+            updates.nome = dataToApply.displayName;
+            updates.nome_social = dataToApply.displayName;
+        }
+        if (dataToApply.cpf) updates.cpf = dataToApply.cpf;
+        if (dataToApply.birthDate) updates.data_nascimento = dataToApply.birthDate;
+        if (dataToApply.phone) {
+            updates.telefone = dataToApply.phone;
+            updates.phone = dataToApply.phone;
+        }
+        if (dataToApply.cnh) updates.cnh = dataToApply.cnh;
+        if (dataToApply.zipCode) updates.cep = dataToApply.zipCode;
+        if (dataToApply.street) updates.rua = dataToApply.street;
+        if (dataToApply.number) updates.numero = dataToApply.number;
+        if (dataToApply.complement) updates.complemento = dataToApply.complement;
+        if (dataToApply.neighborhood) updates.bairro = dataToApply.neighborhood;
+        if (dataToApply.city) updates.cidade = dataToApply.city;
+        if (dataToApply.state) updates.estado = dataToApply.state;
+
+        let { error } = await supabase.from("motoristas").update(updates).eq("id", driverId);
+        if (error) {
+            console.warn('[ProfileService] Falha ao aprovar dados pessoais em motoristas, tentando drivers:', error);
+            await supabase.from("drivers").update(updates).eq("id", driverId);
+        }
+
+        return updates;
+    }
+
+    /**
+     * Rejeita a alteração de dados pessoais pelo administrador.
+     */
+    public static async rejectPersonalDataByAdmin(driverId: string, reason?: string) {
+        const supabase = createClient();
+        const updates: Record<string, any> = {
+            dados_pessoais_status: 'Reprovado',
+            personal_data_status: 'Reprovado',
+            personal_data_rejection_reason: reason || 'Dados pessoais rejeitados pela moderação.',
+            updated_at: new Date().toISOString(),
+        };
+
+        let { error } = await supabase.from("motoristas").update(updates).eq("id", driverId);
+        if (error) {
+            await supabase.from("drivers").update(updates).eq("id", driverId);
+        }
+
+        return updates;
+    }
+
+    /**
+     * Aprova a alteração de dados da empresa pelo administrador e efetiva os dados oficiais.
+     */
+    public static async approveCompanyDataByAdmin(driverId: string, pendingData?: CompanyData) {
+        const supabase = createClient();
+
+        let dataToApply = pendingData;
+        if (!dataToApply) {
+            const { data: currentDriver } = await supabase
+                .from("motoristas")
+                .select("pending_company_data")
+                .eq("id", driverId)
+                .maybeSingle();
+
+            if (currentDriver?.pending_company_data) {
+                dataToApply = typeof currentDriver.pending_company_data === 'string'
+                    ? JSON.parse(currentDriver.pending_company_data)
+                    : currentDriver.pending_company_data;
+            }
+        }
+
+        if (!dataToApply) {
+            throw new Error("Nenhum dado pendente de empresa encontrado para aprovação.");
+        }
+
+        const updates: Record<string, any> = {
+            dados_empresa_status: 'Aprovado',
+            company_data_status: 'Aprovado',
+            pending_company_data: null,
+            company_data_rejection_reason: null,
+            updated_at: new Date().toISOString(),
+        };
+
+        if (dataToApply.legalName) updates.empresa_razao_social = dataToApply.legalName;
+        if (dataToApply.tradeName) updates.empresa_nome_fantasia = dataToApply.tradeName;
+        if (dataToApply.cnpj) updates.empresa_cnpj = dataToApply.cnpj;
+        if (dataToApply.stateRegistration) updates.empresa_inscricao_estadual = dataToApply.stateRegistration;
+        if (dataToApply.phone) updates.empresa_telefone = dataToApply.phone;
+        if (dataToApply.email) updates.empresa_email = dataToApply.email;
+        if (dataToApply.representative) updates.empresa_responsavel = dataToApply.representative;
+        if (dataToApply.zipCode) updates.empresa_cep = dataToApply.zipCode;
+        if (dataToApply.street) updates.empresa_endereco = dataToApply.street;
+        if (dataToApply.number) updates.empresa_numero = dataToApply.number;
+        if (dataToApply.neighborhood) updates.empresa_bairro = dataToApply.neighborhood;
+        if (dataToApply.city) updates.empresa_cidade = dataToApply.city;
+        if (dataToApply.state) updates.empresa_estado = dataToApply.state;
+
+        let { error } = await supabase.from("motoristas").update(updates).eq("id", driverId);
+        if (error) {
+            console.warn('[ProfileService] Falha ao aprovar dados de empresa em motoristas, tentando drivers:', error);
+            await supabase.from("drivers").update(updates).eq("id", driverId);
+        }
+
+        return updates;
+    }
+
+    /**
+     * Rejeita a alteração de dados da empresa pelo administrador.
+     */
+    public static async rejectCompanyDataByAdmin(driverId: string, reason?: string) {
+        const supabase = createClient();
+        const updates: Record<string, any> = {
+            dados_empresa_status: 'Reprovado',
+            company_data_status: 'Reprovado',
+            company_data_rejection_reason: reason || 'Dados da empresa rejeitados pela moderação.',
+            updated_at: new Date().toISOString(),
+        };
+
+        let { error } = await supabase.from("motoristas").update(updates).eq("id", driverId);
+        if (error) {
+            await supabase.from("drivers").update(updates).eq("id", driverId);
+        }
+
+        return updates;
+    }
+
+    /**
      * Atualiza o status de aprovação da foto do motorista pelo administrador ('Aprovado' ou 'Reprovado')
      */
     public static async updateDriverPhotoStatusByAdmin(
@@ -221,11 +544,25 @@ export class ProfileService {
         status: 'Aprovado' | 'Reprovado'
     ) {
         const supabase = createClient();
-        const updates: Record<string, any> = {
+
+        let updates: Record<string, any> = {
             foto_status: status,
             avatar_status: status,
             updated_at: new Date().toISOString(),
         };
+
+        if (status === 'Aprovado') {
+            const { data: driver } = await supabase
+                .from("motoristas")
+                .select("pending_avatar_url, avatar_url")
+                .eq("id", driverId)
+                .maybeSingle();
+
+            if (driver?.pending_avatar_url) {
+                updates.avatar_url = driver.pending_avatar_url;
+                updates.approved_avatar_url = driver.pending_avatar_url;
+            }
+        }
 
         let { error } = await supabase
             .from("motoristas")
@@ -244,9 +581,7 @@ export class ProfileService {
     }
 
     /**
-     * Atualiza as informações pessoais do motorista (nome de exibição, telefone, avatar).
-     * Nota: A alteração de foto entra automaticamente em "Aguardando aprovação".
-     * A categoria não pode ser alterada pelo motorista no aplicativo.
+     * Atualiza o avatar ou dados rápidos do perfil
      */
     public static async updateProfile(data: {
         displayName?: string;
@@ -269,21 +604,15 @@ export class ProfileService {
         }
 
         const updates: Record<string, any> = {};
-        if (data.displayName !== undefined) {
-            updates.nome = data.displayName;
-            updates.nome_social = data.displayName;
-        }
-        if (data.fullName !== undefined) {
-            updates.nome_completo = data.fullName;
-        }
-        if (data.phone !== undefined) {
-            updates.telefone = data.phone;
-        }
         if (data.avatarUrl !== undefined) {
             updates.avatar_url = data.avatarUrl;
             updates.pending_avatar_url = data.avatarUrl;
             updates.foto_status = 'Aguardando aprovação';
             updates.avatar_status = 'Aguardando aprovação';
+        }
+
+        if (Object.keys(updates).length === 0) {
+            return null;
         }
 
         let { data: updated, error } = await supabase
@@ -293,29 +622,7 @@ export class ProfileService {
             .select()
             .maybeSingle();
 
-        if (error) {
-            let attempts = 0;
-            while (error && attempts < 4) {
-                attempts++;
-                const msg = error.message || '';
-                const match =
-                    msg.match(/Could not find the '([^']+)' column/i) ||
-                    msg.match(/column "([^"]+)" of relation/i) ||
-                    msg.match(/column "([^"]+)" does not exist/i);
-
-                if (match && match[1] && updates[match[1]] !== undefined) {
-                    delete updates[match[1]];
-                    const retry = await supabase.from("motoristas").update(updates).eq("id", authData.user.id).select().maybeSingle();
-                    error = retry.error;
-                    updated = retry.data;
-                } else {
-                    break;
-                }
-            }
-        }
-
         if (error || !updated) {
-            console.warn('[ProfileService] Falha ao atualizar em motoristas, tentando drivers:', error);
             const { data: dUpdated } = await supabase
                 .from("drivers")
                 .update(updates)
@@ -327,7 +634,6 @@ export class ProfileService {
 
         return updated;
     }
-
 
     /**
      * Solicita alteração do veículo - Entra em status Pendente para aprovação da equipe SR Logística
@@ -354,7 +660,7 @@ export class ProfileService {
             placa_veiculo: vehicleData.plate.toUpperCase().trim(),
             cor_veiculo: vehicleData.color.trim() || 'Prata',
             categoria: vehicleData.category || 'POPULAR',
-            vehicle_status: 'Pendente', // Exige aprovação administrativa
+            vehicle_status: 'Pendente',
         };
 
         let { data: updated, error } = await supabase
@@ -369,7 +675,6 @@ export class ProfileService {
             attempts++;
             const match = error.message.match(/Could not find the '([^']+)' column/i);
             if (match && match[1] && payload[match[1]] !== undefined) {
-                console.warn(`[ProfileService] Coluna '${match[1]}' ausente no schema cache, tentando sem ela...`);
                 delete payload[match[1]];
                 const retry = await supabase
                     .from("motoristas")
@@ -393,10 +698,6 @@ export class ProfileService {
 
     /**
      * Atualiza o status operacional do motorista autenticado.
-     *
-     * OFFLINE: não recebe ofertas.
-     * ONLINE: pode receber ofertas.
-     * BUSY: possui corrida ativa.
      */
     public static async toggleWorkStatus(
         newStatus: DriverWorkStatus,

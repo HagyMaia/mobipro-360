@@ -43,6 +43,8 @@ export default function HomePage() {
   );
 
   useEffect(() => {
+    let motoristasChannel: any = null;
+
     async function checkAuthAndLoadProfile() {
       try {
         if (typeof window !== 'undefined') {
@@ -68,9 +70,15 @@ export default function HomePage() {
         }
 
         try {
+          // Carrega perfil completo oficial através do ProfileService (com resolução estrita de categoria EMPRESA vs PARTICULAR)
+          const fullProfile = await ProfileService.getCurrentProfile();
+          if (fullProfile) {
+            dispatch({ type: 'UPDATE_PROFILE', profile: fullProfile });
+          }
+
           const { data: motorista, error: dbError } = await supabase
             .from('motoristas')
-            .select('nome, nome_social, nome_completo, status, work_status')
+            .select('nome, nome_social, nome_completo, status, work_status, driver_type, tipo_motorista')
             .eq('id', user.id)
             .maybeSingle();
 
@@ -162,6 +170,32 @@ export default function HomePage() {
           } else {
             setDriverName('Motorista');
           }
+
+          // Subscreve a atualizações em tempo real do perfil do motorista (ex: categoria Empresa vs Particular definida pelo Admin)
+          if (!motoristasChannel) {
+            motoristasChannel = supabase
+              .channel(`home-motorista-${user.id}`)
+              .on(
+                'postgres_changes',
+                {
+                  event: 'UPDATE',
+                  schema: 'public',
+                  table: 'motoristas',
+                  filter: `id=eq.${user.id}`
+                },
+                async () => {
+                  try {
+                    const refreshed = await ProfileService.getCurrentProfile();
+                    if (refreshed) {
+                      dispatch({ type: 'UPDATE_PROFILE', profile: refreshed });
+                    }
+                  } catch (e) {
+                    console.warn('[HomePage] Erro ao atualizar perfil em tempo real:', e);
+                  }
+                }
+              )
+              .subscribe();
+          }
         } catch (dbErr) {
           console.error('[App] Erro inesperado ao buscar motorista:', dbErr);
         }
@@ -174,6 +208,12 @@ export default function HomePage() {
     }
 
     checkAuthAndLoadProfile();
+
+    return () => {
+      if (motoristasChannel) {
+        supabase.removeChannel(motoristasChannel);
+      }
+    };
   }, [router, dispatch, state.status, state.activeRide]);
 
   // Sincroniza a oferta real do Supabase Realtime com o store do app

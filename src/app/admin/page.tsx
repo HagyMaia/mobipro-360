@@ -28,7 +28,9 @@ import {
   Image as ImageIcon,
   Eye,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Building2,
+  AlertTriangle
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
@@ -37,6 +39,10 @@ type Driver = {
   nome: string;
   nome_social?: string;
   nome_completo?: string;
+  cpf?: string;
+  data_nascimento?: string;
+  telefone?: string;
+  cnh?: string;
   email?: string;
   avatar_url?: string;
   pending_avatar_url?: string;
@@ -44,7 +50,6 @@ type Driver = {
   avatar_status?: string;
   status: string;
   vehicle_status?: string;
-  telefone?: string;
   marca_veiculo?: string;
   modelo_veiculo?: string;
   placa_veiculo?: string;
@@ -53,6 +58,36 @@ type Driver = {
   tipo_motorista?: 'EMPRESA' | 'PARTICULAR';
   perfil_motorista?: 'EMPRESA' | 'PARTICULAR';
   categoria_motorista?: 'EMPRESA' | 'PARTICULAR';
+  // Dados Pessoais e Análise
+  dados_pessoais_status?: string;
+  personal_data_status?: string;
+  pending_personal_data?: any;
+  personal_data_rejection_reason?: string;
+  cep?: string;
+  rua?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  // Dados da Empresa e Análise
+  dados_empresa_status?: string;
+  company_data_status?: string;
+  pending_company_data?: any;
+  company_data_rejection_reason?: string;
+  empresa_razao_social?: string;
+  empresa_nome_fantasia?: string;
+  empresa_cnpj?: string;
+  empresa_inscricao_estadual?: string;
+  empresa_telefone?: string;
+  empresa_email?: string;
+  empresa_responsavel?: string;
+  empresa_cep?: string;
+  empresa_endereco?: string;
+  empresa_numero?: string;
+  empresa_bairro?: string;
+  empresa_cidade?: string;
+  empresa_estado?: string;
 };
 
 type AdminRide = {
@@ -79,6 +114,7 @@ export default function AdminPage() {
   const [loadingDrivers, setLoadingDrivers] = useState(true);
   const [updatingDriverId, setUpdatingDriverId] = useState<string | null>(null);
   const [updatingPhotoDriverId, setUpdatingPhotoDriverId] = useState<string | null>(null);
+  const [updatingDataDriverId, setUpdatingDataDriverId] = useState<string | null>(null);
   const [photoModal, setPhotoModal] = useState<{
     url: string;
     name: string;
@@ -100,14 +136,14 @@ export default function AdminPage() {
     setLoadingDrivers(true);
     let { data, error: driversError } = await supabase
       .from("motoristas")
-      .select("id, nome, nome_social, nome_completo, avatar_url, pending_avatar_url, foto_status, avatar_status, status, vehicle_status, telefone, email, marca_veiculo, modelo_veiculo, placa_veiculo, categoria, tipo_motorista, driver_type, perfil_motorista, categoria_motorista")
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (driversError) {
       console.warn("[Admin] Falha ao ordenar por created_at ou colunas extras, tentando básico:", driversError.message);
       const retry = await supabase
         .from("motoristas")
-        .select("id, nome, nome_social, nome_completo, avatar_url, status, vehicle_status, telefone, email, marca_veiculo, modelo_veiculo, placa_veiculo, categoria");
+        .select("id, nome, nome_social, nome_completo, avatar_url, status, vehicle_status, telefone, email, marca_veiculo, modelo_veiculo, placa_veiculo, categoria, tipo_motorista, driver_type");
       data = retry.data;
       driversError = retry.error;
     }
@@ -277,6 +313,84 @@ export default function AdminPage() {
       setError("Erro ao atualizar status da foto: " + (err.message || 'Erro desconhecido'));
     } finally {
       setUpdatingPhotoDriverId(null);
+    }
+  };
+
+  const handleApprovePersonalData = async (driver: Driver) => {
+    setUpdatingDataDriverId(driver.id);
+    setError("");
+    try {
+      const pending = typeof driver.pending_personal_data === 'string'
+        ? JSON.parse(driver.pending_personal_data)
+        : driver.pending_personal_data;
+
+      await ProfileService.approvePersonalDataByAdmin(driver.id, pending);
+      setSuccessMessage(`Dados pessoais de ${driver.nome || 'motorista'} APROVADOS com sucesso!`);
+      setTimeout(() => setSuccessMessage(""), 4000);
+      await loadDrivers();
+    } catch (err: any) {
+      console.error("[Admin] Erro ao aprovar dados pessoais:", err);
+      setError("Erro ao aprovar dados pessoais: " + (err.message || 'Erro desconhecido'));
+    } finally {
+      setUpdatingDataDriverId(null);
+    }
+  };
+
+  const handleRejectPersonalData = async (driver: Driver) => {
+    const reason = window.prompt("Informe o motivo da rejeição dos dados pessoais (opcional):", "Documentos ou dados cadastrais inconsistentes");
+    if (reason === null) return;
+
+    setUpdatingDataDriverId(driver.id);
+    setError("");
+    try {
+      await ProfileService.rejectPersonalDataByAdmin(driver.id, reason);
+      setSuccessMessage(`Alteração de dados pessoais de ${driver.nome || 'motorista'} REJEITADA.`);
+      setTimeout(() => setSuccessMessage(""), 4000);
+      await loadDrivers();
+    } catch (err: any) {
+      console.error("[Admin] Erro ao rejeitar dados pessoais:", err);
+      setError("Erro ao rejeitar dados pessoais: " + (err.message || 'Erro desconhecido'));
+    } finally {
+      setUpdatingDataDriverId(null);
+    }
+  };
+
+  const handleApproveCompanyData = async (driver: Driver) => {
+    setUpdatingDataDriverId(driver.id);
+    setError("");
+    try {
+      const pending = typeof driver.pending_company_data === 'string'
+        ? JSON.parse(driver.pending_company_data)
+        : driver.pending_company_data;
+
+      await ProfileService.approveCompanyDataByAdmin(driver.id, pending);
+      setSuccessMessage(`Dados da empresa de ${driver.nome || 'motorista'} APROVADOS com sucesso!`);
+      setTimeout(() => setSuccessMessage(""), 4000);
+      await loadDrivers();
+    } catch (err: any) {
+      console.error("[Admin] Erro ao aprovar dados da empresa:", err);
+      setError("Erro ao aprovar dados da empresa: " + (err.message || 'Erro desconhecido'));
+    } finally {
+      setUpdatingDataDriverId(null);
+    }
+  };
+
+  const handleRejectCompanyData = async (driver: Driver) => {
+    const reason = window.prompt("Informe o motivo da rejeição dos dados da empresa (opcional):", "Dados cadastrais da empresa inconsistentes");
+    if (reason === null) return;
+
+    setUpdatingDataDriverId(driver.id);
+    setError("");
+    try {
+      await ProfileService.rejectCompanyDataByAdmin(driver.id, reason);
+      setSuccessMessage(`Alteração de dados da empresa de ${driver.nome || 'motorista'} REJEITADA.`);
+      setTimeout(() => setSuccessMessage(""), 4000);
+      await loadDrivers();
+    } catch (err: any) {
+      console.error("[Admin] Erro ao rejeitar dados da empresa:", err);
+      setError("Erro ao rejeitar dados da empresa: " + (err.message || 'Erro desconhecido'));
+    } finally {
+      setUpdatingDataDriverId(null);
     }
   };
 
@@ -643,8 +757,37 @@ export default function AdminPage() {
                     const currentType = (driver.tipo_motorista || driver.driver_type || driver.perfil_motorista || driver.categoria_motorista || 'PARTICULAR').toUpperCase() === 'EMPRESA' ? 'EMPRESA' : 'PARTICULAR';
                     const isUpdatingThis = updatingDriverId === driver.id;
                     const isUpdatingPhoto = updatingPhotoDriverId === driver.id;
+                    const isUpdatingData = updatingDataDriverId === driver.id;
                     const photoUrl = driver.pending_avatar_url || driver.avatar_url;
                     const photoStatus = driver.foto_status || driver.avatar_status || (photoUrl ? 'Aguardando aprovação' : 'Sem foto');
+
+                    let pendingPersonalObj: any = null;
+                    if (driver.pending_personal_data) {
+                      try {
+                        pendingPersonalObj = typeof driver.pending_personal_data === 'string'
+                          ? JSON.parse(driver.pending_personal_data)
+                          : driver.pending_personal_data;
+                      } catch {}
+                    }
+                    const hasPendingPersonal = (
+                      driver.dados_pessoais_status === 'Aguardando aprovação' ||
+                      driver.personal_data_status === 'Aguardando aprovação' ||
+                      Boolean(pendingPersonalObj)
+                    ) && Boolean(pendingPersonalObj);
+
+                    let pendingCompanyObj: any = null;
+                    if (driver.pending_company_data) {
+                      try {
+                        pendingCompanyObj = typeof driver.pending_company_data === 'string'
+                          ? JSON.parse(driver.pending_company_data)
+                          : driver.pending_company_data;
+                      } catch {}
+                    }
+                    const hasPendingCompany = (
+                      driver.dados_empresa_status === 'Aguardando aprovação' ||
+                      driver.company_data_status === 'Aguardando aprovação' ||
+                      Boolean(pendingCompanyObj)
+                    ) && Boolean(pendingCompanyObj);
 
                     return (
                       <div key={driver.id} className="flex flex-col gap-4 p-4 hover:bg-slate-50/50 dark:hover:bg-dark-800/40 transition">
@@ -745,6 +888,22 @@ export default function AdminPage() {
                                     (Sem foto de perfil)
                                   </span>
                                 )}
+
+                                {/* Tag de Dados Pessoais Pendentes */}
+                                {hasPendingPersonal && (
+                                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 animate-pulse">
+                                    <Clock size={10} />
+                                    <span>Dados Pessoais p/ Análise</span>
+                                  </span>
+                                )}
+
+                                {/* Tag de Dados de Empresa Pendentes */}
+                                {hasPendingCompany && (
+                                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black bg-teal-500/20 text-teal-800 dark:text-teal-300 border border-teal-500/40 animate-pulse">
+                                    <Building2 size={10} />
+                                    <span>Empresa p/ Análise</span>
+                                  </span>
+                                )}
                               </div>
 
                               <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -771,6 +930,134 @@ export default function AdminPage() {
                             )}
                           </div>
                         </div>
+
+                        {/* CARD DE ANÁLISE: DADOS PESSOAIS PENDENTES */}
+                        {hasPendingPersonal && pendingPersonalObj && (
+                          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5 font-black text-amber-800 dark:text-amber-300 text-xs">
+                                <Clock size={15} className="text-amber-600 animate-pulse" />
+                                <span>Solicitação de Alteração de Dados Pessoais</span>
+                              </div>
+                              <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300">
+                                Aguardando Aprovação
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] bg-white/80 dark:bg-dark-900/80 p-3 rounded-xl border border-amber-500/20">
+                              <div>
+                                <span className="text-slate-400 block font-semibold">Nome Solicitado:</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{pendingPersonalObj.fullName || pendingPersonalObj.displayName || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block font-semibold">CPF Solicitado:</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{pendingPersonalObj.cpf || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block font-semibold">Data de Nascimento:</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{pendingPersonalObj.birthDate || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block font-semibold">Telefone Solicitado:</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{pendingPersonalObj.phone || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block font-semibold">CNH:</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{pendingPersonalObj.cnh || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block font-semibold">Endereço:</span>
+                                <span className="font-bold text-slate-900 dark:text-white">
+                                  {[pendingPersonalObj.street, pendingPersonalObj.number, pendingPersonalObj.neighborhood, pendingPersonalObj.city].filter(Boolean).join(', ') || '-'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-1">
+                              <button
+                                type="button"
+                                disabled={isUpdatingData}
+                                onClick={() => handleApprovePersonalData(driver)}
+                                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+                              >
+                                <CheckCircle2 size={14} />
+                                <span>Aprovar Dados Pessoais</span>
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isUpdatingData}
+                                onClick={() => handleRejectPersonalData(driver)}
+                                className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+                              >
+                                <XCircle size={14} />
+                                <span>Recusar</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* CARD DE ANÁLISE: DADOS DA EMPRESA PENDENTES */}
+                        {hasPendingCompany && pendingCompanyObj && (
+                          <div className="p-3.5 rounded-2xl bg-teal-500/10 border border-teal-500/30 text-xs space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5 font-black text-teal-800 dark:text-teal-300 text-xs">
+                                <Building2 size={15} className="text-teal-600" />
+                                <span>Solicitação de Alteração de Dados da Empresa</span>
+                              </div>
+                              <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-800 dark:text-teal-300">
+                                Aguardando Aprovação
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] bg-white/80 dark:bg-dark-900/80 p-3 rounded-xl border border-teal-500/20">
+                              <div>
+                                <span className="text-slate-400 block font-semibold">Razão Social:</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{pendingCompanyObj.legalName || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block font-semibold">CNPJ:</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{pendingCompanyObj.cnpj || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block font-semibold">Nome Fantasia:</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{pendingCompanyObj.tradeName || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block font-semibold">Telefone Corporativo:</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{pendingCompanyObj.phone || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block font-semibold">Inscrição Estadual:</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{pendingCompanyObj.stateRegistration || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block font-semibold">Responsável:</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{pendingCompanyObj.representative || '-'}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-1">
+                              <button
+                                type="button"
+                                disabled={isUpdatingData}
+                                onClick={() => handleApproveCompanyData(driver)}
+                                className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+                              >
+                                <CheckCircle2 size={14} />
+                                <span>Aprovar Dados Empresa</span>
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isUpdatingData}
+                                onClick={() => handleRejectCompanyData(driver)}
+                                className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+                              >
+                                <XCircle size={14} />
+                                <span>Recusar</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Linha 2: Controles do Administrador (Aprovação de Foto e Categoria Exclusiva) */}
                         <div className="pt-2 border-t border-slate-100 dark:border-dark-700/80 flex flex-wrap items-center justify-between gap-3">

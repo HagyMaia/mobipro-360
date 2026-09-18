@@ -4,6 +4,41 @@ export type DriverStatus = 'Pendente' | 'Aprovado' | 'Reprovado' | 'Bloqueado';
 export type DriverWorkStatus = 'OFFLINE' | 'ONLINE' | 'BUSY';
 export type DriverType = 'EMPRESA' | 'PARTICULAR';
 export type PhotoApprovalStatus = 'Aguardando aprovação' | 'Aprovado' | 'Reprovado';
+export type DataApprovalStatus = 'Aguardando aprovação' | 'Aprovado' | 'Reprovado';
+
+export interface PersonalData {
+    fullName?: string;
+    displayName?: string;
+    cpf?: string;
+    birthDate?: string;
+    phone?: string;
+    cnh?: string;
+    email?: string;
+    zipCode?: string;
+    street?: string;
+    number?: string;
+    complement?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+}
+
+export interface CompanyData {
+    legalName?: string;
+    tradeName?: string;
+    cnpj?: string;
+    stateRegistration?: string;
+    phone?: string;
+    email?: string;
+    representative?: string;
+    zipCode?: string;
+    street?: string;
+    number?: string;
+    complement?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+}
 
 export type DocumentType = 'CNH' | 'CRLV' | 'PROFILE_PICTURE' | 'PROOF_OF_RESIDENCE';
 export type DocumentStatus = 'Pendente' | 'Aprovado' | 'Reprovado';
@@ -32,8 +67,17 @@ export interface DriverProfile {
     fullName: string;
     displayName?: string;
     cpf: string;
+    birthDate?: string;
     phone: string;
     email: string;
+    cnh?: string;
+    zipCode?: string;
+    street?: string;
+    number?: string;
+    complement?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
     avatarUrl?: string | null;
     validAvatarUrl?: string | null;
     fotoStatus?: PhotoApprovalStatus;
@@ -42,6 +86,16 @@ export interface DriverProfile {
     driverType?: DriverType;
     rating: number;
     totalRides: number;
+    // Dados Pessoais & Fluxo de Análise
+    personalDataStatus?: DataApprovalStatus;
+    pendingPersonalData?: PersonalData | null;
+    personalDataRejectionReason?: string | null;
+    // Dados da Empresa & Fluxo de Análise
+    companyData?: CompanyData | null;
+    companyDataStatus?: DataApprovalStatus;
+    pendingCompanyData?: CompanyData | null;
+    companyDataRejectionReason?: string | null;
+    // Veículo
     vehicle?: {
         make?: string;
         model?: string;

@@ -24,6 +24,7 @@ import { Card, SectionTitle, Badge, Button } from '@/components/ui';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useApp } from '@/lib/store';
 import { useAuth } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 import { BiometricAuthService } from '@/services/auth/BiometricAuthService';
 import { ProfileService } from '@/services/driver/ProfileService';
 
@@ -47,6 +48,42 @@ export default function AjustesPage() {
       setDriverType(state.profile.driverType);
     }
   }, [state.profile?.driverType]);
+
+  useEffect(() => {
+    async function loadFreshProfile() {
+      const p = await ProfileService.getCurrentProfile();
+      if (p) {
+        setDriverType(p.driverType || 'PARTICULAR');
+        dispatch({ type: 'UPDATE_PROFILE', profile: p });
+      }
+    }
+    loadFreshProfile();
+
+    if (!user) return;
+    const channel = supabase
+      .channel(`ajustes-motorista-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'motoristas',
+          filter: `id=eq.${user.id}`
+        },
+        async () => {
+          const fresh = await ProfileService.getCurrentProfile();
+          if (fresh) {
+            setDriverType(fresh.driverType || 'PARTICULAR');
+            dispatch({ type: 'UPDATE_PROFILE', profile: fresh });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, dispatch]);
 
   // Estados de Biometria
   const [biometricAvailable, setBiometricAvailable] = useState(false);
