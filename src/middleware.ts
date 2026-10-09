@@ -33,14 +33,15 @@ export async function middleware(request: NextRequest) {
     pathname === '/manifest.json' ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/recuperar-senha') ||
-    pathname.startsWith('/atualizar-senha')
-
-  const hasDemoAuth =
-    request.cookies.get('sb-demo-token')?.value ||
-    request.cookies.get('mobipro-demo-session')?.value
+    pathname.startsWith('/atualizar-senha') ||
+    pathname.startsWith('/api/download-apk')
 
   // Se o Supabase NÃO estiver configurado (Preview Vercel / Modo Demo Local)
   if (!isSupabaseConfigured) {
+    const hasDemoAuth =
+      request.cookies.get('sb-demo-token')?.value ||
+      request.cookies.get('mobipro-demo-session')?.value
+
     if (!hasDemoAuth && !isPublicPage) {
       const url = request.nextUrl.clone()
       url.pathname = '/welcome'
@@ -77,14 +78,48 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user && !hasDemoAuth && !isPublicPage) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/welcome'
-      return NextResponse.redirect(url)
+    // 1. Usuário NÃO autenticado tentando acessar rota interna protegida
+    if (!user) {
+      if (!isPublicPage) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/welcome'
+        const redirectResponse = NextResponse.redirect(url)
+        supabaseResponse.cookies.getAll().forEach((c) => redirectResponse.cookies.set(c))
+        return redirectResponse
+      }
+      return supabaseResponse
     }
 
+    // 2. Usuário autenticado acessando rotas de entrada pública com sessão salva
+    if (user && (pathname === '/welcome' || (pathname === '/login' && !isResetFlow) || pathname === '/cadastro')) {
+      let { data: motorista } = await supabase
+        .from('motoristas')
+        .select('id, status')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (!motorista && user.email) {
+        const { data: byEmail } = await supabase
+          .from('motoristas')
+          .select('id, status')
+          .eq('email', user.email)
+          .maybeSingle()
+        if (byEmail) motorista = byEmail
+      }
+
+      const url = request.nextUrl.clone()
+      if (motorista && motorista.status && motorista.status.toLowerCase() === 'aprovado') {
+        url.pathname = '/'
+      } else {
+        url.pathname = '/status'
+      }
+      const redirectResponse = NextResponse.redirect(url)
+      supabaseResponse.cookies.getAll().forEach((c) => redirectResponse.cookies.set(c))
+      return redirectResponse
+    }
+
+    // 3. Usuário autenticado acessando rotas internas: valida aprovação para corridas operacionais
     if (user && !isPublicPage && !isResetFlow) {
-      // Rotas de perfil, configurações, suporte, segurança e status são sempre acessíveis ao motorista logado
       const isAlwaysAllowed =
         pathname.startsWith('/status') ||
         pathname.startsWith('/admin') ||
@@ -109,41 +144,23 @@ export async function middleware(request: NextRequest) {
           if (byEmail) motorista = byEmail
         }
 
-        // Se for um motorista pendente tentando acessar rotas operacionais de corrida, redireciona para /status
-        if (motorista && motorista.status && motorista.status.toLowerCase() !== 'aprovado') {
+        // Se for um motorista pendente, reprovado ou bloqueado tentando acessar rotas operacionais, redireciona para /status
+        if (!motorista || (motorista.status && motorista.status.toLowerCase() !== 'aprovado')) {
           const url = request.nextUrl.clone()
           url.pathname = '/status'
-          return NextResponse.redirect(url)
+          const redirectResponse = NextResponse.redirect(url)
+          supabaseResponse.cookies.getAll().forEach((c) => redirectResponse.cookies.set(c))
+          return redirectResponse
         }
       }
     }
-
-    if (user && (pathname === '/welcome' || (pathname === '/login' && !isResetFlow) || pathname === '/cadastro')) {
-      let { data: motorista } = await supabase
-        .from('motoristas')
-        .select('id, status')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      if (!motorista && user.email) {
-        const { data: byEmail } = await supabase
-          .from('motoristas')
-          .select('id, status')
-          .eq('email', user.email)
-          .maybeSingle()
-        if (byEmail) motorista = byEmail
-      }
-
-      const url = request.nextUrl.clone()
-      if (motorista && motorista.status && motorista.status.toLowerCase() !== 'aprovado') {
-        url.pathname = '/status'
-      } else {
-        url.pathname = '/'
-      }
-      return NextResponse.redirect(url)
-    }
   } catch (e) {
     console.error('[Middleware] Erro ao verificar autenticação:', e)
+    if (!isPublicPage) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/welcome'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse

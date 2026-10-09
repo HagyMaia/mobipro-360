@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useApp } from "@/lib/store";
 import { ProfileService } from "@/services/driver/ProfileService";
@@ -112,6 +113,7 @@ type AdminRide = {
 type PeriodFilter = 'ALL' | 'Q1' | 'Q2' | 'CURRENT_MONTH' | 'LAST_MONTH' | 'CUSTOM';
 
 export default function AdminPage() {
+  const router = useRouter();
   const { state, todayEarnings, todayRides } = useApp();
   const [activeTab, setActiveTab] = useState<'DRIVERS' | 'REPORTS'>('DRIVERS');
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -269,6 +271,12 @@ export default function AdminPage() {
   useEffect(() => {
     async function verifyAdmin() {
       try {
+        const { data: authData, error: authErr } = await supabase.auth.getUser();
+        if (authErr || !authData?.user) {
+          router.replace('/login');
+          return;
+        }
+
         const p = await ProfileService.getCurrentProfile();
         if (p?.isAdmin) {
           setIsAdminUser(true);
@@ -284,7 +292,7 @@ export default function AdminPage() {
       }
     }
     verifyAdmin();
-  }, []);
+  }, [router]);
 
   const updateDriverStatus = async (
     id: string,
@@ -784,6 +792,17 @@ export default function AdminPage() {
     link.click();
   };
 
+  if (isAdminUser === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[color:var(--bg)] text-slate-900 dark:text-slate-100 font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Verificando autorização...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isAdminUser === false) {
     return (
       <div className="min-h-screen bg-[color:var(--bg)] p-6 flex flex-col items-center justify-center text-center font-sans">
@@ -994,6 +1013,7 @@ export default function AdminPage() {
                                 title={photoUrl ? "Clique para ampliar e revisar foto" : "Sem foto de perfil"}
                               >
                                 {photoUrl ? (
+                                  /* eslint-disable-next-line @next/next/no-img-element */
                                   <img
                                     src={photoUrl}
                                     alt={displayName}
@@ -1560,6 +1580,7 @@ export default function AdminPage() {
 
             {/* Imagem Ampliada */}
             <div className="relative aspect-square max-h-72 w-full mx-auto rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-200 dark:border-dark-700">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photoModal.url}
                 alt={photoModal.name}

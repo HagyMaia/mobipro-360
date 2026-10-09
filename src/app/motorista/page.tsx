@@ -1,11 +1,33 @@
 'use client';
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { TripOfferCard } from "@/features/trips/components/TripOfferCard";
 import { useTripStore } from "@/features/trips/store/useTripStore";
+import { useAuth } from "@/lib/auth";
 import type { Trip } from "@/features/trips/domain/trip.types";
 
 export default function MotoristaPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const currentTrip = useTripStore((state) => state.currentTrip);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#070D18] text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Verificando sessão...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentTrip) {
     return (

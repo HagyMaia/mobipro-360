@@ -51,7 +51,7 @@ export default function WelcomeScreen() {
           Corridas corporativas e particulares com conforto, pontualidade e segurança 24h.
         </p>
 
-        {/* BOTÕES DE AÇÃO: Começar Agora + Já tenho uma conta */}
+        {/* BOTÕES DE AÇÃO: Começar Agora + Instalar Aplicativo + Já tenho uma conta */}
         <div className="w-full space-y-3">
           <Link
             href="/cadastro"
@@ -61,12 +61,37 @@ export default function WelcomeScreen() {
             <ArrowRight size={18} strokeWidth={2.8} />
           </Link>
 
+          <a
+            href="/sr-logistica.apk"
+            download="sr-logistica.apk"
+            className="w-full bg-[#0d2a1d]/90 hover:bg-[#123827] active:scale-[0.98] border border-emerald-500/40 text-white font-bold py-3.5 px-5 rounded-2xl flex items-center justify-between text-sm transition duration-200 shadow-lg shadow-emerald-950/40"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#F59E0B] text-slate-950 flex items-center justify-center font-bold shadow">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </div>
+              <span className="font-bold text-white text-xs sm:text-sm">Instalar Aplicativo no Celular</span>
+            </div>
+            <span className="bg-[#785918]/80 text-[#F59E0B] border border-[#F59E0B]/40 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md">
+              Grátis
+            </span>
+          </a>
+
           <Link
             href="/login"
             className="w-full bg-white/10 hover:bg-white/15 active:scale-[0.98] text-white font-bold py-3.5 px-6 rounded-2xl flex items-center justify-center text-sm border border-white/10 backdrop-blur-md transition duration-200"
           >
             Já tenho uma conta
           </Link>
+        </div>
+
+        {/* Rodapé Executivo */}
+        <div className="text-center mt-6">
+          <p className="text-[11px] text-slate-400 font-medium">
+            SR Logística & Transporte • Manaus - AM
+          </p>
         </div>
       </main>
     </div>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   Settings, 
   ShieldCheck, 
@@ -29,8 +30,15 @@ import { BiometricAuthService } from '@/services/auth/BiometricAuthService';
 import { ProfileService } from '@/services/driver/ProfileService';
 
 export default function AjustesPage() {
+  const router = useRouter();
   const { state, dispatch } = useApp();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
   const navApp = state.navApp ?? 'waze';
   const [soundAlerts, setSoundAlerts] = useState(true);
   const [autoReject, setAutoReject] = useState(state.filters.autoReject);
@@ -140,6 +148,17 @@ export default function AjustesPage() {
       }
     });
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#070D18] text-white">
+        <div className="text-center">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
+          <p className="text-xs text-slate-400">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[color:var(--bg)] pb-24 font-sans text-slate-900 dark:text-slate-100 select-none transition-colors">

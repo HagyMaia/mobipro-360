@@ -450,7 +450,7 @@ export default function PerfilPage() {
         </div>
       </header>
 
-      <div className="p-4 space-y-4 max-w-lg mx-auto">
+      <div className="p-4 pb-28 sm:pb-32 space-y-4 max-w-lg mx-auto">
         
         {/* CARD 1: FOTO & IDENTIFICAÇÃO OFICIAL */}
         <div className="bg-white dark:bg-dark-900/90 rounded-3xl p-5 border border-slate-100 dark:border-dark-700/80 shadow-sm space-y-4">
@@ -458,6 +458,7 @@ export default function PerfilPage() {
             <div className="relative">
               <div className="w-20 h-20 rounded-3xl bg-amber-500/10 border-2 border-amber-500/30 overflow-hidden flex items-center justify-center relative shadow-inner">
                 {avatarUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={avatarUrl}
                     alt={displayName}

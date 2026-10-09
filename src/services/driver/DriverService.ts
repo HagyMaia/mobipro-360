@@ -75,20 +75,19 @@ export class DriverService {
         }
 
         // 1. Cadastra ou atualiza o perfil do motorista (upsert evita conflito se usuário já iniciou processo)
-        const userShortId = userId.replace(/\D/g, '').slice(0, 8) || userId.slice(0, 8) || String(Date.now()).slice(-8);
-        const safeCpf = data.cpf?.trim() || `000.${userShortId}-00`;
-        const safePhone = data.phone?.trim() || `(92) 9${userShortId}`;
-        const safeCnh = (data as any).cnh?.trim() || data.cpf?.trim() || `CNH${userShortId}`;
+        const realCpf = data.cpf?.trim() || '';
+        const realPhone = data.phone?.trim() || '';
+        const realCnh = (data as any).cnh?.trim() || '';
 
         let driverPayload: Record<string, any> = {
             id: userId,
             nome: chosenDisplayName,
             nome_completo: data.fullName?.trim() || chosenDisplayName,
             nome_social: chosenDisplayName,
-            cpf: safeCpf,
-            cnh: safeCnh,
-            telefone: safePhone,
-            phone: safePhone,
+            cpf: realCpf,
+            cnh: realCnh,
+            telefone: realPhone,
+            phone: realPhone,
             email: data.email?.trim() || '',
             cep: data.zipCode?.trim() || '',
             rua: data.street?.trim() || '',
@@ -104,11 +103,11 @@ export class DriverService {
             categoria_tipo: dType === 'EMPRESA' ? 'empresa' : 'particular',
             recebe_voucher: true,
             recebe_particular: dType !== 'EMPRESA',
-            marca_veiculo: data.vehicleMake?.trim() || 'Chevrolet',
-            modelo_veiculo: data.vehicleModel?.trim() || 'Onix Plus',
-            ano_veiculo: String(data.vehicleYear || 2024),
-            placa_veiculo: data.vehiclePlate?.trim() || 'ABC1D23',
-            cor_veiculo: data.vehicleColor?.trim() || 'Prata',
+            marca_veiculo: data.vehicleMake?.trim() || '',
+            modelo_veiculo: data.vehicleModel?.trim() || '',
+            ano_veiculo: data.vehicleYear ? String(data.vehicleYear) : '',
+            placa_veiculo: data.vehiclePlate?.trim() || '',
+            cor_veiculo: data.vehicleColor?.trim() || '',
             categoria: data.vehicleCategory || 'POPULAR',
             status: 'Pendente',
             vehicle_status: 'Pendente',

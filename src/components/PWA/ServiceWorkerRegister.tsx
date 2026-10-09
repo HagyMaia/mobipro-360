@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useApp } from '@/lib/store';
 
@@ -9,9 +9,14 @@ export function ServiceWorkerRegister() {
   const { state } = useApp();
   const isOnline = Boolean(user) && (state.status === 'available' || !state.activeRide);
 
+  const isOnlineRef = useRef(isOnline);
+  isOnlineRef.current = isOnline;
+  const userIdRef = useRef(user?.id);
+  userIdRef.current = user?.id;
+
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
+      const registerSW = () => {
         navigator.serviceWorker
           .register('/sw.js', { scope: '/' })
           .then((registration) => {
@@ -20,17 +25,24 @@ export function ServiceWorkerRegister() {
             // Ativa o monitoramento em segundo plano se o motorista estiver online
             if (registration.active) {
               registration.active.postMessage({
-                type: isOnline ? 'ENABLE_BACKGROUND_DISPATCH_SYNC' : 'DISABLE_BACKGROUND_DISPATCH_SYNC',
+                type: isOnlineRef.current ? 'ENABLE_BACKGROUND_DISPATCH_SYNC' : 'DISABLE_BACKGROUND_DISPATCH_SYNC',
                 supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
                 supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-                driverId: user?.id,
+                driverId: userIdRef.current,
               });
             }
           })
           .catch((error) => {
             console.warn('[PWA] Falha ao registrar Service Worker:', error);
           });
-      });
+      };
+
+      if (document.readyState === 'complete') {
+        registerSW();
+      } else {
+        window.addEventListener('load', registerSW);
+        return () => window.removeEventListener('load', registerSW);
+      }
     }
   }, []);
 

@@ -5,16 +5,19 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import Link from 'next/link';
 import {
   ArrowLeft,
+  ArrowRight,
   HelpCircle,
   Download,
   KeyRound,
   X,
   CheckCircle2,
+  AlertCircle,
   Lock,
+  Mail,
   ShieldCheck,
   Fingerprint,
-  Sparkles,
-  Smartphone
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { SupportModal } from '@/components/Support/SupportModal';
 import { Logo } from '@/components/Brand/Logo';
@@ -24,6 +27,7 @@ export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [supportOpen, setSupportOpen] = useState(false);
@@ -48,6 +52,7 @@ export default function Login() {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSuccessMsg, setResetSuccessMsg] = useState('');
   const [resetErrMsg, setResetErrMsg] = useState('');
@@ -97,6 +102,42 @@ export default function Login() {
       authListener?.subscription?.unsubscribe();
     };
   }, []);
+
+  // Verifica se já existe uma sessão salva e válida do motorista
+  useEffect(() => {
+    let isMounted = true;
+    const checkActiveSession = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && isMounted) {
+          const { data: motorista } = await supabase
+            .from('motoristas')
+            .select('id, status')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          const normalizedStatus = String(motorista?.status || '').trim().toLowerCase();
+          if (normalizedStatus === 'bloqueado' || normalizedStatus === 'reprovado') {
+            await supabase.auth.signOut();
+            return;
+          }
+
+          if (normalizedStatus === 'pendente' || normalizedStatus === 'pending') {
+            router.replace('/status');
+          } else {
+            router.replace('/');
+          }
+        }
+      } catch (_) {
+        // Se falhar ou não houver sessão salva, permanece na tela de login
+      }
+    };
+
+    checkActiveSession();
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
 
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,6 +212,14 @@ export default function Login() {
 
   const doAuthenticateUser = useCallback(async (targetEmail: string, targetPass: string, isBioFlow: boolean = false) => {
     const trimmedEmail = targetEmail.trim().toLowerCase();
+    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+      throw new Error('Por favor, informe um e-mail válido.');
+    }
+
+    if (!targetPass) {
+      throw new Error('Por favor, digite sua senha de acesso.');
+    }
+
     let authUser: any = null;
 
     // 1. Autenticação via Supabase Auth
@@ -181,7 +230,18 @@ export default function Login() {
       });
 
       if (authError) {
-        throw new Error(authError.message || 'E-mail ou senha incorretos.');
+        const rawMsg = authError.message || '';
+        if (rawMsg.includes('Invalid login credentials') || rawMsg.includes('invalid_grant')) {
+          throw new Error('E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.');
+        } else if (rawMsg.includes('Email not confirmed')) {
+          throw new Error('Seu e-mail cadastrado ainda não foi confirmado. Verifique sua caixa de entrada.');
+        } else if (rawMsg.includes('Too many requests') || rawMsg.includes('rate limit')) {
+          throw new Error('Muitas tentativas sem sucesso. Por segurança, aguarde alguns instantes antes de tentar novamente.');
+        } else if (rawMsg.includes('Failed to fetch') || rawMsg.includes('NetworkError')) {
+          throw new Error('Falha na conexão com o servidor. Verifique sua conexão com a internet.');
+        } else {
+          throw new Error(rawMsg || 'Não foi possível autenticar. Verifique seus dados.');
+        }
       }
       authUser = data?.user;
     } else {
@@ -217,124 +277,61 @@ export default function Login() {
 
         if (motoristaByEmail) {
           motorista = motoristaByEmail;
-          try {
-            await supabase.from('motoristas').update({ id: authUser.id }).eq('id', motoristaByEmail.id);
-          } catch (_) {}
+          if (motoristaByEmail.id !== authUser.id) {
+            try {
+              await supabase.from('motoristas').update({ id: authUser.id }).eq('id', motoristaByEmail.id);
+            } catch (_) {}
+          }
         }
       }
 
       let activeMotorista = motorista;
 
       if (!activeMotorista) {
-        const displayName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Motorista';
-        const userShortId = authUser.id.replace(/\D/g, '').slice(0, 8) || authUser.id.slice(0, 8) || String(Date.now()).slice(-8);
-
-        let autoPayload: Record<string, any> = {
+        // Usuário autenticado no Auth mas sem registro na tabela de motoristas.
+        // Registra status pendente com os dados reais já fornecidos no cadastro.
+        const displayName = authUser.user_metadata?.name || authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Motorista';
+        const autoPayload: Record<string, any> = {
           id: authUser.id,
           nome: displayName,
           nome_social: displayName,
           nome_completo: authUser.user_metadata?.full_name || displayName,
           email: authUser.email,
-          cpf: authUser.user_metadata?.cpf || `000.${userShortId}-00`,
-          cnh: `CNH${userShortId}`,
-          telefone: authUser.user_metadata?.phone || `(92) 9${userShortId}`,
-          phone: authUser.user_metadata?.phone || `(92) 9${userShortId}`,
-          marca_veiculo: 'Chevrolet',
-          modelo_veiculo: 'Onix Plus',
-          ano_veiculo: '2024',
-          placa_veiculo: 'ABC1D23',
-          cor_veiculo: 'Prata',
-          categoria: 'POPULAR',
+          cpf: authUser.user_metadata?.cpf || null,
+          telefone: authUser.user_metadata?.phone || null,
           status: 'Pendente',
-          vehicle_status: 'Pendente',
           work_status: 'OFFLINE',
           created_at: new Date().toISOString(),
         };
 
-        let { data: newMotorista, error: createErr } = await supabase
+        const { data: newMotorista } = await supabase
           .from('motoristas')
           .upsert(autoPayload, { onConflict: 'id' })
           .select('id, status, nome')
           .maybeSingle();
 
-        let attempts = 0;
-        while (createErr && attempts < 8) {
-          attempts++;
-          const msg = createErr.message || '';
-          const match =
-            msg.match(/Could not find the '([^']+)' column/i) ||
-            msg.match(/column "([^"]+)" of relation/i) ||
-            msg.match(/column "([^"]+)" does not exist/i);
-
-          if (match && match[1] && autoPayload[match[1]] !== undefined) {
-            delete autoPayload[match[1]];
-            const retry = await supabase
-              .from('motoristas')
-              .upsert(autoPayload, { onConflict: 'id' })
-              .select('id, status, nome')
-              .maybeSingle();
-            newMotorista = retry.data;
-            createErr = retry.error;
-          } else if (msg.toLowerCase().includes('null value in column')) {
-            const nullMatch = msg.match(/null value in column "([^"]+)"/i);
-            if (nullMatch && nullMatch[1]) {
-              const col = nullMatch[1];
-              autoPayload[col] = autoPayload[col] || 'PENDENTE';
-              const retry = await supabase
-                .from('motoristas')
-                .upsert(autoPayload, { onConflict: 'id' })
-                .select('id, status, nome')
-                .maybeSingle();
-              newMotorista = retry.data;
-              createErr = retry.error;
-            } else {
-              break;
-            }
-          } else {
-            break;
-          }
-        }
-
-        if (newMotorista) {
-          activeMotorista = newMotorista;
-        } else {
-          activeMotorista = { id: authUser.id, status: 'Pendente', nome: displayName };
-        }
+        activeMotorista = newMotorista || { id: authUser.id, status: 'Pendente', nome: displayName };
       }
 
       const normalizedStatus = String(activeMotorista?.status || '').trim().toLowerCase();
       if (normalizedStatus === 'bloqueado' || normalizedStatus === 'blocked') {
         await supabase.auth.signOut();
-        if (typeof document !== 'undefined') {
-          document.cookie = 'sb-demo-token=; path=/; max-age=0';
-        }
         throw new Error('Sua conta de motorista está temporariamente bloqueada pela central de atendimento.');
       }
 
       if (normalizedStatus === 'reprovado' || normalizedStatus === 'rejected') {
         await supabase.auth.signOut();
-        if (typeof document !== 'undefined') {
-          document.cookie = 'sb-demo-token=; path=/; max-age=0';
-        }
         throw new Error('Seu cadastro de motorista foi recusado na análise documental. Entre em contato com o suporte.');
       }
 
       if (normalizedStatus === 'pendente' || normalizedStatus === 'pending') {
-        if (typeof document !== 'undefined') {
-          document.cookie = `sb-demo-token=${authUser.id}; path=/; max-age=86400; SameSite=Lax`;
-        }
         router.replace('/status');
         router.refresh();
         return;
       }
     }
 
-    // 3. Garantir cookie de sessão
-    if (typeof document !== 'undefined') {
-      document.cookie = `sb-demo-token=${authUser.id}; path=/; max-age=86400; SameSite=Lax`;
-    }
-
-    // 4. Se o aparelho suporta biometria e ainda não está cadastrada, oferece ativação rápida
+    // 3. Se o aparelho suporta biometria e ainda não está cadastrada, oferece ativação rápida
     if (!isBioFlow && biometricAvailable && !biometricEnrolled) {
       setPendingAuthUser({ id: authUser.id, email: trimmedEmail, rawPass: targetPass });
       setEnrollModalOpen(true);
@@ -347,19 +344,32 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
 
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setError('Por favor, informe um endereço de e-mail válido.');
+      return;
+    }
+
+    if (!password) {
+      setError('Por favor, digite sua senha de acesso.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('A senha deve conter no mínimo 6 caracteres.');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      await doAuthenticateUser(email, password, false);
+      await doAuthenticateUser(cleanEmail, password, false);
     } catch (err: unknown) {
       console.error('[Login] Falha no login:', err);
       const msg = err instanceof Error ? err.message : 'Não foi possível entrar. Verifique seu e-mail e senha.';
-      if (msg.includes('Invalid login credentials')) {
-        setError('E-mail ou senha incorretos. Verifique suas credenciais.');
-      } else {
-        setError(msg);
-      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -385,15 +395,13 @@ export default function Login() {
         setPassword(res.credentials.password);
         await doAuthenticateUser(res.credentials.email, res.credentials.password, true);
       } else {
-        if (typeof document !== 'undefined' && res.credentials.userId) {
-          document.cookie = `sb-demo-token=${res.credentials.userId}; path=/; max-age=86400; SameSite=Lax`;
-        }
-        router.replace('/');
-        router.refresh();
+        setEmail(res.credentials.email);
+        setError('Por segurança, digite sua senha para revalidar a biometria neste aparelho.');
       }
     } catch (err: any) {
       console.error('[BiometricLogin] Erro:', err);
-      setError('Falha ao validar a digital no celular.');
+      const msg = err instanceof Error ? err.message : 'Falha ao validar a digital no celular.';
+      setError(msg);
     } finally {
       setBiometricLoading(false);
     }
@@ -440,46 +448,65 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen flex flex-col justify-between bg-[#070D18] text-white font-sans overflow-x-hidden select-none">
-      {/* Background sofisticado com imagem sutil e gradientes */}
+      {/* Background Executivo com Imagem de Luxo Noturna e Gradientes Refinados */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-25 pointer-events-none"
-        style={{ backgroundImage: "url('/images/white-taxi.jpg')" }}
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-105 opacity-35 pointer-events-none"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1600&q=80'), url('/images/taxi-bg.jpg')",
+        }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#070D18]/95 via-[#070D18]/90 to-[#070D18] pointer-events-none" />
-      <div className="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-brand/10 blur-3xl pointer-events-none" />
+      {/* Multi-camadas de sombreamento dark para contraste ideal */}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#070D18] via-[#070D18]/85 to-[#070D18]/90 pointer-events-none" />
+      <div className="absolute top-1/4 -right-24 w-96 h-96 rounded-full bg-[#F59E0B]/10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 -left-24 w-96 h-96 rounded-full bg-[#F59E0B]/5 blur-[120px] pointer-events-none" />
 
-      {/* Header com Navegação e Suporte */}
-      <header className="relative z-10 flex justify-between items-center px-5 pt-8 pb-4">
+      {/* HEADER: Voltar ao Início + Suporte / Ajuda */}
+      <header className="relative z-10 flex justify-between items-center px-5 sm:px-8 pt-8 pb-3 max-w-5xl w-full mx-auto">
         <Link
           href="/welcome"
-          className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full border border-white/10 text-xs font-semibold backdrop-blur-md"
+          className="flex items-center gap-2 text-slate-300 hover:text-white transition-all bg-white/5 hover:bg-white/10 px-3.5 py-1.5 rounded-full border border-white/10 text-xs font-semibold backdrop-blur-md active:scale-95 shadow-sm"
         >
-          <ArrowLeft size={16} />
-          <span>Voltar</span>
+          <ArrowLeft size={15} />
+          <span>Voltar ao Início</span>
         </Link>
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setSupportOpen(true)}
-            className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full border border-white/10 text-xs font-semibold backdrop-blur-md"
+            className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-all bg-white/5 hover:bg-white/10 px-3.5 py-1.5 rounded-full border border-white/10 text-xs font-semibold backdrop-blur-md active:scale-95 shadow-sm"
           >
-            <HelpCircle size={15} className="text-brand" />
+            <HelpCircle size={15} className="text-[#F59E0B]" />
             <span>Ajuda</span>
           </button>
         </div>
       </header>
 
-      {/* Cartão Central de Login */}
-      <main className="relative z-10 flex-1 flex flex-col justify-center px-5 my-auto max-w-md w-full mx-auto">
-        <div className="bg-white/[0.04] backdrop-blur-2xl border border-white/10 p-7 sm:p-8 rounded-3xl shadow-2xl">
-          {/* Cabeçalho do Cartão */}
+      {/* CARTÃO PRINCIPAL DE LOGIN */}
+      <main className="relative z-10 flex-1 flex flex-col justify-center px-4 sm:px-6 py-6 my-auto max-w-md w-full mx-auto">
+        <div className="relative bg-[#0B1324]/85 backdrop-blur-2xl border border-white/10 p-6 sm:p-8 rounded-3xl shadow-2xl shadow-black/80 overflow-hidden">
+          {/* Linha sutil de brilho dourado no topo do card */}
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#F59E0B]/80 to-transparent pointer-events-none" />
+
+          {/* Cabeçalho do Cartão com Logo e Badge Executivo */}
           <div className="mb-6 text-center flex flex-col items-center">
-            <div className="mb-4">
+            <div className="mb-3">
               <Logo size="lg" lightText subtitle="MOTORISTA" />
             </div>
-            <h1 className="text-2xl font-black text-white tracking-tight">Acesso ao Motorista</h1>
-            <p className="text-slate-400 text-xs mt-1">
-              Informe suas credenciais ou use a digital do seu aparelho.
+
+            {/* Badge de Mobilidade Executiva & Corporativa (Referência da Tela Splash) */}
+            <div className="inline-flex items-center gap-2 bg-[#F59E0B]/15 border border-[#F59E0B]/40 px-3 py-1 rounded-full mb-3 backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
+              <span className="text-[11px] font-bold text-[#F59E0B] tracking-wide">
+                Mobilidade Executiva & Corporativa
+              </span>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Acesso do Motorista
+            </h1>
+            <p className="text-slate-400 text-xs mt-1.5 max-w-xs leading-relaxed">
+              Entre com suas credenciais ou use o leitor de digital cadastrado no aparelho.
             </p>
           </div>
 
@@ -490,50 +517,64 @@ export default function Login() {
                 type="button"
                 onClick={handleBiometricLogin}
                 disabled={biometricLoading || loading}
-                className="w-full relative overflow-hidden bg-gradient-to-r from-amber-500/20 via-brand/25 to-amber-500/20 hover:from-amber-500/30 hover:to-amber-500/30 border-2 border-brand text-white py-4 px-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-xl shadow-brand/15 active:scale-[0.98] group"
+                className="w-full relative overflow-hidden bg-gradient-to-r from-[#F59E0B]/20 via-[#F59E0B]/30 to-[#F59E0B]/20 hover:from-[#F59E0B]/35 hover:to-[#F59E0B]/35 border-2 border-[#F59E0B] text-white py-3.5 px-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3.5 transition-all shadow-xl shadow-[#F59E0B]/15 active:scale-[0.98] group"
               >
-                <div className="p-2 rounded-xl bg-brand text-slate-950 group-hover:scale-110 transition-transform">
+                <div className="p-2 rounded-xl bg-[#F59E0B] text-slate-950 group-hover:scale-105 transition-transform shadow-md">
                   <Fingerprint size={22} className={biometricLoading ? "animate-spin" : "animate-pulse"} />
                 </div>
-                <div className="text-left">
-                  <div className="text-[10px] uppercase font-bold text-brand tracking-wider">Acesso Rápido com 1 Toque</div>
-                  <div className="text-sm font-black text-white">
-                    {biometricLoading ? "Lendo Digital no Aparelho..." : "Entrar com a Digital do Celular"}
+                <div className="text-left flex-1">
+                  <div className="text-[10px] uppercase font-black text-[#F59E0B] tracking-wider">
+                    Acesso Rápido com 1 Toque
+                  </div>
+                  <div className="text-sm font-black text-white leading-tight">
+                    {biometricLoading ? "Validando Biometria no Aparelho..." : "Entrar com a Digital do Celular"}
                   </div>
                 </div>
               </button>
 
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-white/10" />
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">ou use e-mail e senha</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ou entre com e-mail e senha</span>
                 <div className="flex-1 h-px bg-white/10" />
               </div>
             </div>
           )}
 
+          {/* FORMULÁRIO DE LOGIN POR E-MAIL E SENHA */}
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             {error && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3.5 rounded-2xl text-xs text-center font-medium animate-in fade-in">
-                {error}
+              <div className="bg-rose-500/15 border border-rose-500/40 text-rose-200 p-3.5 rounded-2xl text-xs font-medium flex items-start gap-2.5 animate-in fade-in duration-200">
+                <AlertCircle size={17} className="text-rose-400 shrink-0 mt-0.5" />
+                <span className="leading-snug">{error}</span>
               </div>
             )}
 
+            {/* Campo de E-mail */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-300">E-mail cadastrado</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu.email@exemplo.com"
-                className="bg-white/5 border border-white/10 p-3.5 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition-all"
-                required
-                autoComplete="email"
-              />
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <Mail size={13} className="text-[#F59E0B]" />
+                <span>E-mail cadastrado</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu.email@exemplo.com"
+                  className="w-full bg-[#070D18]/80 border border-slate-700/60 hover:border-slate-600 focus:border-[#F59E0B] focus:ring-2 focus:ring-[#F59E0B]/20 p-3.5 rounded-xl text-white placeholder-slate-500 outline-none text-sm transition-all"
+                  required
+                  autoComplete="email"
+                />
+              </div>
             </div>
 
+            {/* Campo de Senha com Visibilidade e Link de Recuperação */}
             <div className="flex flex-col gap-1.5">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-semibold text-slate-300">Senha</label>
+                <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Lock size={13} className="text-[#F59E0B]" />
+                  <span>Senha de acesso</span>
+                </label>
                 <button
                   type="button"
                   onClick={() => {
@@ -542,103 +583,128 @@ export default function Login() {
                     setForgotErr('');
                     setForgotModalOpen(true);
                   }}
-                  className="text-xs text-brand hover:underline transition font-semibold"
+                  className="text-xs text-[#F59E0B] hover:text-[#fbbf24] hover:underline transition font-bold"
                 >
                   Esqueceu a senha?
                 </button>
               </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="bg-white/5 border border-white/10 p-3.5 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition-all"
-                required
-                autoComplete="current-password"
-              />
+              <div className="relative flex items-center">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-[#070D18]/80 border border-slate-700/60 hover:border-slate-600 focus:border-[#F59E0B] focus:ring-2 focus:ring-[#F59E0B]/20 p-3.5 pr-11 rounded-xl text-white placeholder-slate-500 outline-none text-sm transition-all"
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 p-1.5 text-slate-400 hover:text-white transition rounded-lg"
+                  aria-label={showPassword ? 'Ocultar senha' : 'Exibir senha'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
+            {/* BOTÃO PRINCIPAL DE ACESSO (Estilo Começar Agora do Screenshot) */}
             <button
               type="submit"
               disabled={loading || biometricLoading}
-              className="w-full bg-brand text-slate-950 mt-2 py-4 rounded-2xl font-black text-base hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl shadow-brand/20 flex items-center justify-center gap-2"
+              className="w-full bg-[#F59E0B] hover:bg-[#D97706] text-slate-950 font-black text-base py-4 rounded-2xl shadow-xl shadow-amber-500/25 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 mt-2 group"
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                   <span>Autenticando...</span>
                 </>
               ) : (
-                <span>Entrar na Minha Conta</span>
+                <>
+                  <span>Entrar na Minha Conta</span>
+                  <ArrowRight size={18} strokeWidth={2.8} className="group-hover:translate-x-1 transition-transform" />
+                </>
               )}
             </button>
           </form>
 
           {/* Dica de Biometria para Celular sem cadastro ainda */}
           {biometricAvailable && !biometricEnrolled && (
-            <div className="mt-4 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3 text-xs text-slate-300">
-              <Fingerprint size={20} className="text-brand shrink-0" />
-              <span>Seu celular suporta <strong>Entrada com Digital</strong>. Ao fazer login você poderá ativá-la!</span>
+            <div className="mt-4 p-3 rounded-2xl bg-[#F59E0B]/10 border border-[#F59E0B]/30 flex items-center gap-3 text-xs text-amber-200/90 leading-relaxed">
+              <Fingerprint size={22} className="text-[#F59E0B] shrink-0" />
+              <span>
+                Seu aparelho é compatível com <strong>Biometria</strong>. Após entrar com sua senha você poderá ativá-la com 1 toque!
+              </span>
             </div>
           )}
 
-          {/* Links Auxiliares */}
-          <div className="mt-6 text-center space-y-4">
+          {/* Links e Botão Auxiliar de Download */}
+          <div className="mt-6 pt-5 border-t border-white/10 text-center space-y-4">
             <p className="text-slate-400 text-xs">
               Ainda não tem conta de motorista?{' '}
-              <Link href="/cadastro" className="text-brand font-bold hover:underline transition">
+              <Link href="/cadastro" className="text-[#F59E0B] font-bold hover:underline transition">
                 Cadastre-se aqui
               </Link>
             </p>
 
-            <div className="pt-4 border-t border-white/10 flex justify-center">
-              <a
-                href="/sr-logistica.apk"
-                download="sr-logistica.apk"
-                className="inline-flex items-center gap-2 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white py-2.5 px-4 rounded-full transition-all border border-white/10 active:scale-95"
-              >
-                <Download size={14} className="text-emerald-400" />
-                <span>Baixar App Android (APK)</span>
-              </a>
-            </div>
+            {/* Botão de Download do APK Android (Inspirado no visual executivo do banner) */}
+            <a
+              href="/sr-logistica.apk"
+              download="sr-logistica.apk"
+              className="w-full bg-[#0d2a1d]/80 hover:bg-[#123827] border border-emerald-500/40 text-white font-bold py-3 px-4 rounded-2xl flex items-center justify-between text-xs transition duration-200 shadow-md active:scale-95 group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-[#F59E0B] text-slate-950 flex items-center justify-center font-bold shadow">
+                  <Download size={14} strokeWidth={2.5} />
+                </div>
+                <span className="font-bold text-white">Instalar Aplicativo no Celular</span>
+              </div>
+              <span className="bg-[#785918]/80 text-[#F59E0B] border border-[#F59E0B]/40 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
+                Grátis
+              </span>
+            </a>
           </div>
         </div>
       </main>
 
-      {/* Footer com Selo de Segurança */}
-      <footer className="relative z-10 w-full p-4 flex flex-col items-center gap-1">
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+      {/* FOOTER: Selo de Criptografia SSL + Cidade Manaus - AM */}
+      <footer className="relative z-10 w-full p-4 flex flex-col items-center gap-1 text-center">
+        <div className="flex items-center gap-1.5 text-xs text-slate-300 font-medium">
           <ShieldCheck size={14} className="text-emerald-400" />
-          <span>SR Logística • Conexão Criptografada SSL</span>
+          <span>Conexão Segura & Criptografada SSL • 256-bit</span>
         </div>
+        <p className="text-[11px] text-slate-500 font-medium">
+          SR Logística & Transporte • Manaus - AM
+        </p>
       </footer>
 
       {/* MODAL 0: Ativação de Biometria / Impressão Digital */}
       {enrollModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-sm bg-[#0D1624] border-2 border-brand/50 p-6 rounded-3xl shadow-2xl text-center space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand/15 text-brand border border-brand/30 shadow-lg shadow-brand/10">
+          <div className="relative w-full max-w-sm bg-[#0B1324] border-2 border-[#F59E0B]/50 p-6 sm:p-7 rounded-3xl shadow-2xl text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30 shadow-lg shadow-[#F59E0B]/10">
               <Fingerprint size={36} className="animate-pulse" />
             </div>
 
             <div>
-              <span className="inline-block rounded-full bg-brand/10 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-brand mb-2">
+              <span className="inline-block rounded-full bg-[#F59E0B]/10 border border-[#F59E0B]/30 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-[#F59E0B] mb-2">
                 Mais Praticidade
               </span>
               <h3 className="text-xl font-black text-white">
                 Ativar Entrada com Digital?
               </h3>
-              <p className="mt-1 text-xs text-slate-300 leading-relaxed">
-                Seu aparelho é compatível com biometria. Deseja cadastrar sua impressão digital para entrar com 1 toque nas próximas vezes sem precisar digitar a senha?
+              <p className="mt-1.5 text-xs text-slate-300 leading-relaxed">
+                Seu aparelho é compatível com biometria. Deseja cadastrar sua impressão digital para entrar com 1 toque nas próximas vezes sem precisar digitar sua senha?
               </p>
             </div>
 
-            <div className="space-y-2 pt-2">
+            <div className="space-y-2.5 pt-2">
               <button
                 type="button"
                 onClick={handleConfirmEnrollBiometrics}
                 disabled={enrollLoading}
-                className="w-full bg-brand text-slate-950 font-black py-3.5 rounded-2xl hover:brightness-105 active:scale-95 transition shadow-lg shadow-brand/20 text-sm flex items-center justify-center gap-2"
+                className="w-full bg-[#F59E0B] hover:bg-[#D97706] text-slate-950 font-black py-3.5 rounded-2xl active:scale-95 transition shadow-lg shadow-amber-500/25 text-sm flex items-center justify-center gap-2"
               >
                 {enrollLoading ? (
                   <>
@@ -656,7 +722,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={handleSkipEnrollBiometrics}
-                className="w-full bg-white/5 hover:bg-white/10 text-slate-400 font-semibold py-3 rounded-xl transition text-xs"
+                className="w-full bg-white/5 hover:bg-white/10 text-slate-400 font-semibold py-3 rounded-xl transition text-xs border border-white/5"
               >
                 Agora Não, Entrar Direto
               </button>
@@ -665,10 +731,10 @@ export default function Login() {
         </div>
       )}
 
-      {/* MODAL 1: Recuperação de Senha */}
+      {/* MODAL 1: Solicitação de Recuperação de Senha */}
       {forgotModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-[#0D1624] border border-white/10 p-6 rounded-3xl shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-[#0B1324] border border-white/15 p-6 sm:p-7 rounded-3xl shadow-2xl space-y-4">
             <button
               onClick={() => setForgotModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition"
@@ -677,11 +743,11 @@ export default function Login() {
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-brand/10 border border-brand/20 rounded-2xl text-brand">
+              <div className="p-3 bg-[#F59E0B]/15 border border-[#F59E0B]/30 rounded-2xl text-[#F59E0B]">
                 <KeyRound size={24} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">Recuperar Senha</h3>
+                <h3 className="text-lg font-black text-white">Recuperar Senha</h3>
                 <p className="text-xs text-slate-400">Sem sair do aplicativo</p>
               </div>
             </div>
@@ -697,7 +763,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setForgotModalOpen(false)}
-                  className="w-full bg-brand text-slate-950 font-bold py-3.5 rounded-xl hover:brightness-105 active:scale-[0.98] transition shadow-lg shadow-brand/20 text-sm"
+                  className="w-full bg-[#F59E0B] text-slate-950 font-bold py-3.5 rounded-xl hover:bg-[#D97706] active:scale-[0.98] transition shadow-lg shadow-amber-500/25 text-sm"
                 >
                   Entendido, Voltar ao Login
                 </button>
@@ -709,7 +775,7 @@ export default function Login() {
                 </p>
 
                 {forgotErr && (
-                  <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-xs font-medium">
+                  <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-xl text-xs font-medium">
                     {forgotErr}
                   </div>
                 )}
@@ -721,12 +787,12 @@ export default function Login() {
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
                     placeholder="seu@email.com"
-                    className="w-full bg-white/5 border border-white/10 p-3.5 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition"
+                    className="w-full bg-[#070D18]/80 border border-slate-700/60 focus:border-[#F59E0B] focus:ring-2 focus:ring-[#F59E0B]/20 p-3.5 rounded-xl text-white placeholder-slate-500 outline-none text-sm transition"
                     required
                   />
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2.5 pt-2">
                   <button
                     type="button"
                     onClick={() => setForgotModalOpen(false)}
@@ -737,7 +803,7 @@ export default function Login() {
                   <button
                     type="submit"
                     disabled={forgotLoading}
-                    className="flex-1 bg-brand text-slate-950 font-bold py-3 rounded-xl hover:brightness-105 active:scale-[0.98] transition disabled:opacity-50 text-sm shadow-lg shadow-brand/20"
+                    className="flex-1 bg-[#F59E0B] text-slate-950 font-bold py-3 rounded-xl hover:bg-[#D97706] active:scale-[0.98] transition disabled:opacity-50 text-sm shadow-lg shadow-amber-500/25"
                   >
                     {forgotLoading ? 'Enviando...' : 'Enviar Link'}
                   </button>
@@ -751,7 +817,7 @@ export default function Login() {
       {/* MODAL 2: Definir Nova Senha */}
       {resetModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-[#0D1624] border border-brand/30 p-6 rounded-3xl shadow-2xl space-y-4">
+          <div className="relative w-full max-w-md bg-[#0B1324] border border-[#F59E0B]/40 p-6 sm:p-7 rounded-3xl shadow-2xl space-y-4">
             <button
               onClick={() => setResetModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition"
@@ -760,11 +826,11 @@ export default function Login() {
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-brand/15 border border-brand/30 rounded-2xl text-brand shadow-lg shadow-brand/10">
+              <div className="p-3 bg-[#F59E0B]/15 border border-[#F59E0B]/30 rounded-2xl text-[#F59E0B] shadow-lg shadow-amber-500/10">
                 <Lock size={24} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">Criar Nova Senha</h3>
+                <h3 className="text-lg font-black text-white">Criar Nova Senha</h3>
                 <p className="text-xs text-slate-400">Defina sua nova credencial de acesso</p>
               </div>
             </div>
@@ -783,7 +849,7 @@ export default function Login() {
                     setResetModalOpen(false);
                     setResetSuccessMsg('');
                   }}
-                  className="w-full bg-brand text-slate-950 font-bold py-3.5 rounded-xl hover:brightness-105 active:scale-[0.98] transition shadow-lg shadow-brand/20 text-sm"
+                  className="w-full bg-[#F59E0B] text-slate-950 font-bold py-3.5 rounded-xl hover:bg-[#D97706] active:scale-[0.98] transition shadow-lg shadow-amber-500/25 text-sm"
                 >
                   Entrar com a Nova Senha
                 </button>
@@ -795,21 +861,30 @@ export default function Login() {
                 </p>
 
                 {resetErrMsg && (
-                  <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-xs font-medium">
+                  <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-xl text-xs font-medium">
                     {resetErrMsg}
                   </div>
                 )}
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-300">Nova Senha</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
-                    className="w-full bg-white/5 border border-white/10 p-3.5 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition"
-                    required
-                  />
+                  <div className="relative flex items-center">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                      className="w-full bg-[#070D18]/80 border border-slate-700/60 focus:border-[#F59E0B] focus:ring-2 focus:ring-[#F59E0B]/20 p-3.5 pr-11 rounded-xl text-white placeholder-slate-500 outline-none text-sm transition"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 p-1.5 text-slate-400 hover:text-white transition rounded-lg"
+                    >
+                      {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
@@ -819,12 +894,12 @@ export default function Login() {
                     value={confirmNewPassword}
                     onChange={(e) => setConfirmNewPassword(e.target.value)}
                     placeholder="Digite novamente a nova senha"
-                    className="w-full bg-white/5 border border-white/10 p-3.5 rounded-xl text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 text-sm transition"
+                    className="w-full bg-[#070D18]/80 border border-slate-700/60 focus:border-[#F59E0B] focus:ring-2 focus:ring-[#F59E0B]/20 p-3.5 rounded-xl text-white placeholder-slate-500 outline-none text-sm transition"
                     required
                   />
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2.5 pt-2">
                   <button
                     type="button"
                     onClick={() => setResetModalOpen(false)}
@@ -835,7 +910,7 @@ export default function Login() {
                   <button
                     type="submit"
                     disabled={resetLoading}
-                    className="flex-1 bg-brand text-slate-950 font-bold py-3 rounded-xl hover:brightness-105 active:scale-[0.98] transition disabled:opacity-50 text-sm shadow-lg shadow-brand/20"
+                    className="flex-1 bg-[#F59E0B] text-slate-950 font-bold py-3 rounded-xl hover:bg-[#D97706] active:scale-[0.98] transition disabled:opacity-50 text-sm shadow-lg shadow-amber-500/25"
                   >
                     {resetLoading ? 'Salvando...' : 'Salvar Senha'}
                   </button>

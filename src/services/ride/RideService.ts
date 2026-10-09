@@ -17,12 +17,26 @@ function broadcastRideEvent(rideId: string, event: string, payload: any) {
 
         for (const chName of channels) {
             try {
-                const ch = supabase.channel(chName);
-                ch.send({
-                    type: 'broadcast',
-                    event,
-                    payload,
-                }).catch(() => {});
+                const ch = supabase.channel(chName, {
+                    config: { broadcast: { self: false } },
+                });
+                ch.subscribe((status: string) => {
+                    if (status === 'SUBSCRIBED') {
+                        ch.send({
+                            type: 'broadcast',
+                            event,
+                            payload,
+                        })
+                            .catch(() => {})
+                            .finally(() => {
+                                setTimeout(() => {
+                                    try {
+                                        supabase.removeChannel(ch);
+                                    } catch (_) {}
+                                }, 4000);
+                            });
+                    }
+                });
             } catch (_) {}
         }
     } catch (_) {}

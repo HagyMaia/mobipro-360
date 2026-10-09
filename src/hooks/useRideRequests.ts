@@ -295,6 +295,8 @@ export function useRideRequests(
     driverType?: 'EMPRESA' | 'PARTICULAR'
 ) {
     const [currentOffer, setCurrentOffer] = useState<RideOffer | null>(null);
+    const currentOfferRef = useRef<RideOffer | null>(currentOffer);
+    currentOfferRef.current = currentOffer;
     const lastNotifiedOfferId = useRef<string | null>(null);
 
     const [localDriverType, setLocalDriverType] = useState<'EMPRESA' | 'PARTICULAR'>(() => {
@@ -485,11 +487,12 @@ export function useRideRequests(
         const fetchPendingRides = async () => {
             try {
                 // Se temos uma oferta em exibição, verifica se ela ainda é válida ou se foi cancelada
-                if (currentOffer?.id) {
+                const activeOfferId = currentOfferRef.current?.id;
+                if (activeOfferId) {
                     const { data: activeCheck } = await supabase
                         .from('rides')
                         .select('id, status')
-                        .eq('id', currentOffer.id)
+                        .eq('id', activeOfferId)
                         .maybeSingle();
 
                     if (activeCheck && !isRideSearching(activeCheck.status)) {

@@ -290,6 +290,8 @@ export default function HomePage() {
     );
   }
 
+  const firstName = driverName.split(' ')[0] || driverName;
+
   const dateLabel = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
     day: 'numeric',
@@ -306,16 +308,26 @@ export default function HomePage() {
 
   const goalPct = Math.round((todayEarningsTotal / state.goalTarget) * 100);
 
+  if (loading || !isApproved) {
+    return (
+      <div className="min-h-screen bg-[#070D18] flex flex-col items-center justify-center p-6 text-white select-none">
+        <div className="w-10 h-10 border-2 border-brand border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm font-bold text-white tracking-wide">SR Logística</p>
+        <p className="text-xs text-slate-400 mt-1">Carregando painel do motorista...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[color:var(--bg)] text-slate-900 dark:text-slate-100 transition-colors">
       <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-dark-700/80 bg-white/95 dark:bg-dark-950/90 px-4 pb-3 pt-4 backdrop-blur-xl shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-slate-900 dark:text-white">
-                Olá, <span className="text-brand-600 dark:text-brand">{driverName}</span> 👋
+        <div className="flex items-center justify-between gap-2.5 sm:gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white truncate">
+                Olá, <span className="text-brand-600 dark:text-brand">{firstName}</span> 👋
               </h1>
-              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
+              <span className={`shrink-0 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border whitespace-nowrap ${
                 state.profile?.driverType === 'EMPRESA'
                   ? 'bg-teal-500/10 border-teal-500/30 text-teal-700 dark:text-teal-400'
                   : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400'
@@ -323,9 +335,9 @@ export default function HomePage() {
                 {state.profile?.driverType === 'EMPRESA' ? '🏢 Empresa' : '🚗 Particular'}
               </span>
             </div>
-            <p className="text-[11px] capitalize text-slate-500 dark:text-slate-400">{dateLabel}</p>
+            <p className="text-[11px] capitalize text-slate-500 dark:text-slate-400 truncate">{dateLabel}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <ThemeToggle />
             <StatusPill />
             <button

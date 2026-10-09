@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
@@ -47,7 +47,13 @@ export default function DetalheCorrida() {
   const params = useParams();
   const urlId = params?.id as string;
   const { state, dispatch } = useApp();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
 
   const [isChatModalOpen, setChatModalOpen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -66,6 +72,10 @@ export default function DetalheCorrida() {
   const activeRide = state?.activeRide?.id === urlId ? state.activeRide : null;
   const historyRide = state?.rideHistory?.find((r) => r.id === urlId) || null;
   const currentRide: Ride | null = dbRide || activeRide || historyRide;
+  const activeRideRef = useRef(state?.activeRide);
+  activeRideRef.current = state?.activeRide;
+  const currentRideRef = useRef(currentRide);
+  currentRideRef.current = currentRide;
 
   const isRideActive =
     currentRide !== null &&
@@ -94,14 +104,14 @@ export default function DetalheCorrida() {
         });
         ProfileService.toggleWorkStatus('ONLINE').catch(() => {});
       } else if (s === 'ACCEPTED' || s === 'ARRIVED' || s === 'IN-PROGRESS' || s === 'EM_ANDAMENTO' || s === 'A_CAMINHO' || s === 'NO_LOCAL' || s === 'EM_VIAGEM' || s === 'ACEITA') {
-        if (!state.activeRide || state.activeRide.id !== parsed.id) {
+        if (!activeRideRef.current || activeRideRef.current.id !== parsed.id) {
           dispatch({ type: 'ACCEPT_RIDE', ride: parsed });
         }
       }
     };
 
     // 1. Carga inicial
-    setLoadingDbRide(!currentRide);
+    setLoadingDbRide(!currentRideRef.current);
     supabase
       .from('rides')
       .select('*')
@@ -227,6 +237,17 @@ export default function DetalheCorrida() {
     });
     return () => unsubscribe();
   }, [currentRide?.id, isChatModalOpen]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#070D18] text-white">
+        <div className="text-center">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
+          <p className="text-xs text-slate-400">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loadingDbRide) {
     return (

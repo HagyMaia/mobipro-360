@@ -89,6 +89,17 @@ export default function AgendadasPage() {
     refreshAreas();
   };
 
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#070D18] text-white">
+        <div className="text-center">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
+          <p className="text-xs text-slate-400">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[color:var(--bg)] flex flex-col pb-24 font-sans text-slate-900 dark:text-slate-100 transition-colors">
       <header className="sticky top-0 z-30 bg-white/95 dark:bg-dark-950/90 backdrop-blur-xl text-slate-900 dark:text-white pt-4 border-b border-slate-200/80 dark:border-dark-700/80">

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   ShieldAlert, 
   ShieldCheck, 
@@ -33,8 +34,15 @@ import { ReportIncidentModal } from '@/components/Ride/ReportIncidentModal';
 import type { IncidentReport } from '@/lib/types';
 
 export default function SegurancaPage() {
+  const router = useRouter();
   const { state, dispatch } = useApp();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
   const [sosTriggered, setSosTriggered] = useState(false);
   const [sosCountdown, setSosCountdown] = useState<number | null>(null);
   const [cameraActive, setCameraActive] = useState(true);
@@ -105,6 +113,17 @@ export default function SegurancaPage() {
     setNewContact({ name: '', phone: '', relationship: 'Família' });
     setIsAddingContact(false);
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[color:var(--bg)] text-slate-900 dark:text-slate-100">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Verificando segurança...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[color:var(--bg)] text-slate-900 dark:text-slate-100 pb-24 font-sans select-none transition-colors">

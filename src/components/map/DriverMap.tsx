@@ -20,6 +20,7 @@ export interface DriverMapProps {
     dropoffLocation?: MapPoint | null;
     showRoute?: boolean;
     routeMode?: 'to-pickup' | 'to-dropoff' | 'full';
+    attributionControl?: boolean;
 }
 
 // Cache local de trajetos em memória para evitar chamadas repetidas
@@ -204,6 +205,7 @@ export default function DriverMap({
     dropoffLocation,
     showRoute = true,
     routeMode = 'full',
+    attributionControl = false,
 }: DriverMapProps) {
     // Posição padrão: Manaus - AM
     const defaultPosition: [number, number] = [-3.119028, -60.021731];
@@ -214,6 +216,10 @@ export default function DriverMap({
     const carIcon = useMemo(() => createCarIcon(), []);
     const pickupIcon = useMemo(() => createPickupIcon(pickupLocation?.label), [pickupLocation?.label]);
     const dropoffIcon = useMemo(() => createDropoffIcon(dropoffLocation?.label), [dropoffLocation?.label]);
+
+    // Visibilidade seletiva de marcadores conforme a etapa da viagem
+    const showPickupMarker = routeMode !== 'to-dropoff' && Boolean(pickupLocation?.latitude && pickupLocation?.longitude);
+    const showDropoffMarker = routeMode !== 'to-pickup' && Boolean(dropoffLocation?.latitude && dropoffLocation?.longitude);
 
     const [roadGeometry, setRoadGeometry] = useState<[number, number][]>([]);
 
@@ -330,6 +336,7 @@ export default function DriverMap({
                 center={center}
                 zoom={16}
                 zoomControl={false}
+                attributionControl={attributionControl}
                 className="w-full h-full"
             >
                 <TileLayer
@@ -360,7 +367,7 @@ export default function DriverMap({
                 )}
 
                 {/* Marcador de Embarque (Origem) */}
-                {pickupLocation?.latitude && pickupLocation?.longitude && (
+                {showPickupMarker && pickupLocation?.latitude && pickupLocation?.longitude && (
                     <Marker
                         position={[pickupLocation.latitude, pickupLocation.longitude]}
                         icon={pickupIcon}
@@ -375,7 +382,7 @@ export default function DriverMap({
                 )}
 
                 {/* Marcador de Desembarque (Destino) */}
-                {dropoffLocation?.latitude && dropoffLocation?.longitude && (
+                {showDropoffMarker && dropoffLocation?.latitude && dropoffLocation?.longitude && (
                     <Marker
                         position={[dropoffLocation.latitude, dropoffLocation.longitude]}
                         icon={dropoffIcon}

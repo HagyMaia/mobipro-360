@@ -47,9 +47,7 @@ export default function ProtectedLayout({
         }
       } catch (err) {
         console.warn("[ProtectedLayout] Erro na verificação:", err);
-        if (isMounted) {
-          setIsCheckingAccess(false);
-        }
+        router.replace("/login");
       }
     };
 

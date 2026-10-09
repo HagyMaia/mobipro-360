@@ -228,6 +228,7 @@ export function PaymentCheckoutModal({
                 </div>
 
                 <div className="p-3 bg-white rounded-2xl shadow-md border border-slate-200">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={qrCodeUrl}
                     alt="QR Code PIX"

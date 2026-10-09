@@ -19,6 +19,13 @@ export default function StatusPage() {
   const fetchStatus = useCallback(async () => {
     setRefreshing(true);
     try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace('/welcome');
+        return;
+      }
+
       const data = await ProfileService.getCurrentProfile();
       const normalizedProfile = data ? { ...data, status: ProfileService.normalizeDriverStatus(data.status) } : data;
       setProfile(normalizedProfile);

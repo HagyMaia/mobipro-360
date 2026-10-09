@@ -42,8 +42,8 @@ type DemoDriver = {
   created_at: string;
 };
 
-const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const rawUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
+const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '').trim()
 
 export const isSupabaseConfigured = Boolean(
   rawUrl &&
@@ -63,7 +63,7 @@ function normalizeSupabaseUrl(url: string) {
   }
 }
 
-export const browserUrl = isSupabaseConfigured ? normalizeSupabaseUrl(rawUrl as string) : 'https://placeholder.supabase.co'
+export const browserUrl = isSupabaseConfigured ? normalizeSupabaseUrl(rawUrl) : 'https://placeholder.supabase.co'
 const browserKey = supabaseAnonKey || 'placeholder-anon-key'
 
 const DEMO_DRIVERS_KEY = 'mobipro-demo-drivers'
@@ -560,9 +560,17 @@ export function createMockSupabase() {
   }
 }
 
+const clientOptions = {
+  realtime: {
+    params: {
+      eventsPerSecond: 20,
+    },
+  },
+}
+
 const browserClient = isSupabaseConfigured
-  ? createBrowserClient(browserUrl, browserKey)
+  ? createBrowserClient(browserUrl, browserKey, clientOptions)
   : createMockSupabase()
 
 export const supabase = browserClient as any
-export const createClient = () => (isSupabaseConfigured ? createBrowserClient(browserUrl, browserKey) : createMockSupabase()) as any
+export const createClient = () => (isSupabaseConfigured ? createBrowserClient(browserUrl, browserKey, clientOptions) : createMockSupabase()) as any

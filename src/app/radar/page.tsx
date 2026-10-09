@@ -1,6 +1,9 @@
 'use client';
 
+import React, { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
 import dynamic from 'next/dynamic';
 import { ArrowLeft, CalendarClock, MapPin, Radio } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
@@ -25,7 +28,27 @@ const EVENT_NEWS = [
 ];
 
 export default function RadarPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
+
   const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#070D18] text-white">
+        <div className="text-center">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
+          <p className="text-xs text-slate-400">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[color:var(--bg)] text-slate-900 dark:text-slate-50 transition-colors">

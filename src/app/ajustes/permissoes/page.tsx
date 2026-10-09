@@ -1,11 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
 import { ArrowLeft, Bell, MapPin, Compass, Layers, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { Card, SectionTitle, Badge } from '@/components/ui';
 
 export default function PermissoesApp() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
+
   const [permissions, setPermissions] = useState({
     notifications: true,
     gpsForeground: true,
@@ -16,6 +27,17 @@ export default function PermissoesApp() {
   const togglePermission = (key: keyof typeof permissions) => {
     setPermissions(prev => ({ ...prev, [key]: !prev[key] }));
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#070D18] text-white">
+        <div className="text-center">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
+          <p className="text-xs text-slate-400">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[color:var(--bg)] text-[color:var(--text)] dark:text-white flex flex-col justify-between font-sans select-none pb-8">

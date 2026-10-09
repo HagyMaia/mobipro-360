@@ -153,8 +153,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (typeof window !== 'undefined') {
       try {
+        const bioCred = localStorage.getItem('mobipro_biometric_credential_v2');
         localStorage.clear();
         sessionStorage.clear();
+        if (bioCred) {
+          localStorage.setItem('mobipro_biometric_credential_v2', bioCred);
+        }
       } catch (_) {}
       window.location.href = '/login';
     }
